@@ -1,0 +1,35 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kayak", "Kayak\Kayak.csproj", "{79DDD0CE-6F79-4212-A972-8618AD6E405F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakTests", "KayakTests\KayakTests.csproj", "{DA201FE7-FDAF-4B9E-821D-589F93F7245F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Oars", "..\oars\Oars\Oars.csproj", "{DD0C9BC5-4181-4ADC-92EB-9E638C9C38A8}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{79DDD0CE-6F79-4212-A972-8618AD6E405F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{79DDD0CE-6F79-4212-A972-8618AD6E405F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{79DDD0CE-6F79-4212-A972-8618AD6E405F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{79DDD0CE-6F79-4212-A972-8618AD6E405F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD0C9BC5-4181-4ADC-92EB-9E638C9C38A8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD0C9BC5-4181-4ADC-92EB-9E638C9C38A8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD0C9BC5-4181-4ADC-92EB-9E638C9C38A8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD0C9BC5-4181-4ADC-92EB-9E638C9C38A8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = Kayak\Kayak.csproj
+	EndGlobalSection
+EndGlobal

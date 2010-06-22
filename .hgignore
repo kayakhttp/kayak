@@ -1,0 +1,9 @@
+bin
+obj
+.DS_Store
+Kayak.suo
+Kayak.userprefs
+Kayak.csproj.user
+KayakTests.csproj.user
+Kayak.pidb
+KayakTests.pidb

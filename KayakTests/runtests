@@ -1,0 +1,14 @@
+if [ `uname` = 'Darwin' ]; then
+
+    dir=`dirname $0`
+    cd $dir
+    path=`pwd` 
+    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$path/../Kayak/lib/
+    echo $DYLD_LIBRARY_PATH
+fi
+
+if [ `uname` = 'Linux' ]; then
+    export LD_LIBRARY_PATH=/opt/libevent/lib
+    echo $LD_LIBRARY_PATH
+fi
+mono bin/Debug/KayakTests.exe "$@"

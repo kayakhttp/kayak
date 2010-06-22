@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!--This file represents the results of running a test suite-->
+<test-results name="/mnt/hgfs/bvanderveen On My Mac/code/kayak/KayakTests/bin/Debug/KayakTests.exe" total="1" failures="1" not-run="0" date="2010-06-16" time="12:19:01">
+  <environment nunit-version="2.4.8.0" clr-version="2.0.50727.1433" os-version="Unix 2.6.32.22" platform="Unix" cwd="/mnt/hgfs/bvanderveen On My Mac/code/kayak/KayakTests" machine-name="ubuntu" user="wsndev" user-domain="ubuntu" />
+  <culture-info current-culture="en-US" current-uiculture="en-US" />
+  <test-suite name="/mnt/hgfs/bvanderveen On My Mac/code/kayak/KayakTests/bin/Debug/KayakTests.exe" success="False" time="318.475" asserts="0">
+    <results>
+      <test-suite name="KayakTests" success="False" time="318.473" asserts="0">
+        <results>
+          <test-suite name="KayakServerTests" success="False" time="318.343" asserts="0">
+            <results>
+              <test-case name="KayakTests.KayakServerTests.Request" executed="True" success="False" time="318.324" asserts="0">
+                <failure>
+                  <message><![CDATA[System.Net.Sockets.SocketException : The requested address is not valid in this context
+TearDown : System.Reflection.TargetInvocationException : Exception has been thrown by the target of an invocation.
+  ----> System.TypeLoadException : Could not load type 'Oars.EventServer' from assembly 'KayakTests'.]]></message>
+                  <stack-trace><![CDATA[at System.Net.Sockets.Socket.Connect (System.Net.EndPoint remoteEP) [0x00000] in <filename unknown>:0
+at System.Net.Sockets.TcpClient.Connect (System.Net.IPEndPoint remote_end_point) [0x00000] in <filename unknown>:0
+at System.Net.Sockets.TcpClient.Connect (System.Net.IPAddress address, Int32 port) [0x00000] in <filename unknown>:0
+at KayakTests.KayakServerTests.Request () [0x00000] in <filename unknown>:0
+at (wrapper managed-to-native) System.Reflection.MonoMethod:InternalInvoke (object,object[],System.Exception&)
+at System.Reflection.MonoMethod.Invoke (System.Object obj, BindingFlags invokeAttr, System.Reflection.Binder binder, System.Object[] parameters, System.Globalization.CultureInfo culture) [0x00000] in <filename unknown>:0
+--TearDown
+at System.Reflection.MonoMethod.Invoke (System.Object obj, BindingFlags invokeAttr, System.Reflection.Binder binder, System.Object[] parameters, System.Globalization.CultureInfo culture) [0x00000] in <filename unknown>:0
+at System.Reflection.MethodBase.Invoke (System.Object obj, System.Object[] parameters) [0x00000] in <filename unknown>:0
+--TypeLoadException
+at (wrapper managed-to-native) System.Reflection.MonoMethod:InternalInvoke (object,object[],System.Exception&)
+at System.Reflection.MonoMethod.Invoke (System.Object obj, BindingFlags invokeAttr, System.Reflection.Binder binder, System.Object[] parameters, System.Globalization.CultureInfo culture) [0x00000] in <filename unknown>:0
+]]></stack-trace>
+                </failure>
+              </test-case>
+            </results>
+          </test-suite>
+        </results>
+      </test-suite>
+    </results>
+  </test-suite>
+</test-results>
