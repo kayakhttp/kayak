@@ -1,32 +1,48 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Linq;
+using System.Disposables;
 using System.IO;
 
 namespace Kayak
 {
-    public static class Extensions
+    static class Trace
     {
-        public static Coroutine AsCoroutine(this IEnumerable<object> iteratorBlock)
+        public static void Write(string format, params object[] args)
         {
-            return new Coroutine(iteratorBlock.GetEnumerator());
+            //StackTrace stackTrace = new StackTrace();
+            //StackFrame stackFrame = stackTrace.GetFrame(1);
+            //MethodBase methodBase = stackFrame.GetMethod();
+            //Console.WriteLine("[thread " + Thread.CurrentThread.ManagedThreadId + ", " + methodBase.DeclaringType.Name + "." + methodBase.Name + "] " + string.Format(format, args));
         }
+    }
 
-        internal static IObservable<T> EndWithDefault<T>(this IObservable<T> source)
+    public static partial class Extensions
+    {
+        public static void WriteException(this TextWriter writer, Exception exception)
         {
-            return new EndWithDefaultSubject<T>(source);
-        }
+            writer.WriteLine("____________________________________________________________________________");
 
+            writer.WriteLine("[{0}] {1}", exception.GetType().Name, exception.Message);
+            writer.WriteLine(exception.StackTrace);
+            writer.WriteLine();
+
+            for (Exception e = exception.InnerException; e != null; e = e.InnerException)
+            {
+                writer.WriteLine("Caused by:\r\n[{0}] {1}", e.GetType().Name, e.Message);
+                writer.WriteLine(e.StackTrace);
+                writer.WriteLine();
+            }
+        }
 
         public static IObservable<int> ReadAsync(this Stream s, byte[] buffer, int offset, int count)
         {
-            return Observable.FromAsyncPattern<byte[], int, int, int>(s.BeginRead, s.EndRead)(buffer, offset, count).Repeat(1);
+            return new AsyncOperation<int>((cb, st) => s.BeginRead(buffer, offset, count, cb, st), s.EndRead);
+            //return Observable.FromAsyncPattern<byte[], int, int, int>(s.BeginRead, s.EndRead)(buffer, offset, count).Repeat(1);
         }
 
         public static IObservable<Unit> WriteAsync(this Stream s, byte[] buffer, int offset, int count)
         {
-            return Observable.FromAsyncPattern<byte[], int, int>(s.BeginWrite, s.EndWrite)(buffer, offset, count).Repeat(1);
+            return new AsyncOperation<Unit>((c, st) => s.BeginWrite(buffer, offset, count, c, st), iasr => { s.EndWrite(iasr); return new Unit(); });
+            //return Observable.FromAsyncPattern<byte[], int, int>(s.BeginWrite, s.EndWrite)(buffer, offset, count).Repeat(1);
         }
 
         //public static Func<byte[], int, int, IObservable<int>> Read(this Stream s)
@@ -42,45 +58,51 @@ namespace Kayak
         //}
     }
 
-    class EndWithDefaultSubject<T> : ISubject<T>
+
+    //
+    public class AsyncOperation<T> : IObservable<T>
     {
-        #region IObserver<T> Members
-        
-        IDisposable sx;
-        ObserverCollection<T> observers;
+        Func<AsyncCallback, object, IAsyncResult> begin;
+        Func<IAsyncResult, T> end;
 
-        public EndWithDefaultSubject(IObservable<T> source)
+        public AsyncOperation(Func<AsyncCallback, object, IAsyncResult> begin, Func<IAsyncResult, T> end)
         {
-            sx = source.Subscribe(this);
-            observers = new ObserverCollection<T>();
+            this.begin = begin;
+            this.end = end;
         }
-
-        public void OnCompleted()
-        {
-            observers.Next(default(T));
-            observers.Completed();
-        }
-
-        public void OnError(Exception exception)
-        {
-            observers.Error(exception);
-        }
-
-        public void OnNext(T value)
-        {
-            observers.Next(value);
-        }
-
-        #endregion
 
         #region IObservable<T> Members
 
         public IDisposable Subscribe(IObserver<T> observer)
         {
-            return observers.Add(observer);
+            IAsyncResult asyncResult = null;
+
+            AsyncCallback callback = (iasr) =>
+            {
+                T value = default(T);
+                try
+                {
+                    value = end(iasr);
+                }
+                catch (Exception e)
+                {
+                    observer.OnError(e);
+                    return;
+                }
+                observer.OnNext(value);
+                observer.OnCompleted();
+            };
+
+            asyncResult = begin(callback, null);
+
+            return Disposable.Empty;
         }
 
         #endregion
-    }
 
+        //~AsyncOperation()
+        //{
+        //    Console.WriteLine("AsyncOperation deallocd");
+        //}
+    }
 }

@@ -1,11 +1,9 @@
 ﻿using System;
-using System.Concurrency;
 using System.Collections.Generic;
-using System.Text;
-using System.Net.Sockets;
 using System.Disposables;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 
 namespace Kayak
 {
@@ -57,17 +55,17 @@ namespace Kayak
 
         public void OnNext(Socket value)
         {
-            observer.OnNext(new SocketSocket(value));
+            observer.OnNext(new SimpleSocket(value));
         }
 
         #endregion
 
-        class SocketSocket : ISocket
+        class SimpleSocket : ISocket
         {
             Socket socket;
             NetworkStream stream;
 
-            public SocketSocket(Socket socket)
+            public SimpleSocket(Socket socket)
             {
                 this.socket = socket;
             }

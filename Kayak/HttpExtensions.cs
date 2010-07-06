@@ -103,7 +103,12 @@ namespace Kayak
         public static int GetContentLength(this NameValueDictionary headers)
         {
             int contentLength = -1;
-            int.TryParse(headers["Content-Length"], out contentLength);
+            
+            if (headers["Content-Length"] != null)
+                int.TryParse(headers["Content-Length"], out contentLength);
+            else if (headers["Content-length"] != null)
+                int.TryParse(headers["Content-length"], out contentLength);
+
             return contentLength;
         }
 

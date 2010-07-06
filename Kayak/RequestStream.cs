@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.IO;
 
 namespace Kayak
@@ -89,9 +87,10 @@ namespace Kayak
             {
                 bytesCopied = bytesRead = (int)Math.Min(first.Length - position, bytesToRead);
 
+                Trace.Write("Should copy {0} bytes from first.", bytesCopied);
                 if (bytesRead > 0)
                 {
-                    Console.WriteLine("Copying " + bytesToRead + " bytes from first");
+                    Trace.Write("Copying " + bytesRead + " bytes from first");
                     Buffer.BlockCopy(first, (int)position, buffer, offset, bytesRead);
                     bytesToRead -= bytesRead;
 
@@ -100,10 +99,9 @@ namespace Kayak
                     return asyncResult;
                 }
             }
-
-            if (bytesToRead > 0)
+            else
             {
-                Console.WriteLine("Reading " + bytesToRead + " bytes from underlying.");
+                Trace.Write("Reading " + bytesToRead + " bytes from underlying.");
                 asyncResult = underlying.BeginRead(buffer, offset + bytesRead, (int)bytesToRead, callback, state);
             }
   
@@ -122,15 +120,15 @@ namespace Kayak
             }
             else
             {
-                Console.WriteLine("Underlying EndRead....");
+                Trace.Write("Underlying EndRead....");
                 bytesRead = underlying.EndRead(iasr);
             }
 
-            Console.WriteLine("EndRead bytesRead = " + bytesRead);
+            Trace.Write("EndRead bytesRead = " + bytesRead);
 
             position += bytesRead;
 
-            Console.WriteLine("Position is " + position);
+            Trace.Write("Position is " + position);
             return bytesRead;
         }
 

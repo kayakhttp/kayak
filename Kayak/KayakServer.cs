@@ -1,11 +1,6 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Oars;
-using System.Collections;
-using System.Net;
 using System.IO;
+using System.Net;
 
 namespace Kayak
 {
@@ -23,41 +18,23 @@ namespace Kayak
             UserData = userData;
             this.contextFactory = contextFactory;
             observers = new ObserverCollection<IKayakContext>();
-            Main(connections).AsCoroutine().Start();
-        }
-		
-		IEnumerable<object> Main(IObservable<ISocket> connections)
-		{
-            var nullTerminated = connections.EndWithDefault();
-			
-			while (true)
-			{
-				ISocket connection = null;
 
-                //Console.WriteLine("Waiting for connection.");
-                yield return nullTerminated.Do(c => connection = c).Take(1);
-
-                if (connection == null)
+            connections.Subscribe(socket =>
+            {
+                try
                 {
-                    //Console.WriteLine("Got null connection.");
-                    break;
+                    var context = contextFactory.CreateContext(this, socket);
+                    if (context == null)
+                        return;
+
+                    ContextObserver.Observe(this, context);
+                    context.Start();
                 }
-
-                //Console.WriteLine("Got connection.");
-                var context = contextFactory.CreateContext(this, connection);
-                
-                if (context == null) continue;
-
-                // calls our observers.Next when the context generates a unit
-                // (i.e., read the request headers). calls observers.Error
-                // if the context generates an error. calls
-                ContextObserver.Observe(this, context);
-
-                context.Start();
-			}
-
-            //Console.WriteLine("Sending completed.");
-            observers.Completed();
+                catch (Exception e)
+                {
+                    observers.Error(e);
+                }
+            }, () => observers.Completed());
         }
 
         public IDisposable Subscribe(IObserver<IKayakContext> observer)

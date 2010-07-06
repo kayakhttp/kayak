@@ -33,6 +33,7 @@
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <StartupObject>
     </StartupObject>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -79,6 +80,7 @@
     <Reference Include="nunit.framework, Version=2.4.8.0, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77" />
     <Reference Include="System.Core">
       <Private>True</Private>
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System.Xml" />
     <Reference Include="WindowsBase" />
@@ -99,6 +101,10 @@
     <Compile Include="SynchronousMemoryStream.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Kayak.Oars\Kayak.Oars.csproj">
+      <Project>{AEDCAE89-F0C1-41FA-820D-DF96D79BCB3C}</Project>
+      <Name>Kayak.Oars</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
       <Name>Kayak</Name>

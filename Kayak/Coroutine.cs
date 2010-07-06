@@ -1,14 +1,35 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Concurrency;
-using System.Reflection;
 
 namespace Kayak
 {
+    /// <summary>
+    /// An observable that enumerates an enumerator. Call the Start() method to begin enumeration.
+    /// 
+    /// Coroutine yields whatever the enumerator returns, except
+    /// if the iterator block yields an obserable, it subscribes to it, yields whatever values or errors
+    /// the observable yields, and only continues enumerating after the observable completes. If the 
+    /// observable returned by the enumerator was an instance of Coroutine, its Start() method is 
+    /// called after subscribing.
+    /// 
+    /// Very handy for writing asynchronous code using iterator blocks. Simply yield
+    /// obserables that complete after the operation is complete (and possibly assign
+    /// a value to some variable in your local scope).
+    /// </summary>
     public class Coroutine : ISubject<object>
     {
+        // ideally, Coroutine would be declared as:
+        // 
+        // Coroutine<T> : ISubject<T>
+        //
+        // but this is only useful if ISubject is co- and contra-variant
+        // (where ISubject<T> : IObservable<out T>, IObserver<in T>).
+        // 
+        // for now we fake it by introducing a shim type which casts to object.
+
+        public static Action<Action> Trampoline;
+
         ObserverCollection<object> observers;
         IEnumerator<object> continuation;
         bool started, completed, subscribing;
@@ -30,11 +51,13 @@ namespace Kayak
                 subscription.Dispose();
                 subscription = null;
             }
-			Continue();
+            BeginContinue();
         }
 
         public void OnError(Exception exception)
         {
+            Trace.Write("Coroutine error: " + exception.Message);
+            Trace.Write(exception.StackTrace);
             observers.Error(exception);
             observers.Completed();
         }
@@ -58,7 +81,17 @@ namespace Kayak
         public void Start()
         {
             started = true;
-			Continue();
+            BeginContinue();
+        }
+
+        void BeginContinue()
+        {
+            //Scheduler.CurrentThread.EnsureTrampoline(Continue);
+            Trace.Write("Queuing continuation " + continuation);
+            if (Trampoline != null)
+                Trampoline(Continue);
+            else
+                Continue();
         }
 
         void Continue()
@@ -67,6 +100,7 @@ namespace Kayak
 
             try
             {
+                Trace.Write("Executing continuation " + continuation);
                 continues = continuation.MoveNext();
             }
             catch (Exception e)
@@ -80,9 +114,8 @@ namespace Kayak
                 {
                     var value = continuation.Current;
 					
-					// ideally, this class (Coroutine) would be declared as such:
-					// Coroutine<T> : ISubject<T> (where ISubject<T> : IObservable<out T>, IObserver<in T>)
-					
+                    // if we could support variance:
+
 					// this way enumerator blocks could yield any sort of object, we would be able
 					// to test for IObservable<T> (T would be covariant), and we could subscribe to it,
 					// and subscribers to us could observe values produced by that observable.
@@ -123,6 +156,9 @@ namespace Kayak
             }
             else
             {
+                Trace.Write("Coroutine " + continuation + " completed.");
+                //Console.WriteLine();
+                completed = true;
                 observers.Completed();
             }
 	    }
@@ -131,19 +167,17 @@ namespace Kayak
 		{
 			internal Coroutine coroutine;
 			
-			public void OnNext (T value)
+			public void OnNext(T value)
 			{
 				coroutine.OnNext(value);
 			}
 			
-			
-			public void OnError (Exception exception)
+			public void OnError(Exception exception)
 			{
 				coroutine.OnError(exception);
 			}
 			
-			
-			public void OnCompleted ()
+			public void OnCompleted()
 			{
 				coroutine.OnCompleted();
 			}
@@ -153,5 +187,13 @@ namespace Kayak
 				coroutine = c;
 			}
 		}
+    }
+
+    public static partial class Extensions
+    {
+        public static Coroutine AsCoroutine(this IEnumerable<object> iteratorBlock)
+        {
+            return new Coroutine(iteratorBlock.GetEnumerator());
+        }
     }
 }

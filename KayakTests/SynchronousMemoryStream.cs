@@ -47,7 +47,6 @@ namespace KayakTests
                 throw new Exception("Bogus asyncResult.");
         }
 
-
         class AsyncResult : IAsyncResult
         {
             public int bytesRead;
@@ -71,6 +70,5 @@ namespace KayakTests
                 get { return true; }
             }
         }
-
     }
 }
