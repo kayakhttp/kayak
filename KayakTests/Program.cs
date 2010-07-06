@@ -45,7 +45,9 @@ namespace KayakTests
             Console.ReadLine();
             listener.Stop();
         }
+
         static int completed = 0;
+
         static IEnumerable<object> ProcessContext(IKayakContext context)
         {
             context.Response.Headers["Server"] = "Kayak";
@@ -57,7 +59,7 @@ namespace KayakTests
             do
             {
                 //Console.WriteLine("will read.");
-                yield return context.Request.Body.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n).Take(1);
+                yield return context.Request.Body.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
                 //Console.WriteLine("read " + bytesRead + " bytes");
                 yield return context.Response.Body.WriteAsync(buffer, 0, bytesRead);
                 //Console.WriteLine("Test server: wrote bytes!");

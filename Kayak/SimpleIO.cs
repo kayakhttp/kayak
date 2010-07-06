@@ -13,6 +13,7 @@ namespace Kayak
         Func<IObservable<Socket>> accept;
         IPEndPoint listenEndPoint;
         IObserver<ISocket> observer;
+        IDisposable acceptSubscription;
         bool closed;
 
         public SimpleListener(IPEndPoint listenEndPoint)
@@ -36,7 +37,9 @@ namespace Kayak
 
         void AcceptNext()
         {
-            accept().Subscribe(this);
+            if (acceptSubscription != null)
+                acceptSubscription.Dispose();
+            acceptSubscription = accept().Subscribe(this);
         }
 
 
@@ -55,6 +58,7 @@ namespace Kayak
 
         public void OnNext(Socket value)
         {
+            Console.WriteLine("SimpleIO: accepted connection.");
             observer.OnNext(new SimpleSocket(value));
         }
 

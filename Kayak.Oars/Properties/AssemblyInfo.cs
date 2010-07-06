@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Kayak")]
+[assembly: AssemblyTitle("Kayak.Oars")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Kayak")]
+[assembly: AssemblyProduct("Kayak.Oars")]
 [assembly: AssemblyCopyright("Copyright © Benjamin van der Veen 2010")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
@@ -20,7 +20,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("f2a7f504-8fe7-4972-b4e4-180948460839")]
+[assembly: Guid("92afff62-0c96-46ab-8f4b-f44f94f45bd6")]
 
 // Version information for an assembly consists of the following four values:
 //
