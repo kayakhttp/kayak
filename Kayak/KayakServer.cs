@@ -1,122 +1,142 @@
 using System;
 using System.IO;
 using System.Net;
+using System.Disposables;
+using System.Collections.Generic;
+using System.Net.Sockets;
+using System.Linq;
 
 namespace Kayak
 {
-    public class KayakServer : IKayakServer
-    {
-        public object UserData { get; private set; }
-
-        IKayakContextFactory contextFactory;
-        ObserverCollection<IKayakContext> observers;
-
-        public KayakServer(IObservable<ISocket> connections) : this(connections, null) { }
-        public KayakServer(IObservable<ISocket> connections, object userData) : this(connections, userData, KayakContext.DefaultFactory) { }
-        public KayakServer(IObservable<ISocket> connections, object userData, IKayakContextFactory contextFactory)
-        {
-            UserData = userData;
-            this.contextFactory = contextFactory;
-            observers = new ObserverCollection<IKayakContext>();
-
-            connections.Subscribe(socket =>
-            {
-                try
-                {
-                    var context = contextFactory.CreateContext(this, socket);
-                    if (context == null)
-                        return;
-
-                    ContextObserver.Observe(this, context);
-                    context.Start();
-                }
-                catch (Exception e)
-                {
-                    observers.Error(e);
-                }
-            }, () => observers.Completed());
-        }
-
-        public IDisposable Subscribe(IObserver<IKayakContext> observer)
-        {
-            return observers.Add(observer);
-        }
-
-        void ContextCompleted(IKayakContext context)
-        {
-            context.Socket.Dispose();
-        }
-
-        class ContextObserver : IObserver<Unit>
-        {
-            public static void Observe(KayakServer server, IKayakContext context)
-            {
-                var o = new ContextObserver(server, context);
-                o.Subscribe();
-            }
-
-            IKayakContext context;
-            KayakServer server;
-            IDisposable cx;
-
-            public ContextObserver(KayakServer server, IKayakContext context)
-            {
-                this.server = server;
-                this.context = context;
-            }
-
-            public void Subscribe()
-            {
-                cx = context.Subscribe(this);
-            }
-
-            public void OnCompleted()
-            {
-                server.ContextCompleted(context);
-                cx.Dispose();
-            }
-
-            public void OnError(Exception exception)
-            {
-                server.observers.Error(new KayakContextException(context, exception));
-                cx.Dispose();
-            }
-
-            public void OnNext(Unit value)
-            {
-                server.observers.Next(context);
-            }
-        }
-    }
-
     public interface ISocket : IDisposable
     {
         IPEndPoint RemoteEndPoint { get; }
         Stream GetStream();
     }
 
-    public interface IKayakServer : IObservable<IKayakContext>
+    public class KayakServer : IObservable<ISocket>
     {
-        object UserData { get; }
-    }
+        public IPEndPoint ListenEndPoint { get; private set; }
 
-    public class KayakContextEventArgs : EventArgs
-    {
-        public IKayakContext Context { get; set; }
+        object gate = new object();
+        
+        Socket listener;
+        Func<IObservable<Socket>> accept;
+        int backlog;
+        IObserver<ISocket> observer;
+        IDisposable acceptSubscription;
+        bool unsubscribed;
 
-        public KayakContextEventArgs(IKayakContext context)
+        int activeSockets;
+
+        public KayakServer() : this(new IPEndPoint(IPAddress.Any, 8080)) { }
+        public KayakServer(IPEndPoint listenEndPoint) : this(listenEndPoint, 1000) { }
+        public KayakServer(IPEndPoint listenEndPoint, int backlog)
         {
-            Context = context;
+            ListenEndPoint = listenEndPoint;
+            this.backlog = backlog;
         }
-    }
 
-    public class KayakContextException : Exception
-    {
-        public IKayakContext Context { get; private set; }
-        public KayakContextException(IKayakContext context, Exception inner) :
-            base("An error occurred while processing a context.", inner)
+        public IDisposable Subscribe(IObserver<ISocket> observer)
         {
-            Context = context;
+            if (this.observer != null)
+                throw new InvalidOperationException("Listener already has observer.");
+
+            this.observer = observer;
+
+            listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+            listener.Bind(ListenEndPoint);
+            listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 10000);
+            listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
+            listener.Listen(backlog);
+
+            accept = Observable.FromAsyncPattern<Socket>(listener.BeginAccept, listener.EndAccept);
+
+            AcceptNext();
+            return Disposable.Create(() => 
+            {
+                lock (gate)
+                {
+                    unsubscribed = true;
+                    listener.Close(); 
+                }
+            });
+        }
+
+        void AcceptNext()
+        {
+            if (acceptSubscription != null)
+                acceptSubscription.Dispose();
+
+            acceptSubscription = accept().Subscribe(socket =>
+                {
+                    var s = new DotNetSocket(this, socket);
+
+                    lock (gate)
+                        activeSockets++;
+
+                    observer.OnNext(s);
+                },
+                e =>
+                {
+                    observer.OnError(e);
+                },
+                () =>
+                {
+                    bool isUnsubscribed = false;
+                    
+                    lock (gate)
+                        isUnsubscribed = unsubscribed;
+
+                    if (!isUnsubscribed)
+                        AcceptNext();
+                });
+        }
+
+        void SocketClosed()
+        {
+            bool complete = false;
+
+            lock (gate)
+                complete = --activeSockets == 0 && unsubscribed;
+
+            if (complete)
+            {
+                observer.OnCompleted();
+                observer = null;
+            }
+        }
+
+        class DotNetSocket : ISocket
+        {
+            KayakServer server;
+            Socket socket;
+            NetworkStream stream;
+
+            public DotNetSocket(KayakServer server, Socket socket)
+            {
+                this.server = server;
+                this.socket = socket;
+            }
+
+            public IPEndPoint RemoteEndPoint
+            {
+                get { return (IPEndPoint)socket.RemoteEndPoint; }
+            }
+
+            public Stream GetStream()
+            {
+                if (stream == null)
+                    stream = new NetworkStream(socket, true);
+
+                return stream;
+            }
+
+            public void Dispose()
+            {
+                socket.Close();
+                server.SocketClosed();
+            }
         }
     }
 }

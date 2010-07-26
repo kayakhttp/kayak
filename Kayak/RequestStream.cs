@@ -52,7 +52,7 @@ namespace Kayak
 
                 if (bytesRead > 0)
                 {
-                    Console.WriteLine("Copying " + bytesRead + " bytes from first.");
+                    //Console.WriteLine("Copying " + bytesRead + " bytes from first.");
                     Buffer.BlockCopy(first, (int)position, buffer, offset, bytesRead);
                     bytesToRead -= bytesRead;
                 }
@@ -60,12 +60,12 @@ namespace Kayak
 
             if (bytesToRead > 0)
             {
-                Console.WriteLine("Reading " + bytesToRead + " bytes from underlying.");
+                //Console.WriteLine("Reading " + bytesToRead + " bytes from underlying.");
                 bytesRead += underlying.Read(buffer, offset + bytesRead, (int)bytesToRead);
             }
 
             position += bytesRead;
-            Console.WriteLine("Position is " + position);
+            //Console.WriteLine("Position is " + position);
             return bytesRead;
         }
 
@@ -109,7 +109,7 @@ namespace Kayak
         }
 
         public override int EndRead(IAsyncResult iasr)
-        {
+        {   
             int bytesRead = bytesCopied;
 
             if (asyncResult is AsyncResult)

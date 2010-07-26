@@ -12,6 +12,8 @@ namespace KayakTests
     [TestFixture]
     public class KayakContextResponseTests
     {
+        string requestString;
+
         int statusCode;
         string reasonPhrase;
         NameValueDictionary headers;
@@ -23,17 +25,23 @@ namespace KayakTests
         KayakContext context;
 
         bool contextCompleted;
+        Exception contextException;
 
         [SetUp]
         public void SetUp()
         {
             stream = new SynchronousMemoryStream();
+            requestString = "GET / HTTP/1.0\r\n\r\n";
+            stream.Write(Encoding.ASCII.GetBytes(requestString), 0, requestString.Length);
+            stream.Position = 0;
             mockSocket = new Mock<ISocket>();
             mockSocket.Setup(s => s.GetStream()).Returns(stream).Verifiable();
             context = new KayakContext(mockSocket.Object);
-            context.Subscribe(n => { }, () => contextCompleted = true);
+            context.Subscribe(n => { }, e => contextException = e, () => contextCompleted = true);
 
-            headers = null;
+            headers = new NameValueDictionary();
+            headers["Server"] = "Kayak";
+
             body = null;
         }
 
@@ -48,9 +56,10 @@ namespace KayakTests
 
         void AssertResponse()
         {
+            Assert.IsNull(contextException, "Exception was not null.");
             Assert.IsTrue(contextCompleted, "Context did not complete.");
 
-            var expected = string.Format("{0} {1} {2}\r\n", context.Response.HttpVersion, statusCode, reasonPhrase);
+            var expected = string.Format("{0}{1} {2} {3}\r\n", requestString, context.Response.HttpVersion, statusCode, reasonPhrase);
 
             if (headers != null)
                 foreach (var pair in headers)
@@ -71,7 +80,7 @@ namespace KayakTests
             statusCode = 200;
             reasonPhrase = "OK";
 
-            context.End();
+            context.OnCompleted();
 
             AssertResponse();
         }
@@ -83,7 +92,7 @@ namespace KayakTests
 
             SetUpContext();
 
-            context.End();
+            context.OnCompleted();
 
             AssertResponse();
         }
@@ -99,7 +108,7 @@ namespace KayakTests
 
             SetUpContext();
 
-            context.End();
+            context.OnCompleted();
 
             AssertResponse();
         }
@@ -118,7 +127,7 @@ namespace KayakTests
 
             bodyStream.Write(Encoding.UTF8.GetBytes(body), 0, body.Length);
 
-            context.End();
+            context.OnCompleted();
 
             AssertResponse();
         }

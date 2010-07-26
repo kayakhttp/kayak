@@ -39,7 +39,18 @@ namespace Kayak.Oars
         public IDisposable Subscribe(IObserver<ISocket> observer)
         {
             this.observer = observer;
-            return Disposable.Create(() => this.observer = null);
+
+            dispatch = new Thread(new ThreadStart(Dispatch));
+            dispatch.Name = "OarsDispatch";
+            dispatch.Start();
+
+            return Disposable.Create(() => {
+
+                if (!running) throw new Exception("not running");
+                if (stopping) throw new Exception("already stopping");
+
+                stopping = true;
+            });
         }
 
         #endregion
@@ -58,21 +69,6 @@ namespace Kayak.Oars
         }
 
         #endregion
-
-        public void Start()
-        {
-            dispatch = new Thread(new ThreadStart(Dispatch));
-            dispatch.Name = "OarsDispatch";
-            dispatch.Start();
-        }
-
-        public void Stop()
-        {
-            if (!running) throw new Exception("not running");
-            if (stopping) throw new Exception("already stopping");
-
-            stopping = true;
-        }
 
         void Dispatch()
         {
@@ -112,6 +108,8 @@ namespace Kayak.Oars
 
             if (Stopped != null)
                 Stopped(this, EventArgs.Empty);
+
+            this.observer = null;
         }
 
         void ListenerConnectionAccepted(object sender, ConnectionAcceptedEventArgs e)

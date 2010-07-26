@@ -98,8 +98,6 @@ namespace KayakTests
 
             SetUpContext();
 
-            context.Start();
-
             AssertRequest();
 
             Assert.IsNull(context.Request.Body, "Body was non-null.");
@@ -115,8 +113,6 @@ namespace KayakTests
             headers["User-Agent"] = "KayakTests";
 
             SetUpContext();
-
-            context.Start();
 
             AssertRequest();
 
@@ -135,8 +131,6 @@ namespace KayakTests
             headers["Content-Length"] = body.Length.ToString();
 
             SetUpContext();
-
-            context.Start();
 
             AssertRequest();
         }

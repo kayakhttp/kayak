@@ -122,20 +122,20 @@ namespace Kayak
             {
                 readLineBuffer.Position = 0;
 
-                byte? last = null;
+                int? last = null;
 
                 while (true)
                 {
                     if (readLineBuffer.Position == maxLength)
                         throw new Exception("Encountered a line exceeding maxLength (" + maxLength + "bytes)");
 
-                    byte b = (byte)source.ReadByte();
+                    int b = source.ReadByte();
 
-                    if (last == 13 && b == 10)
+                    if (b == -1 || (last == 13 && b == 10))
                         break;
 
                     if (last.HasValue)
-                        readLineBuffer.WriteByte(last.Value);
+                        readLineBuffer.WriteByte((byte)last.Value);
 
                     last = b;
                 }

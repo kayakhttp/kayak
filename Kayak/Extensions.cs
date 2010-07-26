@@ -1,6 +1,12 @@
 ﻿using System;
 using System.Disposables;
 using System.IO;
+using System.Text;
+using System.Web;
+using System.Collections;
+using System.Diagnostics;
+using System.Reflection;
+using System.Threading;
 
 namespace Kayak
 {
@@ -45,22 +51,168 @@ namespace Kayak
             //return Observable.FromAsyncPattern<byte[], int, int>(s.BeginWrite, s.EndWrite)(buffer, offset, count).Repeat(1);
         }
 
-        //public static Func<byte[], int, int, IObservable<int>> Read(this Stream s)
-        //{
-        //    return Observable.FromAsyncPattern<byte[], int, int, int>(s.BeginRead, s.EndRead);
-        //}
+        #region Common Statuses
+        // might set an internal flag on some of these so that we can send some default content (i.e., 404 page)
 
-        //public static IObservable<int> ReadAsync(this Stream s, byte[] buffer, int offset, int count, Action<int> bytesRead)
-        //{
-        //    Console.WriteLine("Read async!");
-        //    return new DeferredObservable<int>(() => s.Read()(buffer, offset, count).Do(bytesRead));
-        //    Console.WriteLine("Done reading async.");
-        //}
+        public static void SetStatusToOK(this IKayakServerResponse response)
+        {
+            response.StatusCode = 200;
+            response.ReasonPhrase = "OK";
+        }
+
+        public static void SetStatusToCreated(this IKayakServerResponse response)
+        {
+            response.StatusCode = 201;
+            response.ReasonPhrase = "Created";
+        }
+
+        public static void SetStatusToFound(this IKayakServerResponse response)
+        {
+            response.StatusCode = 302;
+            response.ReasonPhrase = "Found";
+        }
+
+        public static void SetStatusToNotModified(this IKayakServerResponse response)
+        {
+            response.StatusCode = 304;
+            response.ReasonPhrase = "Not Modified";
+        }
+
+        public static void SetStatusToBadRequest(this IKayakServerResponse response)
+        {
+            response.StatusCode = 400;
+            response.ReasonPhrase = "Bad Request";
+        }
+
+        public static void SetStatusToForbidden(this IKayakServerResponse response)
+        {
+            response.StatusCode = 403;
+            response.ReasonPhrase = "Forbidden";
+        }
+
+        public static void SetStatusToNotFound(this IKayakServerResponse response)
+        {
+            response.StatusCode = 404;
+            response.ReasonPhrase = "Not Found";
+        }
+
+        public static void SetStatusToConflict(this IKayakServerResponse response)
+        {
+            response.StatusCode = 409;
+            response.ReasonPhrase = "Conflict";
+        }
+
+        public static void SetStatusToInternalServerError(this IKayakServerResponse response)
+        {
+            response.StatusCode = 503;
+            response.ReasonPhrase = "Internal Server Error";
+        }
+
+        #endregion
+
+        public static void Redirect(this IKayakServerResponse response, string url)
+        {
+            // clear response?
+            response.SetStatusToFound();
+            response.Headers["Location"] = url;
+        }
+
+        #region Query string extensions
+
+
+        const char EqualsChar = '=';
+        const char AmpersandChar = '&';
+
+        public static NameValueDictionary DecodeQueryString(this string encodedString)
+        {
+            return DecodeQueryString(encodedString, 0, encodedString.Length);
+        }
+
+        public static NameValueDictionary DecodeQueryString(this string encodedString,
+            int charIndex, int charCount)
+        {
+            var result = new NameValueDictionary();
+            var name = new StringBuilder();
+            var value = new StringBuilder();
+            var hasValue = false;
+
+            for (int i = charIndex; i < charIndex + charCount; i++)
+            {
+                char c = encodedString[i];
+                switch (c)
+                {
+                    case EqualsChar:
+                        hasValue = true;
+                        break;
+                    case AmpersandChar:
+                        // end of pair
+                        AddNameValuePair(result, name, value, hasValue);
+
+                        // reset
+                        name.Length = value.Length = 0;
+                        hasValue = false;
+                        break;
+                    default:
+                        if (!hasValue) name.Append(c); else value.Append(c);
+                        break;
+                }
+            }
+
+            // last pair
+            AddNameValuePair(result, name, value, hasValue);
+
+            return result;
+        }
+
+        static void AddNameValuePair(NameValueDictionary dict, StringBuilder name, StringBuilder value, bool hasValue)
+        {
+            if (name.Length > 0)
+                dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);
+        }
+
+        public static string ToQueryString(this NameValueDictionary dict)
+        {
+            var sb = new StringBuilder();
+
+            foreach (NameValuePair pair in dict)
+            {
+                foreach (string value in pair.Values)
+                {
+                    if (sb.Length > 0)
+                        sb.Append(AmpersandChar);
+
+                    sb.Append(Uri.EscapeDataString(pair.Name))
+                        .Append(EqualsChar)
+                        .Append(Uri.EscapeDataString(value));
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        public static string ToQueryString(this IDictionary dict)
+        {
+            var sb = new StringBuilder();
+
+            foreach (var key in dict.Keys)
+            {
+                if (sb.Length > 0)
+                    sb.Append(AmpersandChar);
+
+                sb.Append(Uri.EscapeDataString(key.ToString()))
+                    .Append(EqualsChar)
+                    .Append(Uri.EscapeDataString(dict[key].ToString()));
+            }
+
+            return sb.ToString();
+        }
+
+        #endregion
+
     }
 
-
-    //
-    public class AsyncOperation<T> : IObservable<T>
+    // want to get rid of this class.
+    class AsyncOperation<T> : IObservable<T>
     {
         Func<AsyncCallback, object, IAsyncResult> begin;
         Func<IAsyncResult, T> end;
@@ -79,6 +231,7 @@ namespace Kayak
 
             AsyncCallback callback = (iasr) =>
             {
+                //Console.WriteLine("Got async callback");
                 T value = default(T);
                 try
                 {

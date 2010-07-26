@@ -34,7 +34,7 @@ namespace KayakTests
 
         public override IAsyncResult BeginWrite(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
         {
-            Console.WriteLine("SMS writing " + count + " bytes.");
+            //Console.WriteLine("SMS writing " + count + " bytes.");
             write = new AsyncResult() { AsyncState = state };
             Write(buffer, offset, count);
             callback(write);

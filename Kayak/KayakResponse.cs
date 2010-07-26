@@ -69,6 +69,7 @@ namespace Kayak
                 HttpVersion = "HTTP/1.1"
             };
             headers = new NameValueDictionary();
+            headers["Server"] = "Kayak";
         }
         
         void ThrowIfBodyAccessed()

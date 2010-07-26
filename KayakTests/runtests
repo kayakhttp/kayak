@@ -3,7 +3,7 @@ if [ `uname` = 'Darwin' ]; then
     dir=`dirname $0`
     cd $dir
     path=`pwd` 
-    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$path/../Kayak/lib/
+    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$path/../../oars/Oars/lib/
     echo $DYLD_LIBRARY_PATH
 fi
 

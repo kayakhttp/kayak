@@ -59,6 +59,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.CoreEx.dll</HintPath>
     </Reference>
+    <Reference Include="System.Data" />
     <Reference Include="System.Observable, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Observable.dll</HintPath>
@@ -71,21 +72,39 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Threading.dll</HintPath>
     </Reference>
+    <Reference Include="System.Web" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Coroutine.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="Framework\Binding\DefaultBinder.cs" />
+    <Compile Include="Framework\Extensions.cs" />
+    <Compile Include="Framework\KayakInvocation.cs" />
+    <Compile Include="Framework\KayakService.cs" />
+    <Compile Include="Framework\LitJson\IJsonWrapper.cs" />
+    <Compile Include="Framework\LitJson\JsonData.cs" />
+    <Compile Include="Framework\LitJson\JsonException.cs" />
+    <Compile Include="Framework\LitJson\JsonMapper.cs" />
+    <Compile Include="Framework\LitJson\JsonMapper2.cs" />
+    <Compile Include="Framework\LitJson\JsonReader.cs" />
+    <Compile Include="Framework\LitJson\JsonWriter.cs" />
+    <Compile Include="Framework\LitJson\Lexer.cs" />
+    <Compile Include="Framework\LitJson\ParserToken.cs" />
+    <Compile Include="Framework\LitJson\TypeExtensions.cs" />
+    <Compile Include="Framework\DefaultObserver.cs" />
+    <Compile Include="Framework\InvocationInfo.cs" />
+    <Compile Include="Framework\Binding\BindingAttributes.cs" />
+    <Compile Include="Framework\Binding\MethodMap.cs" />
     <Compile Include="HttpExtensions.cs" />
     <Compile Include="KayakContext.cs" />
     <Compile Include="KayakRequest.cs" />
     <Compile Include="KayakResponse.cs" />
     <Compile Include="KayakServer.cs" />
     <Compile Include="NameValueDictionary.cs" />
-    <Compile Include="ObserverCollection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RequestStream.cs" />
     <Compile Include="ResponseStream.cs" />
-    <Compile Include="SimpleIO.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

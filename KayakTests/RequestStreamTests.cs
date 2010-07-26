@@ -67,18 +67,18 @@ namespace KayakTests
 
         void BeginRead()
         {
-            Console.WriteLine("BeginRead");
+            //Console.WriteLine("BeginRead");
             requestStream.BeginRead(copyBuffer, 0, copyBuffer.Length, ReadCallback, null);
         }
 
         void ReadCallback(IAsyncResult iasr)
         {
             var bytesRead = requestStream.EndRead(iasr);
-            Console.WriteLine("Read " + bytesRead + " bytes.");
+            //Console.WriteLine("Read " + bytesRead + " bytes.");
             destination.Write(copyBuffer, 0, bytesRead);
-            Console.WriteLine("destination.length = " + destination.Length);
-            Console.WriteLine("expectedLength = " + expectedLength);
-            Console.WriteLine();
+            //Console.WriteLine("destination.length = " + destination.Length);
+            //Console.WriteLine("expectedLength = " + expectedLength);
+            //Console.WriteLine();
 
             if (destination.Length < expectedLength && bytesRead != 0)
                 BeginRead();
@@ -92,7 +92,7 @@ namespace KayakTests
             do
             {
                 bytesRead = requestStream.Read(copyBuffer, 0, copyBuffer.Length);
-                Console.WriteLine("Read " + bytesRead + " bytes.");
+                //Console.WriteLine("Read " + bytesRead + " bytes.");
                 destination.Write(copyBuffer, 0, bytesRead);
             }
             while (destination.Length < expectedLength && bytesRead != 0);

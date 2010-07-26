@@ -5,24 +5,12 @@ using System.Linq;
 
 namespace Kayak
 {
-    // return null and the server will ignore connection
-    public interface IKayakContextFactory
+    public interface IKayakContext : ISubject<Unit>
     {
-        IKayakContext CreateContext(IKayakServer server, ISocket socket);
-    }
-
-    // A single-element sequence. Unit is generated after headers are read
-    // and the context is usable.
-    public interface IKayakContext : IObservable<Unit>
-    {
-        object UserData { get; set; }
-        IKayakServer Server { get; }
         ISocket Socket { get; }
         IKayakServerRequest Request { get; }
         IKayakServerResponse Response { get; }
-
-        void Start();
-        void End();
+        Dictionary<object, object> Items { get; }
     }
 
     public class KayakContext : IKayakContext
@@ -30,26 +18,50 @@ namespace Kayak
         public static int MaxHeaderLength = 1024 * 10;
         public static int BufferSize = 1024 * 2;
 
-        public object UserData { get; set; }
-        public IKayakServer Server { get; private set; }
+        public Dictionary<object, object> Items { get; private set; }
         public ISocket Socket { get; private set; }
         public KayakServerRequest Request { get; private set; }
         public KayakServerResponse Response { get; private set; }
 
-        ObserverCollection<Unit> observers;
+        IObserver<Unit> observer;
         Stream stream;
 
         public KayakContext(ISocket socket)
         {
             Socket = socket;
             stream = socket.GetStream();
-            observers = new ObserverCollection<Unit>();
             Response = new KayakServerResponse(this);
+            Items = new Dictionary<object, object>();
         }
 
-        public void Start()
+        public void OnNext(Unit value)
         {
-            ReadRequestHeaders().AsCoroutine().Start();
+            observer.OnNext(value);
+        }
+
+        public void OnError(Exception e)
+        {
+            Console.WriteLine("Context error!");
+            Console.Out.WriteException(e);
+            stream.Close();
+            observer.OnError(e);
+        }
+
+        public void Complete()
+        {
+            stream.Flush();
+            stream.Close();
+            stream.Dispose();
+
+            observer.OnCompleted();
+        }
+
+        public IDisposable Subscribe(IObserver<Unit> observer)
+        {
+            var readRequestHeaders = ReadRequestHeaders().AsCoroutine();
+            this.observer = observer;
+
+            return readRequestHeaders.Subscribe(o => { }, OnError, () => { OnNext(new Unit()); });
         }
 
         IEnumerable<object> ReadRequestHeaders()
@@ -63,8 +75,6 @@ namespace Kayak
                 Trace.Write("Context about to read header chunk.");
                 yield return stream.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
                 Trace.Write("Context read {0} bytes.", bytesRead);
-
-                //Console.WriteLine("context read " + bytesRead);
 
                 if (bytesRead == 0)
                     break;
@@ -84,22 +94,16 @@ namespace Kayak
                 headerBuffer.Write(buffer, 0, endOfHeaders > 0 ? endOfHeaders : bytesRead);
 
                 if (headerBuffer.Length > MaxHeaderLength)
-                    break; // TODO error
+                    throw new Exception("Request headers data exceeds max header length.");
             }
             HttpRequestLine requestLine = default(HttpRequestLine);
             NameValueDictionary headers = null;
-            try
-            {
-                headerBuffer.Position = 0;
-                requestLine = headerBuffer.ReadHttpRequestLine();
-                headers = headerBuffer.ReadHttpHeaders();
-                headerBuffer.Dispose();
-            }
-            catch (Exception e)
-            {
-                observers.Error(e);
-            }
 
+            headerBuffer.Position = 0;
+            requestLine = headerBuffer.ReadHttpRequestLine();
+            headers = headerBuffer.ReadHttpHeaders();
+            headerBuffer.Dispose();
+        
             Stream requestBody = null;
             var contentLength = headers.GetContentLength();
             Trace.Write("Got request with content length " + contentLength);
@@ -112,17 +116,8 @@ namespace Kayak
                 Trace.Write("Creating body stream with overlap " + overlapLength + ", contentLength " + contentLength);
                 requestBody = new RequestStream(stream, overlap, contentLength);
             }
-            else
-            {
-                //Trace.Write("Hoping to read 0 bytes. on thread " + Thread.CurrentThread.Name);
-                //yield return stream.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
-                //Trace.Write("Read " + bytesRead + "bytes");
-            }
 
             Request = new KayakServerRequest(requestLine, headers, requestBody);
-            //Console.WriteLine("Going to yield a value.");
-            observers.Next(new Unit());
-            //Console.WriteLine("Yielded a value.");
         }
 
         bool responseBody;
@@ -144,7 +139,7 @@ namespace Kayak
             return new ResponseStream(stream, headerBuffer, Response.Headers.GetContentLength());
         }
 
-        public void End()
+        public void OnCompleted()
         {
             if (responseBody)
                 Complete();
@@ -156,18 +151,9 @@ namespace Kayak
             }
         }
 
-        void Complete()
-        {
-            //Trace.Write("Completing response.");
-            stream.Close();
-            observers.Completed();
-            //Trace.Write("Completed response.");
-        }
-
         public void WroteHeaders(IAsyncResult iasr)
         {
             stream.EndWrite(iasr);
-            //Console.WriteLine("Wrote headers.");
             Complete();
         }
 
@@ -180,31 +166,5 @@ namespace Kayak
         {
             get { return (IKayakServerResponse)Response; }
         }
-
-        public IDisposable Subscribe(IObserver<Unit> observer)
-        {
-            return observers.Add(observer);
-        }
-
-        class KayakContextFactory : IKayakContextFactory
-        {
-            public IKayakContext CreateContext(IKayakServer server, ISocket socket)
-            {
-                var c = new KayakContext(socket);
-                c.Server = server;
-                return c;
-            }
-        }
-
-        static KayakContextFactory defaultFactory;
-
-        internal static IKayakContextFactory DefaultFactory
-        {
-            get
-            {
-                return defaultFactory ?? (defaultFactory = new KayakContextFactory());
-            }
-        }
-
     }
 }

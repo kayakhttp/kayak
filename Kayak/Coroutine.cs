@@ -1,23 +1,22 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Disposables;
 
 namespace Kayak
 {
     /// <summary>
-    /// An observable that enumerates an enumerator. Call the Start() method to begin enumeration.
+    /// An observable that enumerates an enumerator.
     /// 
     /// Coroutine yields whatever the enumerator returns, except
     /// if the iterator block yields an obserable, it subscribes to it, yields whatever values or errors
-    /// the observable yields, and only continues enumerating after the observable completes. If the 
-    /// observable returned by the enumerator was an instance of Coroutine, its Start() method is 
-    /// called after subscribing.
+    /// the observable yields, and only continues enumerating after the observable completes.
     /// 
     /// Very handy for writing asynchronous code using iterator blocks. Simply yield
     /// obserables that complete after the operation is complete (and possibly assign
-    /// a value to some variable in your local scope).
+    /// some resultant value to a variable in your local scope).
     /// </summary>
-    public class Coroutine : ISubject<object>
+    public class Coroutine : IObservable<object>
     {
         // ideally, Coroutine would be declared as:
         // 
@@ -28,43 +27,42 @@ namespace Kayak
         // 
         // for now we fake it by introducing a shim type which casts to object.
 
-        public static Action<Action> Trampoline;
-
-        ObserverCollection<object> observers;
+        IObserver<object> observer;
         IEnumerator<object> continuation;
-        bool started, completed, subscribing;
         IDisposable subscription;
-
-        public bool Started { get { return started; } }
-        public bool Completed { get { return completed; } }
 
         public Coroutine(IEnumerator<object> continuation)
         {
             this.continuation = continuation;
-            this.observers = new ObserverCollection<object>();
         }
 
-        public void OnCompleted()
+        void OnCompleted()
         {
-            if (!subscribing)
+            if (subscription != null)
             {
                 subscription.Dispose();
                 subscription = null;
             }
-            BeginContinue();
+            Continue();
         }
 
-        public void OnError(Exception exception)
+        void Complete()
         {
-            Trace.Write("Coroutine error: " + exception.Message);
-            Trace.Write(exception.StackTrace);
-            observers.Error(exception);
-            observers.Completed();
+            //Console.WriteLine("Coroutine " + continuation + " completed.");
+            observer.OnCompleted();
         }
 
-        public void OnNext(object value)
+        void OnError(Exception exception)
         {
-            observers.Next(value);
+            //Trace.Write("Coroutine error: " + exception.Message);
+            //Trace.Write(exception.StackTrace);
+            //Console.WriteLine("OnError!");
+            observer.OnError(exception);
+        }
+
+        void OnNext(object value)
+        {
+            observer.OnNext(value);
         }
 
         public IDisposable Subscribe(IObserver<object> observer)
@@ -72,26 +70,21 @@ namespace Kayak
             if (observer == null)
                 throw new ArgumentNullException("observer");
 
-            if (completed)
-                throw new Exception("Coroutine already completed!");
+            if (this.observer != null)
+                throw new InvalidOperationException("Coroutine already has observer.");
 
-            return observers.Add(observer);
-        }
+            this.observer = observer;
 
-        public void Start()
-        {
-            started = true;
-            BeginContinue();
-        }
+            Continue();
 
-        void BeginContinue()
-        {
-            //Scheduler.CurrentThread.EnsureTrampoline(Continue);
-            Trace.Write("Queuing continuation " + continuation);
-            if (Trampoline != null)
-                Trampoline(Continue);
-            else
-                Continue();
+            //Console.WriteLine("Adding observer to continuation " + continuation);
+            return Disposable.Create(() =>
+            {
+                if (subscription != null)
+                    subscription.Dispose();
+
+                this.observer = null;
+            });
         }
 
         void Continue()
@@ -100,12 +93,13 @@ namespace Kayak
 
             try
             {
-                Trace.Write("Executing continuation " + continuation);
+                //Trace.Write("Executing continuation " + continuation);
                 continues = continuation.MoveNext();
             }
             catch (Exception e)
             {
-                observers.Error(e);
+                OnError(e);
+                return;
             }
 
             if (continues)
@@ -127,8 +121,7 @@ namespace Kayak
 					
 					// bleh.
 					
-					var observableInterface = value.GetType().GetInterfaces()
-						.FirstOrDefault(i => i.GetGenericTypeDefinition().Equals(typeof(IObservable<>)));
+					var observableInterface = value.GetType().GetInterface("IObservable`1");
 
                     if (observableInterface != null)
                     {
@@ -137,35 +130,28 @@ namespace Kayak
 						var shim = shimType.GetConstructor(new Type[] { typeof(Coroutine) } ).Invoke(new object[] { this });
 						var genericSubscribe = observableInterface.GetMethod("Subscribe");
 
-                        subscribing = true;
 						subscription = (IDisposable)genericSubscribe.Invoke(value, new object[] { shim });
-                        subscribing = false;
-
-                        if (value is Coroutine)
-                            (value as Coroutine).Start();
                     }
                     else
                     {
-                        observers.Next(value);
+                        observer.OnNext(value);
+                        Continue();
                     }
                 }
                 catch (Exception e)
                 {
-                    observers.Error(e);
+                    OnError(e);
                 }
             }
             else
             {
-                Trace.Write("Coroutine " + continuation + " completed.");
-                //Console.WriteLine();
-                completed = true;
-                observers.Completed();
+                Complete();
             }
 	    }
 		
 		class ObserverShim<T> : IObserver<T>
 		{
-			internal Coroutine coroutine;
+			Coroutine coroutine;
 			
 			public void OnNext(T value)
 			{

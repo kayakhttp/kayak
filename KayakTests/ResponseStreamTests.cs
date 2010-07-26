@@ -37,9 +37,9 @@ namespace KayakTests
             SetUp();
             while (true)
             {
-                Console.WriteLine("rest.length = " + rest.Length + " rest.position = " + rest.Position);
+                //Console.WriteLine("rest.length = " + rest.Length + " rest.position = " + rest.Position);
                 var bytesRead = rest.Read(copyBuffer, 0, copyBuffer.Length);
-                Console.WriteLine("Read " + bytesRead + " bytes from source stream");
+                //Console.WriteLine("Read " + bytesRead + " bytes from source stream");
                 if (bytesRead == 0)
                     break;
 
@@ -77,7 +77,7 @@ namespace KayakTests
             if (bytesRead == 0)
                 return;
 
-            Console.WriteLine("writing " + bytesRead + " bytes");
+            //Console.WriteLine("writing " + bytesRead + " bytes");
             responseStream.BeginWrite(copyBuffer, 0, bytesRead, WriteCallback, null);
         }
 
