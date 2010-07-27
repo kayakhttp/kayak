@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
-using System.Collections.Generic;
 
 namespace Kayak.Framework
 {
@@ -57,29 +56,6 @@ namespace Kayak.Framework
         public static bool IsDefinedOnParameters(MethodInfo mi)
         {
             return mi.GetParameters().Where(pi => RequestBodyAttribute.IsDefinedOn(pi)).Count() > 0;
-        }
-    }
-
-    static class MethodMapExtensions
-    {
-        public static MethodMap CreateMethodMap(this Type[] types)
-        {
-            var map = new MethodMap();
-
-            foreach (var method in types.SelectMany(t => t.GetMethods()))
-            {
-                var paths = PathAttribute.PathsForMethod(method);
-
-                if (paths.Length == 0) continue;
-
-                var verbs = VerbAttribute.VerbsForMethod(method);
-
-                foreach (var path in paths)
-                    foreach (var verb in verbs)
-                        map.MapMethod(path, verb, method);
-            }
-
-            return map;
         }
     }
 }

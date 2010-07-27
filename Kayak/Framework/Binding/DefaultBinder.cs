@@ -23,8 +23,7 @@ namespace Kayak.Framework
         void BindArgumentsFromHeaders(InvocationInfo info, NameValueDictionary pathParams)
         {
             var request = context.Request;
-            var parameters = info.Method.GetParameters();
-            info.Arguments = new object[parameters.Length];
+            var parameters = info.Method.GetParameters().Where(p => !RequestBodyAttribute.IsDefinedOn(p));
 
             foreach (ParameterInfo param in parameters)
             {
@@ -47,7 +46,7 @@ namespace Kayak.Framework
 
         IEnumerable<object> BindArgumentsFromBody(InvocationInfo info)
         {
-            var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p)).ToArray();
+            var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p));
 
             if (parameters.Count() == 0 || context.Request.Body == null)
                 yield break;
@@ -110,6 +109,8 @@ namespace Kayak.Framework
 
             if (service != null)
                 service.Context = context;
+
+            info.Arguments = new object[info.Method.GetParameters().Length];
 
             BindArgumentsFromHeaders(info, pathParams);
             yield return BindArgumentsFromBody(info).AsCoroutine();

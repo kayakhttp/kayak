@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System;
 
 namespace Kayak.Framework
 {
@@ -107,6 +108,29 @@ namespace Kayak.Framework
                 return bestMatch.Match;
             }
             else return null;
+        }
+    }
+
+    static class MethodMapExtensions
+    {
+        public static MethodMap CreateMethodMap(this Type[] types)
+        {
+            var map = new MethodMap();
+
+            foreach (var method in types.SelectMany(t => t.GetMethods()))
+            {
+                var paths = PathAttribute.PathsForMethod(method);
+
+                if (paths.Length == 0) continue;
+
+                var verbs = VerbAttribute.VerbsForMethod(method);
+
+                foreach (var path in paths)
+                    foreach (var verb in verbs)
+                        map.MapMethod(path, verb, method);
+            }
+
+            return map;
         }
     }
 }
