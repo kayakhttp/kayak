@@ -10,99 +10,109 @@ namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        public static IDisposable UseFramework(this IObservable<ISocket> connections, Type[] types)
-        {
-            var map = types.CreateMethodMap();
-
-            var mapper = new TypedJsonMapper();
-            mapper.AddDefaultOutputConversions();
-            mapper.AddDefaultInputConversions();
-
-            return connections
-                .Select(connection => new KayakContext(connection))
-                .Select(context => new KayakInvocation(context, new DefaultBinder(map, mapper, context)))
-                .Subscribe(invocation => invocation.Subscribe(new DefaultObserver(mapper, invocation)));
-        }
-
         public static IDisposable UseFramework(this IObservable<ISocket> connections)
         {
             return connections.UseFramework(Assembly.GetCallingAssembly().GetTypes());
         }
 
-        static readonly string MinifiedOutputKey = "JsonSerializerPrettyPrint";
-
-        public static void SetJsonOutputMinified(this IKayakContext context, bool value)
+        public static IDisposable UseFramework(this IObservable<ISocket> connections, Type[] types)
         {
-            context.Items[MinifiedOutputKey] = value;
+            return connections.UseFramework(InvocationBehavior.CreateDefaultBehavior(types));
         }
 
-        public static bool GetJsonOutputMinified(this IKayakContext context)
+        public static IDisposable UseFramework(this IObservable<ISocket> connections, IInvocationBehavior behavior)
         {
-            return
-                context.Items.ContainsKey(MinifiedOutputKey) &&
-                (bool)Convert.ChangeType(context.Items[MinifiedOutputKey], typeof(bool));
+            return connections
+                .Subscribe(connection =>
+                    {
+                        var context = new KayakContext(connection);
+
+                        context.Subscribe(u =>
+                        {
+                            // this callback happens after headers are read.
+
+                            // somewhat analogous to UseFramework()...
+                            context.PerformInvocation(behavior);
+                        },
+                        e =>
+                        {
+                            // error from context (errors from invoked methods are not handled here,
+                            // only errors from IInvocationBehavior, etc)
+                            Console.WriteLine("Exception while processing context!");
+                            Console.Out.WriteException(e);
+                        },
+                        () =>
+                        {
+                            // context completed
+                            Console.WriteLine("[{0}] {1} {2} {3} -> {4} {5} {6}", DateTime.Now,
+                                context.Request.Verb, context.Request.Path, context.Request.HttpVersion,
+                                context.Response.HttpVersion, context.Response.StatusCode, context.Response.ReasonPhrase);
+                        });
+                    }, 
+                    e => 
+                    { 
+                        // error from listener or while creating context
+                    }, 
+                    () => 
+                    { 
+                        // listener completed
+                    });
         }
 
-        static Regex ampmRegex = new Regex(@"([ap])m?", RegexOptions.IgnoreCase); // am,pm,a,p
-        static Regex colonRegex = new Regex(@"(.* )([0-9]{1,2})([^:]*$)"); // last 2-digit number with no following colons
-        static List<string> trueValues = new List<string>(new string[] { "true", "t", "yes", "y", "on", "1" });
-
-        // not too sure about this being public
-        public static T Coerce<T>(this string s)
+        // this should return IDisposable but i'm not sure what to do with it
+        public static void PerformInvocation(this IKayakContext context, IInvocationBehavior behavior)
         {
-            return (T)Coerce(s, typeof(T));
+            PerformInvocationInternal(context, behavior).AsCoroutine<Unit>()
+                .Subscribe(o => { }, e =>
+                    {
+                        // exception thrown by invoked methods don't come here, this is 
+                        // only if something went wrong in PerformInvocationInternal
+                        // with the IInvocationBehavior, etc
+
+                        // pass it on to the context
+                        context.OnError(e);
+                    },
+                    () =>
+                    {
+                        // nothing to do! 
+                        // behavior's handler should call context.OnCompleted()
+                    });
         }
 
-        // not too sure about this being public
-        public static object Coerce(this string s, Type t)
+        static IEnumerable<object> PerformInvocationInternal(IKayakContext context, IInvocationBehavior behavior)
         {
-            if (s == null && t.IsValueType)
+            InvocationInfo info = null;
+
+            yield return behavior.GetBinder(context).Do(i => info = i);
+
+            if (info.Method == null || info.Target == null)
             {
-                // turn unspecified params into default primitive values
-                return Activator.CreateInstance(t);
+                Console.WriteLine("Method or target was null.");
+                yield break;
             }
-            else if (t == typeof(bool))
+
+            object result = null;
+            bool error = false;
+
+            IObserver<object> handler = behavior.GetHandler(context, info);
+
+            try
             {
-                s = s.ToLower();
-                return trueValues.Contains(s);
+                result = info.Invoke();
             }
-            else if (t == typeof(DateTime))
+            catch (Exception e)
             {
-                return ParseDateTime(s);
+                error = true;
+                handler.OnError(e);
             }
-            else
+
+            if (!error)
             {
-                // let the system do it
-                try
-                {
-                    return Convert.ChangeType(s, t);
-                }
-                catch (Exception e)
-                {
-                    throw new ArgumentException("Could not convert '" + s + "' to " + t + ".", e);
-                }
+                if (info.Method.ReturnType != typeof(void))
+                    handler.OnNext(result);
+
+                handler.OnCompleted();
             }
-        }
-
-        /// <summary>
-        /// Equivalent to DateTime.Parse(), except it accomodates am/pm strings better.
-        /// </summary>
-        private static DateTime ParseDateTime(string date)
-        {
-            if (string.IsNullOrEmpty(date))
-                throw new Exception("Attemped to parse an empty date!");
-
-            // mono can't handle am/pm without some whitespace.
-            date = ampmRegex.Replace(date, " $1m"); // turn "a" or "am" into " am"
-
-            // mono also can't handle times without the colon!  lame!
-            date = colonRegex.Replace(date, "$1$2:00$3");
-
-            DateTime dt;
-            if (DateTime.TryParse(date, out dt)) return dt;
-
-            string message = "Could not parse the DateTime string '{0}'.";
-            throw new FormatException(string.Format(message, date));
         }
     }
 }

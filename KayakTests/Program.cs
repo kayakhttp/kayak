@@ -6,6 +6,8 @@ using System.Text;
 using Kayak;
 using Kayak.Framework;
 using Kayak.Oars;
+using System.Reflection;
+using LitJson;
 
 namespace KayakTests
 {
@@ -71,11 +73,36 @@ namespace KayakTests
     //        //Console.WriteLine("Ended context " + ++completed);
     //    }
 
+
+        class JsonExceptionHandler : IInvocationExceptionHandler
+        {
+            TypedJsonMapper mapper;
+
+            public JsonExceptionHandler(TypedJsonMapper mapper)
+            {
+                this.mapper = mapper;
+            }
+
+            public IObservable<Unit> HandleException(IKayakContext context, InvocationInfo info, Exception exception)
+            {
+                if (exception is TargetInvocationException)
+                    exception = exception.InnerException;
+                return new { Error = exception.Message }.WriteJsonResponse(context, mapper);
+            }
+        }
+
         public static void Main(string[] args)
         {
             //var listener = new OarsListener(new IPEndPoint(IPAddress.Any, 8080), 1000);
-            var listener = new KayakServer();
-            listener.UseFramework();
+            var server = new KayakServer();
+            var behavior = InvocationBehavior.CreateDefaultBehavior(Assembly.GetExecutingAssembly().GetTypes());
+
+            behavior.ExceptionHandlers.Clear();
+            var mapper = new TypedJsonMapper();
+            mapper.AddDefaultOutputConversions();
+            behavior.ExceptionHandlers.Add(new JsonExceptionHandler(mapper));
+
+            server.UseFramework(behavior);
 
             Console.ReadLine();
         }
@@ -103,6 +130,12 @@ namespace KayakTests
         public object GetTest()
         {
             return test;
+        }
+
+        [Path("/error")]
+        public void Error()
+        {
+            throw new Exception("Uh oh.");
         }
     }
 }

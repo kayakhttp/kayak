@@ -58,10 +58,10 @@ namespace Kayak
 
         public IDisposable Subscribe(IObserver<Unit> observer)
         {
-            var readRequestHeaders = ReadRequestHeaders().AsCoroutine();
+            var readRequestHeaders = ReadRequestHeaders().AsCoroutine<Unit>();
             this.observer = observer;
 
-            return readRequestHeaders.Subscribe(o => { }, OnError, () => { OnNext(new Unit()); });
+            return readRequestHeaders.Subscribe(u => { }, OnError, () => { OnNext(new Unit()); });
         }
 
         IEnumerable<object> ReadRequestHeaders()

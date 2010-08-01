@@ -48,20 +48,19 @@ namespace Kayak.Framework
             }
         }
 
-        public MethodInfo GetMethodForContext(IKayakContext context, out bool invalidVerb, out NameValueDictionary pathParams)
+        public MethodInfo GetMethodForContext(IKayakContext context)
         {
             var request = context.Request;
-            invalidVerb = false;
-            pathParams = null;
 
             MethodMatch match = GetBestMatch(request.Path.TrimEnd('/').Split('/'), request.Verb);
 
-            if (match == null) return null;
+            if (match == null) 
+                return typeof(DefaultResponses).GetMethod("NotFound");
 
             if (match.Method == null)
-                invalidVerb = true;
+                return typeof(DefaultResponses).GetMethod("InvalidMethod");
 
-            pathParams = match.Params;
+            context.Items[PathParamsContextKey] = match.Params;
 
             return match.Method;
         }
@@ -131,6 +130,21 @@ namespace Kayak.Framework
             }
 
             return map;
+        }
+    }
+
+    class DefaultResponses : KayakService
+    {
+        public void InvalidMethod()
+        {
+            Context.Response.StatusCode = 405;
+            Context.Response.ReasonPhrase = "Invalid Method";
+            //context.Response.Write("Invalid method: " + context.Request.Verb);
+        }
+
+        public void NotFound()
+        {
+            Context.Response.SetStatusToNotFound();
         }
     }
 }

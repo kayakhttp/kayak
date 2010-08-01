@@ -9,14 +9,14 @@ namespace Kayak
     /// An observable that enumerates an enumerator.
     /// 
     /// Coroutine yields whatever the enumerator returns, except
-    /// if the iterator block yields an obserable, it subscribes to it, yields whatever values or errors
-    /// the observable yields, and only continues enumerating after the observable completes.
+    /// if the iterator block yields an obserable, it subscribes to it, yields an error if
+    /// the observable yields and error, and only continues enumerating after the observable completes.
     /// 
     /// Very handy for writing asynchronous code using iterator blocks. Simply yield
     /// obserables that complete after the operation is complete (and possibly assign
     /// some resultant value to a variable in your local scope).
     /// </summary>
-    public class Coroutine : IObservable<object>
+    public class Coroutine<T> : IObservable<T>
     {
         // ideally, Coroutine would be declared as:
         // 
@@ -27,7 +27,7 @@ namespace Kayak
         // 
         // for now we fake it by introducing a shim type which casts to object.
 
-        IObserver<object> observer;
+        IObserver<T> observer;
         IEnumerator<object> continuation;
         IDisposable subscription;
 
@@ -36,7 +36,7 @@ namespace Kayak
             this.continuation = continuation;
         }
 
-        void OnCompleted()
+        internal void OnCompleted()
         {
             if (subscription != null)
             {
@@ -52,7 +52,7 @@ namespace Kayak
             observer.OnCompleted();
         }
 
-        void OnError(Exception exception)
+        internal void OnError(Exception exception)
         {
             //Trace.Write("Coroutine error: " + exception.Message);
             //Trace.Write(exception.StackTrace);
@@ -60,12 +60,7 @@ namespace Kayak
             observer.OnError(exception);
         }
 
-        void OnNext(object value)
-        {
-            observer.OnNext(value);
-        }
-
-        public IDisposable Subscribe(IObserver<object> observer)
+        public IDisposable Subscribe(IObserver<T> observer)
         {
             if (observer == null)
                 throw new ArgumentNullException("observer");
@@ -120,22 +115,28 @@ namespace Kayak
 					// and it forwards calls from that observable to us (with values cast to object).
 					
 					// bleh.
-					
-					var observableInterface = value.GetType().GetInterface("IObservable`1");
 
-                    if (observableInterface != null)
+                    Type observableInterface = null;
+
+                    if (value != null)
+                        observableInterface = value.GetType().GetInterface("IObservable`1");
+
+                    if (observableInterface == null)
+                    {
+                        if (value is T)
+                            observer.OnNext((T)value);
+
+                        Continue();
+                    }
+                    else if (observableInterface != null)
                     {
 						var genericArg = observableInterface.GetGenericArguments()[0];
-						var shimType = typeof(ObserverShim<>).MakeGenericType(genericArg);
-						var shim = shimType.GetConstructor(new Type[] { typeof(Coroutine) } ).Invoke(new object[] { this });
+						var shimType = typeof(ObserverShim<,>).MakeGenericType(genericArg, typeof(T));
+                        var shimConstructor = shimType.GetConstructor(new Type[] { typeof(Coroutine<T>) });
+                        var shim = shimConstructor.Invoke(new object[] { this });
 						var genericSubscribe = observableInterface.GetMethod("Subscribe");
 
 						subscription = (IDisposable)genericSubscribe.Invoke(value, new object[] { shim });
-                    }
-                    else
-                    {
-                        observer.OnNext(value);
-                        Continue();
                     }
                 }
                 catch (Exception e)
@@ -148,38 +149,38 @@ namespace Kayak
                 Complete();
             }
 	    }
-		
-		class ObserverShim<T> : IObserver<T>
-		{
-			Coroutine coroutine;
-			
-			public void OnNext(T value)
-			{
-				coroutine.OnNext(value);
-			}
-			
-			public void OnError(Exception exception)
-			{
-				coroutine.OnError(exception);
-			}
-			
-			public void OnCompleted()
-			{
-				coroutine.OnCompleted();
-			}
-			
-			public ObserverShim(Coroutine c)
-			{
-				coroutine = c;
-			}
-		}
+    }
+
+    class ObserverShim<T0, T1> : IObserver<T0>
+    {
+        Coroutine<T1> coroutine;
+
+        public void OnNext(T0 value)
+        {
+            // discard
+        }
+
+        public void OnError(Exception exception)
+        {
+            coroutine.OnError(exception);
+        }
+
+        public void OnCompleted()
+        {
+            coroutine.OnCompleted();
+        }
+
+        public ObserverShim(Coroutine<T1> c)
+        {
+            coroutine = c;
+        }
     }
 
     public static partial class Extensions
     {
-        public static Coroutine AsCoroutine(this IEnumerable<object> iteratorBlock)
+        public static Coroutine<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock)
         {
-            return new Coroutine(iteratorBlock.GetEnumerator());
+            return new Coroutine<T>(iteratorBlock.GetEnumerator());
         }
     }
 }

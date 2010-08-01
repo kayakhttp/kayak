@@ -11,7 +11,7 @@ namespace Kayak
     public interface ISocket : IDisposable
     {
         IPEndPoint RemoteEndPoint { get; }
-        Stream GetStream();
+        Stream GetStream(); // clients of ISocket are responsible for closing/disposing the stream
     }
 
     public class KayakServer : IObservable<ISocket>

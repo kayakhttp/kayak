@@ -78,9 +78,11 @@
   <ItemGroup>
     <Compile Include="Coroutine.cs" />
     <Compile Include="Extensions.cs" />
-    <Compile Include="Framework\Binding\DefaultBinder.cs" />
+    <Compile Include="Framework\DefaultExceptionHandler.cs" />
     <Compile Include="Framework\Extensions.cs" />
-    <Compile Include="Framework\KayakInvocation.cs" />
+    <Compile Include="Framework\HeaderBinder.cs" />
+    <Compile Include="Framework\InvocationBehavior.cs" />
+    <Compile Include="Framework\JsonSupport.cs" />
     <Compile Include="Framework\KayakService.cs" />
     <Compile Include="Framework\LitJson\IJsonWrapper.cs" />
     <Compile Include="Framework\LitJson\JsonData.cs" />
@@ -92,7 +94,6 @@
     <Compile Include="Framework\LitJson\Lexer.cs" />
     <Compile Include="Framework\LitJson\ParserToken.cs" />
     <Compile Include="Framework\LitJson\TypeExtensions.cs" />
-    <Compile Include="Framework\DefaultObserver.cs" />
     <Compile Include="Framework\InvocationInfo.cs" />
     <Compile Include="Framework\Binding\BindingAttributes.cs" />
     <Compile Include="Framework\Binding\MethodMap.cs" />

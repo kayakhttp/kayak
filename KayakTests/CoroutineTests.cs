@@ -15,7 +15,7 @@ namespace KayakTests
         ISubject<object> subject;
         Exception e1;
 
-        Coroutine coroutine;
+        Coroutine<object> coroutine;
 
         List<object> results, expectedResults;
         List<Exception> errors, expectedErrors;
@@ -46,7 +46,7 @@ namespace KayakTests
         [Test]
         public void YieldValues()
         {
-            coroutine = YieldBlock().AsCoroutine();
+            coroutine = YieldBlock().AsCoroutine<object>();
 
             Subscribe();
 
@@ -69,7 +69,7 @@ namespace KayakTests
         [Test]
         public void YieldObservable()
         {
-            coroutine = YieldObservableBlock().AsCoroutine();
+            coroutine = YieldObservableBlock().AsCoroutine<object>();
 
             subject = new Subject<object>();
 
@@ -81,11 +81,14 @@ namespace KayakTests
             AssertExpectedResults();
 
             subject.OnNext(t3);
-            expectedResults.Add(t3);
+
+            // don't want to include results from observables yielded
+            //expectedResults.Add(t3);
 
             AssertExpectedResults();
 
             subject.OnCompleted();
+
             expectedResults.Add(t4);
 
             AssertExpectedResults();
@@ -95,7 +98,9 @@ namespace KayakTests
 
         IEnumerable<object> YieldObservableBlock()
         {
+            yield return null; // no-op
             yield return t1;
+            yield return null; // no-op
             yield return t2;
             yield return subject;
             yield return t4;
@@ -104,7 +109,7 @@ namespace KayakTests
         [Test]
         public void YieldThrow()
         {
-            coroutine = YieldThrowBlock().AsCoroutine();
+            coroutine = YieldThrowBlock().AsCoroutine<object>();
 
             Subscribe();
 
@@ -128,7 +133,7 @@ namespace KayakTests
         [Test]
         public void YieldObserableError()
         {
-            coroutine = YieldObservableErrorBlock().AsCoroutine();
+            coroutine = YieldObservableErrorBlock().AsCoroutine<object>();
 
             subject = new Subject<object>();
 
@@ -138,7 +143,7 @@ namespace KayakTests
             subject.OnError(e1);
 
             expectedResults.Add(t1);
-            expectedResults.Add(t2);
+            //expectedResults.Add(t2);
             expectedErrors.Add(e1);
 
             AssertExpectedResults();
