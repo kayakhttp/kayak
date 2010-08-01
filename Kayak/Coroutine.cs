@@ -9,8 +9,8 @@ namespace Kayak
     /// An observable that enumerates an enumerator.
     /// 
     /// Coroutine yields whatever the enumerator returns, except
-    /// if the iterator block yields an obserable, it subscribes to it, yields an error if
-    /// the observable yields and error, and only continues enumerating after the observable completes.
+    /// if it returns an obserable, it subscribes to it, yields an error if
+    /// the observable yields an error, and only continues enumerating after the observable completes.
     /// 
     /// Very handy for writing asynchronous code using iterator blocks. Simply yield
     /// obserables that complete after the operation is complete (and possibly assign
