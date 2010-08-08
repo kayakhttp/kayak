@@ -11,7 +11,7 @@ using Kayak.Oars;
 
 namespace Kayak.Oars
 {
-    public class OarsListener : IObservable<ISocket>, IDisposable
+    public class OarsServer : IObservable<ISocket>, IDisposable
     {
         public IPEndPoint ListenEndPoint { get; private set; }
         public event EventHandler Starting, Started, Stopping, Stopped;
@@ -20,15 +20,15 @@ namespace Kayak.Oars
 
         EventBase eventBase;
         EVConnListener listener;
-        EVEvent exitTimer, queueTimer;
+        EVEvent exitTimer/*, queueTimer*/;
         IObserver<ISocket> observer;
-        List<Action> queued;
-        bool queueTimerAdded;
+        //List<Action> queued;
+        //bool queueTimerAdded;
 
         short backlog;
         bool running, stopping;
 
-        public OarsListener(IPEndPoint listenEndPoint, short backlog)
+        public OarsServer(IPEndPoint listenEndPoint, short backlog)
         {
             ListenEndPoint = listenEndPoint;
             this.backlog = backlog;
@@ -41,7 +41,7 @@ namespace Kayak.Oars
             this.observer = observer;
 
             dispatch = new Thread(new ThreadStart(Dispatch));
-            dispatch.Name = "OarsDispatch";
+            dispatch.Name = "OarsServerDispatch";
             dispatch.Start();
 
             return Disposable.Create(() => {

@@ -5,7 +5,7 @@ using System;
 
 namespace Kayak.Framework
 {
-    class MethodMap
+    public class MethodMap
     {
         public static readonly string PathParamsContextKey = "PathParams";
 
@@ -110,7 +110,7 @@ namespace Kayak.Framework
         }
     }
 
-    static class MethodMapExtensions
+    public static class MethodMapExtensions
     {
         public static MethodMap CreateMethodMap(this Type[] types)
         {
@@ -130,6 +130,12 @@ namespace Kayak.Framework
             }
 
             return map;
+        }
+
+        public static void MapTypes(this KayakInvocationBehavior behavior, Type[] types)
+        {
+            var map = types.CreateMethodMap();
+            behavior.Map = c => map.GetMethodForContext(c);
         }
     }
 

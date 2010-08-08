@@ -93,13 +93,21 @@ namespace KayakTests
 
         public static void Main(string[] args)
         {
-            //var listener = new OarsListener(new IPEndPoint(IPAddress.Any, 8080), 1000);
+            var listener = new OarsServer(new IPEndPoint(IPAddress.Any, 8080), 1000);
             var server = new KayakServer();
-            var behavior = InvocationBehavior.CreateDefaultBehavior(Assembly.GetExecutingAssembly().GetTypes());
 
-            behavior.ExceptionHandlers.Clear();
+            var behavior = new KayakInvocationBehavior();
+
+            // use the mapping functionality which searches for methods marked with [Path]
+            behavior.MapTypes(Assembly.GetExecutingAssembly().GetTypes());
+
             var mapper = new TypedJsonMapper();
             mapper.AddDefaultOutputConversions();
+            mapper.AddDefaultInputConversions();
+
+            behavior.AddJsonSupport(mapper);
+
+            behavior.ExceptionHandlers.Clear();
             behavior.ExceptionHandlers.Add(new JsonExceptionHandler(mapper));
 
             server.UseFramework(behavior);
@@ -136,6 +144,12 @@ namespace KayakTests
         public void Error()
         {
             throw new Exception("Uh oh.");
+        }
+
+        [Path("/path/{p}")]
+        public object PathParam(string p)
+        {
+            return new { p_was = p };
         }
     }
 }

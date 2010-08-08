@@ -8,12 +8,6 @@ using System.IO;
 
 namespace Kayak.Framework
 {
-    public interface IInvocationBehavior
-    {
-        IObservable<InvocationInfo> GetBinder(IKayakContext context);
-        IObserver<object> GetHandler(IKayakContext context, InvocationInfo info);
-    }
-
     public interface IInvocationArgumentBinder
     {
         void BindArgumentsFromHeaders(IKayakContext context, InvocationInfo info);
@@ -30,39 +24,24 @@ namespace Kayak.Framework
         IObservable<Unit> HandleException(IKayakContext context, InvocationInfo info, Exception exception);
     }
 
-    public class InvocationBehavior : IInvocationBehavior
+    // not thread-safe!
+    public class KayakInvocationBehavior : IInvocationBehavior
     {
-        public static InvocationBehavior CreateDefaultBehavior(Type[] types)
-        {
-            var map = types.CreateMethodMap();
-            var behavior = new InvocationBehavior(c => map.GetMethodForContext(c));
-
-            var mapper = new TypedJsonMapper();
-            mapper.AddDefaultOutputConversions();
-            mapper.AddDefaultInputConversions();
-
-            behavior.Binders.Add(new HeaderBinder());
-            behavior.Binders.Add(new JsonBinder(mapper));
-            behavior.ResultHandlers.Add(new JsonHandler(mapper));
-            behavior.ExceptionHandlers.Add(new DefaultExceptionHandler());
-
-            return behavior;
-        }
-
+        public Func<IKayakContext, MethodInfo> Map { get; set; }
         public List<IInvocationArgumentBinder> Binders { get; private set; }
         public List<IInvocationResultHandler> ResultHandlers { get; private set; }
         public List<IInvocationExceptionHandler> ExceptionHandlers { get; private set; }
 
         static string InvocationResultContextKey = "InvocationResultContextKey";
 
-        Func<IKayakContext, MethodInfo> map;
-
-        internal InvocationBehavior(Func<IKayakContext, MethodInfo> map)
+        public KayakInvocationBehavior()
         {
-            this.map = map;
             Binders = new List<IInvocationArgumentBinder>();
             ResultHandlers = new List<IInvocationResultHandler>();
             ExceptionHandlers = new List<IInvocationExceptionHandler>();
+
+            Binders.Add(new HeaderBinder());
+            ExceptionHandlers.Add(new DefaultExceptionHandler());
         }
 
         public IObservable<InvocationInfo> GetBinder(IKayakContext context)
@@ -74,7 +53,7 @@ namespace Kayak.Framework
         {
             InvocationInfo info = new InvocationInfo();
 
-            info.Method = map(context);
+            info.Method = Map(context);
             info.Target = Activator.CreateInstance(info.Method.DeclaringType);
 
             var service = info.Target as KayakService;

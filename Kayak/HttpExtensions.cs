@@ -87,6 +87,13 @@ namespace Kayak
         public static void WriteHttpHeaders(this Stream stream, NameValueDictionary headers)
         {
             /*using (*/
+
+            if (!headers.Names.Contains("Server"))
+                headers["Server"] = "Kayak";
+
+            if (!headers.Names.Contains("Date"))
+                headers["Date"] = DateTime.UtcNow.ToString();
+
             StreamWriter writer = new StreamWriter(stream, Encoding.ASCII);//)
             //{
                 writer.NewLine = "\r\n";

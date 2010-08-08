@@ -119,7 +119,6 @@ namespace Kayak
 
         #region Query string extensions
 
-
         const char EqualsChar = '=';
         const char AmpersandChar = '&';
 
@@ -170,45 +169,7 @@ namespace Kayak
                 dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);
         }
 
-        public static string ToQueryString(this NameValueDictionary dict)
-        {
-            var sb = new StringBuilder();
-
-            foreach (NameValuePair pair in dict)
-            {
-                foreach (string value in pair.Values)
-                {
-                    if (sb.Length > 0)
-                        sb.Append(AmpersandChar);
-
-                    sb.Append(Uri.EscapeDataString(pair.Name))
-                        .Append(EqualsChar)
-                        .Append(Uri.EscapeDataString(value));
-                }
-            }
-
-            return sb.ToString();
-        }
-
-        public static string ToQueryString(this IDictionary dict)
-        {
-            var sb = new StringBuilder();
-
-            foreach (var key in dict.Keys)
-            {
-                if (sb.Length > 0)
-                    sb.Append(AmpersandChar);
-
-                sb.Append(Uri.EscapeDataString(key.ToString()))
-                    .Append(EqualsChar)
-                    .Append(Uri.EscapeDataString(dict[key].ToString()));
-            }
-
-            return sb.ToString();
-        }
-
         #endregion
-
     }
 
     // want to get rid of this class.

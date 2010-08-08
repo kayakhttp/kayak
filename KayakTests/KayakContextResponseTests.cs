@@ -41,6 +41,7 @@ namespace KayakTests
 
             headers = new NameValueDictionary();
             headers["Server"] = "Kayak";
+            headers["Date"] = DateTime.UtcNow.ToString();
 
             body = null;
         }

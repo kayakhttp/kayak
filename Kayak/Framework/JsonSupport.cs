@@ -109,7 +109,6 @@ namespace Kayak.Framework
         }
     }
 
-
     public static partial class Extensions
     {
         static readonly string MinifiedOutputKey = "JsonSerializerPrettyPrint";
@@ -124,6 +123,20 @@ namespace Kayak.Framework
             return
                 context.Items.ContainsKey(MinifiedOutputKey) &&
                 (bool)Convert.ChangeType(context.Items[MinifiedOutputKey], typeof(bool));
+        }
+
+        public static void AddJsonSupport(this KayakInvocationBehavior behavior)
+        {
+            var mapper = new TypedJsonMapper();
+            mapper.AddDefaultOutputConversions();
+            mapper.AddDefaultInputConversions();
+
+            behavior.AddJsonSupport(mapper);
+        }
+        public static void AddJsonSupport(this KayakInvocationBehavior behavior, TypedJsonMapper mapper)
+        {
+            behavior.Binders.Add(new JsonBinder(mapper));
+            behavior.ResultHandlers.Add(new JsonHandler(mapper));
         }
     }
 }

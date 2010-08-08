@@ -57,7 +57,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="OarsListener.cs" />
+    <Compile Include="OarsServer.cs" />
     <Compile Include="OarsSocket.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

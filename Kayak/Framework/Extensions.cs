@@ -8,6 +8,12 @@ using System.Text.RegularExpressions;
 
 namespace Kayak.Framework
 {
+    public interface IInvocationBehavior
+    {
+        IObservable<InvocationInfo> GetBinder(IKayakContext context);
+        IObserver<object> GetHandler(IKayakContext context, InvocationInfo info);
+    }
+
     public static partial class Extensions
     {
         public static IDisposable UseFramework(this IObservable<ISocket> connections)
@@ -17,7 +23,11 @@ namespace Kayak.Framework
 
         public static IDisposable UseFramework(this IObservable<ISocket> connections, Type[] types)
         {
-            return connections.UseFramework(InvocationBehavior.CreateDefaultBehavior(types));
+            var behavior = new KayakInvocationBehavior();
+            behavior.MapTypes(types);
+            behavior.AddJsonSupport();
+
+            return connections.UseFramework(behavior);
         }
 
         public static IDisposable UseFramework(this IObservable<ISocket> connections, IInvocationBehavior behavior)
@@ -65,7 +75,7 @@ namespace Kayak.Framework
             PerformInvocationInternal(context, behavior).AsCoroutine<Unit>()
                 .Subscribe(o => { }, e =>
                     {
-                        // exception thrown by invoked methods don't come here, this is 
+                        // exceptions thrown by invoked methods don't come here, this is 
                         // only if something went wrong in PerformInvocationInternal
                         // with the IInvocationBehavior, etc
 

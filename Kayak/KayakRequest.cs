@@ -17,7 +17,6 @@ namespace Kayak
         NameValueDictionary QueryString { get; }
 
         #endregion
-        //string this[string name];
     }
 
     public class KayakServerRequest : IKayakServerRequest

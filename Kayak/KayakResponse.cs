@@ -42,7 +42,7 @@ namespace Kayak
         public string HttpVersion
         {
             get { return statusLine.HttpVersion; }
-            set { throw new InvalidOperationException("Kayak only supports " + statusLine.HttpVersion); }
+            set { throw new NotSupportedException("Kayak only supports " + statusLine.HttpVersion); }
         }
 
         public NameValueDictionary Headers { 
@@ -69,7 +69,6 @@ namespace Kayak
                 HttpVersion = "HTTP/1.1"
             };
             headers = new NameValueDictionary();
-            headers["Server"] = "Kayak";
         }
         
         void ThrowIfBodyAccessed()

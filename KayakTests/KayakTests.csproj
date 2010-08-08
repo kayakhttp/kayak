@@ -91,8 +91,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CoroutineTests.cs" />
-    <Compile Include="Framework\DefaultBinderTests.cs" />
-    <Compile Include="Framework\DefaultObserverTests.cs" />
     <Compile Include="Framework\KayakInvocationTests.cs" />
     <Compile Include="KayakContextResponseTests.cs" />
     <Compile Include="KayakContextRequestTests.cs" />
