@@ -33,13 +33,8 @@ namespace Kayak.Framework
 
         public static string[] VerbsForMethod(MethodInfo method)
         {
-            var result = (from verbAttr in method.GetCustomAttributes(typeof(VerbAttribute), false)
+            return (from verbAttr in method.GetCustomAttributes(typeof(VerbAttribute), false)
                           select (verbAttr as VerbAttribute).Verb).ToArray();
-
-            // if there are no explicit verb attributes, GET is implied.
-            if (result.Length == 0) return new string[] { "GET" };
-
-            return result;
         }
     }
 

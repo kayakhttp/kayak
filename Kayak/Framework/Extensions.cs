@@ -32,10 +32,15 @@ namespace Kayak.Framework
 
         public static IDisposable UseFramework(this IObservable<ISocket> connections, IInvocationBehavior behavior)
         {
+            return connections.UseFramework(connection => new KayakContext(connection), behavior);
+        }
+
+        public static IDisposable UseFramework(this IObservable<ISocket> connections, Func<ISocket, IKayakContext> contextFactory, IInvocationBehavior behavior)
+        {
             return connections
                 .Subscribe(connection =>
                     {
-                        var context = new KayakContext(connection);
+                        var context = contextFactory(connection);
 
                         context.Subscribe(u =>
                         {
@@ -69,9 +74,11 @@ namespace Kayak.Framework
                     });
         }
 
-        // this should return IDisposable but i'm not sure what to do with it
         public static void PerformInvocation(this IKayakContext context, IInvocationBehavior behavior)
         {
+            if (behavior == null)
+                throw new ArgumentNullException("behavior");
+
             PerformInvocationInternal(context, behavior).AsCoroutine<Unit>()
                 .Subscribe(o => { }, e =>
                     {
@@ -93,18 +100,27 @@ namespace Kayak.Framework
         {
             InvocationInfo info = null;
 
-            yield return behavior.GetBinder(context).Do(i => info = i);
+            var binder = behavior.GetBinder(context);
 
-            if (info.Method == null || info.Target == null)
-            {
-                Console.WriteLine("Method or target was null.");
-                yield break;
-            }
+            if (binder == null)
+                throw new Exception("Behavior returned null binder.");
+
+            yield return binder.Do(i => info = i);
+
+            if (info == null)
+                throw new Exception("Binder returned by behavior did not yield an instance of InvocationInfo.");
+            if (info.Method == null)
+                throw new Exception("Binder returned by behavior did not yield an valid instance of InvocationInfo. Method was null.");
+            if (info.Target == null)
+                throw new Exception("Binder returned by behavior did not yield an valid instance of InvocationInfo. Target was null.");
+
+            IObserver<object> handler = behavior.GetHandler(context, info);
+
+            if (handler == null)
+                throw new Exception("Behavior returned null handler.");
 
             object result = null;
             bool error = false;
-
-            IObserver<object> handler = behavior.GetHandler(context, info);
 
             try
             {

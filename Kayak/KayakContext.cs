@@ -47,15 +47,6 @@ namespace Kayak
             observer.OnError(e);
         }
 
-        public void Complete()
-        {
-            stream.Flush();
-            stream.Close();
-            stream.Dispose();
-
-            observer.OnCompleted();
-        }
-
         public IDisposable Subscribe(IObserver<Unit> observer)
         {
             var readRequestHeaders = ReadRequestHeaders().AsCoroutine<Unit>();
@@ -155,6 +146,15 @@ namespace Kayak
         {
             stream.EndWrite(iasr);
             Complete();
+        }
+
+        public void Complete()
+        {
+            stream.Flush();
+            stream.Close();
+            stream.Dispose();
+
+            observer.OnCompleted();
         }
 
         IKayakServerRequest IKayakContext.Request

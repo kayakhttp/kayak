@@ -124,6 +124,9 @@ namespace Kayak.Framework
 
                 var verbs = VerbAttribute.VerbsForMethod(method);
 
+                if (verbs.Length == 0) 
+                    verbs = new string[] { "GET" };
+
                 foreach (var path in paths)
                     foreach (var verb in verbs)
                         map.MapMethod(path, verb, method);

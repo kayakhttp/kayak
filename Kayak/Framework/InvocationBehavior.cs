@@ -54,6 +54,10 @@ namespace Kayak.Framework
             InvocationInfo info = new InvocationInfo();
 
             info.Method = Map(context);
+
+            if (info.Method == null)
+                yield break;
+
             info.Target = Activator.CreateInstance(info.Method.DeclaringType);
 
             var service = info.Target as KayakService;
