@@ -7,12 +7,12 @@ using System.IO;
 
 namespace KayakTests
 {
-    [TestFixture]
-    public class KayakServerRequestTests
-    {
-        [Test]
-        public void Request()
-        {
-        }
-    }
+    //[TestFixture]
+    //public class KayakServerRequestTests
+    //{
+    //    [Test]
+    //    public void Request()
+    //    {
+    //    }
+    //}
 }

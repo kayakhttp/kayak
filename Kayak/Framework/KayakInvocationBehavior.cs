@@ -8,6 +8,12 @@ using System.IO;
 
 namespace Kayak.Framework
 {
+    public interface IInvocationBehavior
+    {
+        IObservable<InvocationInfo> GetBinder(IKayakContext context);
+        IObserver<object> GetHandler(IKayakContext context, InvocationInfo info);
+    }
+
     public interface IInvocationArgumentBinder
     {
         void BindArgumentsFromHeaders(IKayakContext context, InvocationInfo info);
@@ -98,13 +104,13 @@ namespace Kayak.Framework
 
                     if (h != null)
                     {
-                        h.Subscribe(u => { }, () => context.OnCompleted());
+                        h.Subscribe(u => { }, () => context.End());
                         return;
                     }
                 }
             }
 
-            context.OnCompleted();
+            context.End();
         }
 
         void InvocationException(IKayakContext context, InvocationInfo info, Exception exception)
@@ -115,12 +121,12 @@ namespace Kayak.Framework
 
                 if (h != null)
                 {
-                    h.Subscribe(u => { }, () => context.OnCompleted());
+                    h.Subscribe(u => { }, () => context.End());
                     return;
                 }
             }
 
-            context.OnCompleted();
+            context.End();
         }
 
         void InvocationResult(IKayakContext context, InvocationInfo info, object result)

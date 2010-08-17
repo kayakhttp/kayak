@@ -91,10 +91,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CoroutineTests.cs" />
+    <Compile Include="Extensions\HttpTests.cs" />
     <Compile Include="Framework\HeaderBinderTests.cs" />
     <Compile Include="Framework\InvocationBehaviorTests.cs" />
     <Compile Include="Framework\JsonSupportTests.cs" />
-    <Compile Include="Framework\KayakInvocationTests.cs" />
     <Compile Include="Framework\MethodMapTests.cs" />
     <Compile Include="Framework\PerformInvocationTests.cs" />
     <Compile Include="KayakContextResponseTests.cs" />

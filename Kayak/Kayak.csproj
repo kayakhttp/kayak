@@ -77,12 +77,17 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Coroutine.cs" />
-    <Compile Include="Extensions.cs" />
+    <Compile Include="Extensions\Context.cs" />
+    <Compile Include="Extensions\Http.cs" />
+    <Compile Include="Extensions\IO.cs" />
+    <Compile Include="Extensions\Request.cs" />
+    <Compile Include="Extensions\Response.cs" />
+    <Compile Include="Extensions\Trace.cs" />
     <Compile Include="Framework\DefaultExceptionHandler.cs" />
-    <Compile Include="Framework\Extensions.cs" />
+    <Compile Include="Framework\Extensions\Coerce.cs" />
     <Compile Include="Framework\HeaderBinder.cs" />
-    <Compile Include="Framework\InvocationBehavior.cs" />
     <Compile Include="Framework\JsonSupport.cs" />
+    <Compile Include="Framework\KayakInvocationBehavior.cs" />
     <Compile Include="Framework\KayakService.cs" />
     <Compile Include="Framework\LitJson\IJsonWrapper.cs" />
     <Compile Include="Framework\LitJson\JsonData.cs" />
@@ -97,11 +102,12 @@
     <Compile Include="Framework\InvocationInfo.cs" />
     <Compile Include="Framework\Binding\BindingAttributes.cs" />
     <Compile Include="Framework\Binding\MethodMap.cs" />
-    <Compile Include="HttpExtensions.cs" />
+    <Compile Include="Framework\PerformInvocation.cs" />
+    <Compile Include="Framework\UseFramework.cs" />
     <Compile Include="KayakContext.cs" />
-    <Compile Include="KayakRequest.cs" />
-    <Compile Include="KayakResponse.cs" />
     <Compile Include="KayakServer.cs" />
+    <Compile Include="KayakServerRequest.cs" />
+    <Compile Include="KayakServerResponse.cs" />
     <Compile Include="NameValueDictionary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RequestStream.cs" />

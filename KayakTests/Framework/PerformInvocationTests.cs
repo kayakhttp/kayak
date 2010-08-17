@@ -21,10 +21,10 @@ namespace KayakTests.Framework
         Mock<IKayakContext> mockContext;
         Mock<IInvocationBehavior> mockBehavior;
 
-        bool gotResult, gotException;
-        object result, expectedResult;
-        Exception exception, expectedException;
-        int completed;
+        bool gotResult, handlerGotResult, gotException, handlerGotException;
+        object result, expectedResult, handlerResult, expectedHandlerResult;
+        Exception exception, expectedException, handlerException, expectedHandlerException;
+        int completed, handlerCompleted;
 
         [SetUp]
         public void SetUp()
@@ -33,11 +33,13 @@ namespace KayakTests.Framework
             mockContext = new Mock<IKayakContext>();
 
             arguments = new List<object>();
-            gotResult = false;
-            result = null;
-            gotException = false;
-            exception = null;
-            completed = 0;
+
+            gotResult = handlerGotResult = gotException = handlerGotException = false;
+
+            result = expectedResult = handlerResult = expectedHandlerResult
+                = exception = expectedException = handlerException = expectedHandlerException = null;
+
+            completed = handlerCompleted = 0;
         }
 
         [Test]
@@ -57,7 +59,13 @@ namespace KayakTests.Framework
                     return false; 
                 };
 
-            mockContext.Setup(c => c.OnError(It.Is<Exception>(e => matches(e)))).Verifiable();
+            //mockContext.Setup(c => c.OnError(It.Is<Exception>(e => matches(e)))).Verifiable();
+        }
+
+        void Invoke()
+        {
+            mockContext.Object.PerformInvocation(mockBehavior.Object)
+                .Subscribe(u => gotResult = true, e => { gotException = true; exception = e; }, () => completed++);
         }
 
         void SetUpMockBehaviorGetBinder()
@@ -83,10 +91,11 @@ namespace KayakTests.Framework
         [Test]
         public void NullBinderException()
         {
-            SetUpExpectedContextErrorMessage("Behavior returned null binder.");
             SetUpMockBehaviorGetBinder(null);
 
-            mockContext.Object.PerformInvocation(mockBehavior.Object);
+            Invoke();
+
+            AssertExceptionMessage("Behavior returned null binder.");
 
             mockContext.VerifyAll();
             mockBehavior.VerifyAll();
@@ -97,10 +106,11 @@ namespace KayakTests.Framework
         {
             info = null;
 
-            SetUpExpectedContextErrorMessage("Binder returned by behavior did not yield an instance of InvocationInfo.");
             SetUpMockBehaviorGetBinder();
+            
+            Invoke();
 
-            mockContext.Object.PerformInvocation(mockBehavior.Object);
+            AssertExceptionMessage("Binder returned by behavior did not yield an instance of InvocationInfo.");
             
             mockContext.VerifyAll();
             mockBehavior.VerifyAll();
@@ -111,10 +121,11 @@ namespace KayakTests.Framework
         {
             info = new InvocationInfo();
 
-            SetUpExpectedContextErrorMessage("Binder returned by behavior did not yield an valid instance of InvocationInfo. Method was null.");
             SetUpMockBehaviorGetBinder();
 
-            mockContext.Object.PerformInvocation(mockBehavior.Object);
+            Invoke();
+
+            AssertExceptionMessage("Binder returned by behavior did not yield an valid instance of InvocationInfo. Method was null.");
 
             mockContext.VerifyAll();
             mockBehavior.VerifyAll();
@@ -128,10 +139,11 @@ namespace KayakTests.Framework
             var mockTarget = new Mock<IBind>();
             info.Method = mockTarget.Object.GetType().GetMethod("Bind0");
 
-            SetUpExpectedContextErrorMessage("Binder returned by behavior did not yield an valid instance of InvocationInfo. Target was null.");
             SetUpMockBehaviorGetBinder();
 
-            mockContext.Object.PerformInvocation(mockBehavior.Object);
+            Invoke();
+
+            AssertExceptionMessage("Binder returned by behavior did not yield an valid instance of InvocationInfo. Target was null.");
 
             mockContext.VerifyAll();
             mockBehavior.VerifyAll();
@@ -146,11 +158,13 @@ namespace KayakTests.Framework
             info.Method = mockTarget.Object.GetType().GetMethod("Bind0");
             info.Target = mockTarget.Object;
 
-            SetUpExpectedContextErrorMessage("Behavior returned null handler.");
             SetUpMockBehaviorGetBinder();
             SetUpMockBehaviorGetHandler(null);
 
-            mockContext.Object.PerformInvocation(mockBehavior.Object);
+            Invoke();
+
+
+            AssertExceptionMessage("Behavior returned null handler.");
 
             mockContext.VerifyAll();
             mockBehavior.VerifyAll();
@@ -177,40 +191,52 @@ namespace KayakTests.Framework
             AssertNoResult();
             AssertNoException();
             AssertCompleted();
+
+            AssertNoHandlerResult();
+            AssertNoHandlerException();
+            AssertHandlerCompleted();
         }
 
         [Test]
         public void Bind1()
         {
-            expectedResult = new object();
+            expectedHandlerResult = new object();
 
             var mock = new Mock<IBind>();
-            mock.Setup(m => m.Bind1()).Returns(expectedResult).Verifiable();
+            mock.Setup(m => m.Bind1()).Returns(expectedHandlerResult).Verifiable();
 
             InvokeMethod(mock.Object, "Bind1");
 
             mock.Verify();
 
-            AssertResult();
+            AssertNoResult();
             AssertNoException();
             AssertCompleted();
+
+            AssertHandlerResult();
+            AssertNoHandlerException();
+            AssertHandlerCompleted();
         }
 
         [Test]
         public void Throw0()
         {
-            expectedException = new Exception();
+            expectedHandlerException = new Exception();
 
             var mock = new Mock<IBind>();
-            mock.Setup(m => m.Throw0()).Throws(expectedException).Verifiable();
+            mock.Setup(m => m.Throw0()).Throws(expectedHandlerException).Verifiable();
 
             InvokeMethod(mock.Object, "Throw0");
 
             mock.Verify();
 
             AssertNoResult();
-            AssertException();
-            AssertNotCompleted();
+            AssertNoException();
+            AssertCompleted();
+
+            AssertNoHandlerResult();
+            AssertHandlerException();
+            AssertHandlerNotCompleted();
         }
 
         [Test]
@@ -230,6 +256,10 @@ namespace KayakTests.Framework
             AssertNoResult();
             AssertNoException();
             AssertCompleted();
+
+            AssertNoHandlerResult();
+            AssertNoHandlerException();
+            AssertHandlerCompleted();
         }
 
         void AssertNoResult()
@@ -237,10 +267,15 @@ namespace KayakTests.Framework
             Assert.IsFalse(gotResult, "Did not expect result.");
         }
 
-        void AssertResult()
+        void AssertNoHandlerResult()
         {
-            Assert.IsTrue(gotResult, "Expected result.");
-            Assert.AreEqual(expectedResult, result, "Unexpected result.");
+            Assert.IsFalse(handlerGotResult, "Did not expect result.");
+        }
+
+        void AssertHandlerResult()
+        {
+            Assert.IsTrue(handlerGotResult, "Handler expected result.");
+            Assert.AreEqual(expectedHandlerResult, handlerResult, "Handler got unexpected result.");
         }
 
         void AssertNoException()
@@ -248,11 +283,21 @@ namespace KayakTests.Framework
             Assert.IsFalse(gotException, "Did not expect exception.");
         }
 
-        void AssertException()
+        void AssertNoHandlerException()
         {
-            Assert.IsTrue(gotException, "Expected exception.");
-            Assert.IsInstanceOfType(typeof(TargetInvocationException), exception);
-            Assert.AreEqual(expectedException, exception.InnerException, "Unexpected exception.");
+            Assert.IsFalse(handlerGotException, "Did not expect exception.");
+        }
+
+        void AssertHandlerException()
+        {
+            Assert.IsTrue(handlerGotException, "Handler expected exception.");
+            Assert.IsInstanceOfType(typeof(TargetInvocationException), handlerException);
+            Assert.AreEqual(expectedHandlerException, handlerException.InnerException, "Handler got unexpected exception.");
+        }
+
+        void AssertExceptionMessage(string expectedErrorMessage)
+        {
+            Assert.AreEqual(expectedErrorMessage, exception.Message);
         }
 
         void AssertCompleted()
@@ -263,6 +308,16 @@ namespace KayakTests.Framework
         void AssertNotCompleted()
         {
             Assert.AreEqual(0, completed, "Did not expect to get completed.");
+        }
+
+        void AssertHandlerCompleted()
+        {
+            Assert.AreEqual(1, handlerCompleted, "Handler did not get completed exactly once.");
+        }
+
+        void AssertHandlerNotCompleted()
+        {
+            Assert.AreEqual(0, handlerCompleted, "Handler did not expect to get completed.");
         }
 
         void InvocationSubscribe()
@@ -288,11 +343,10 @@ namespace KayakTests.Framework
 
             SetUpMockBehaviorGetBinder();
             SetUpMockBehaviorGetHandler(
-                Observer.Create<object>(o => { gotResult = true; result = o; }, e => { gotException = true; exception = e; }, () => completed++)
+                Observer.Create<object>(o => { handlerGotResult = true; handlerResult = o; }, e => { handlerGotException = true; handlerException = e; }, () => handlerCompleted++)
                 );
-            
 
-            mockContext.Object.PerformInvocation(mockBehavior.Object);
+            Invoke();
         }
     }
 }

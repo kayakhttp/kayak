@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Collections.Generic;
 
 namespace Kayak
 {
@@ -14,10 +15,12 @@ namespace Kayak
 
     public class KayakServerResponse : IKayakServerResponse
     {
-        internal HttpStatusLine statusLine;
-        NameValueDictionary headers;
-        KayakContext context;
+        int statusCode;
+        string reasonPhrase;
+        string httpVersion;
         Stream body;
+        NameValueDictionary headers;
+        Stream stream;
 
         /// <summary>
         /// Gets or sets the HTTP status code (e.g., 200, 404, 304, etc.) to be sent with the response. An exception
@@ -25,8 +28,8 @@ namespace Kayak
         /// </summary>
         public int StatusCode
         {
-            get { return statusLine.StatusCode; }
-            set { ThrowIfBodyAccessed(); statusLine.StatusCode = value; }
+            get { return statusCode; }
+            set { ThrowIfBodyAccessed(); statusCode = value; }
         }
 
         /// <summary>
@@ -35,14 +38,14 @@ namespace Kayak
         /// </summary>
         public string ReasonPhrase
         {
-            get { return statusLine.ReasonPhrase; }
-            set { ThrowIfBodyAccessed(); statusLine.ReasonPhrase = value; }
+            get { return reasonPhrase; }
+            set { ThrowIfBodyAccessed(); reasonPhrase = value; }
         }
 
         public string HttpVersion
         {
-            get { return statusLine.HttpVersion; }
-            set { throw new NotSupportedException("Kayak only supports " + statusLine.HttpVersion); }
+            get { return httpVersion; }
+            set { throw new NotSupportedException("Kayak only supports " + httpVersion); }
         }
 
         public NameValueDictionary Headers { 
@@ -53,21 +56,18 @@ namespace Kayak
         public Stream Body { 
             get {
                 if (body == null)
-                    body = context.GetResponseStream();
+                    body = this.CreateResponseStream(stream);
 
                 return body;
             } 
         }
 
-        public KayakServerResponse(KayakContext context)
+        public KayakServerResponse(Stream stream)
         {
-            this.context = context;
-            statusLine = new HttpStatusLine()
-            {
-                StatusCode = 200,
-                ReasonPhrase = "OK",
-                HttpVersion = "HTTP/1.1"
-            };
+            this.stream = stream;
+            statusCode = 200;
+            reasonPhrase = "OK";
+            httpVersion = "HTTP/1.0";
             headers = new NameValueDictionary();
         }
         

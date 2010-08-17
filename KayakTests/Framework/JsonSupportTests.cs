@@ -7,7 +7,7 @@ using NUnit.Framework;
 
 namespace KayakTests.Framework
 {
-    [TestFixture]
+    //[TestFixture]
     public class JsonSupportTests
     {
     }

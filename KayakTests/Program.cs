@@ -93,7 +93,7 @@ namespace KayakTests
 
         public static void Main(string[] args)
         {
-            var listener = new OarsServer(new IPEndPoint(IPAddress.Any, 8080), 1000);
+            //var listener = new OarsServer(new IPEndPoint(IPAddress.Any, 8080), 1000);
             var server = new KayakServer();
 
             var behavior = new KayakInvocationBehavior();
@@ -110,7 +110,7 @@ namespace KayakTests
             behavior.ExceptionHandlers.Clear();
             behavior.ExceptionHandlers.Add(new JsonExceptionHandler(mapper));
 
-            server.UseFramework(behavior);
+            server.ToContexts().UseFramework(behavior);
 
             Console.ReadLine();
         }

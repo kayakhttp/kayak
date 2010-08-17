@@ -28,10 +28,8 @@ namespace Kayak
         public string Verb { get { return requestLine.Verb; } }
         public string RequestUri { get { return requestLine.RequestUri; } }
         public string HttpVersion { get { return requestLine.HttpVersion; } }
-
         public NameValueDictionary Headers { get; private set; }
         public Stream Body { get; private set; }
-
 
         #region Derived properties
 
@@ -40,13 +38,7 @@ namespace Kayak
         /// </summary>
         public string Path
         {
-            get { return path ?? (path = BuildPath()); }
-        }
-
-        string BuildPath()
-        {
-            var question = RequestUri.IndexOf('?');
-            return HttpUtility.UrlDecode(question >= 0 ? RequestUri.Substring(0, question) : RequestUri);
+            get { return path ?? (path = this.GetPath()); }
         }
 
         /// <summary>
@@ -54,21 +46,12 @@ namespace Kayak
         /// </summary>
         public NameValueDictionary QueryString
         {
-            get { return queryString ?? (queryString = BuildQueryString()); }
-        }
-
-        NameValueDictionary BuildQueryString()
-        {
-            int question = RequestUri.IndexOf('?');
-
-            return question >= 0 ?
-                RequestUri.DecodeQueryString(question + 1, RequestUri.Length - question - 1) :
-                new NameValueDictionary();
+            get { return queryString ?? (queryString = this.GetQueryString()); }
         }
 
         #endregion
 
-        internal KayakServerRequest(HttpRequestLine requestLine, NameValueDictionary headers, Stream body)
+        public KayakServerRequest(HttpRequestLine requestLine, NameValueDictionary headers, Stream body)
         {
             this.requestLine = requestLine;
             Headers = headers;
