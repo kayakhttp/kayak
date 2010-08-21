@@ -91,7 +91,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CoroutineTests.cs" />
-    <Compile Include="Extensions\HttpTests.cs" />
     <Compile Include="Framework\HeaderBinderTests.cs" />
     <Compile Include="Framework\InvocationBehaviorTests.cs" />
     <Compile Include="Framework\JsonSupportTests.cs" />
@@ -143,6 +142,9 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Extensions\" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

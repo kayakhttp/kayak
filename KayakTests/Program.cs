@@ -93,7 +93,7 @@ namespace KayakTests
 
         public static void Main(string[] args)
         {
-            //var listener = new OarsServer(new IPEndPoint(IPAddress.Any, 8080), 1000);
+            //var server = new OarsServer(new IPEndPoint(IPAddress.Any, 8080), 1000);
             var server = new KayakServer();
 
             var behavior = new KayakInvocationBehavior();
@@ -110,7 +110,23 @@ namespace KayakTests
             behavior.ExceptionHandlers.Clear();
             behavior.ExceptionHandlers.Add(new JsonExceptionHandler(mapper));
 
-            server.ToContexts().UseFramework(behavior);
+            Func<IKayakContext, bool> shouldBeHandledByCustomCode = c => c.Request.Path.StartsWith("/data");
+
+            var contexts = server.ToContexts();
+
+            var contextsForFramework = new Subject<IKayakContext>();
+            var contextsForCustomCode = new Subject<IKayakContext>();
+            
+            // seems like there should be a prettier way to split an observable sequence, but i don't know it.
+            contexts.Subscribe(c => { 
+                if (shouldBeHandledByCustomCode(c))
+                    contextsForCustomCode.OnNext(c);
+                else
+                    contextsForFramework.OnNext(c);
+            });
+
+            contextsForFramework.UseFramework();
+            contextsForCustomCode.Subscribe(c => { });
 
             Console.ReadLine();
         }
