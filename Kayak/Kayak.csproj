@@ -80,11 +80,13 @@
     <Compile Include="Extensions\Context.cs" />
     <Compile Include="Extensions\Http.cs" />
     <Compile Include="Extensions\IO.cs" />
+    <Compile Include="Extensions\Observable.cs" />
     <Compile Include="Extensions\Request.cs" />
     <Compile Include="Extensions\Response.cs" />
     <Compile Include="Extensions\Trace.cs" />
     <Compile Include="Framework\DefaultExceptionHandler.cs" />
     <Compile Include="Framework\Extensions\Coerce.cs" />
+    <Compile Include="Framework\FileSupport.cs" />
     <Compile Include="Framework\HeaderBinder.cs" />
     <Compile Include="Framework\JsonSupport.cs" />
     <Compile Include="Framework\KayakInvocationBehavior.cs" />

@@ -9,7 +9,7 @@ namespace Kayak
         string RequestUri { get; }
         string HttpVersion { get; }
         NameValueDictionary Headers { get; }
-        Stream Body { get; }
+        RequestStream Body { get; }
 
         #region Derived properties
 
@@ -29,7 +29,7 @@ namespace Kayak
         public string RequestUri { get { return requestLine.RequestUri; } }
         public string HttpVersion { get { return requestLine.HttpVersion; } }
         public NameValueDictionary Headers { get; private set; }
-        public Stream Body { get; private set; }
+        public RequestStream Body { get; private set; }
 
         #region Derived properties
 
@@ -51,7 +51,7 @@ namespace Kayak
 
         #endregion
 
-        public KayakServerRequest(HttpRequestLine requestLine, NameValueDictionary headers, Stream body)
+        public KayakServerRequest(HttpRequestLine requestLine, NameValueDictionary headers, RequestStream body)
         {
             this.requestLine = requestLine;
             Headers = headers;

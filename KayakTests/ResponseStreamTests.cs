@@ -29,7 +29,7 @@ namespace KayakTests
             rest = new MemoryStream(Encoding.UTF8.GetBytes(restString));
 
             destination = new SynchronousMemoryStream();
-            responseStream = new ResponseStream(destination, Encoding.UTF8.GetBytes(firstString), restString.Length);
+            //responseStream = new ResponseStream(destination, Encoding.UTF8.GetBytes(firstString), restString.Length);
         }
 
         public void SyncWrite()

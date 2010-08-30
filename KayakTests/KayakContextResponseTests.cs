@@ -36,7 +36,7 @@ namespace KayakTests
             stream.Write(Encoding.ASCII.GetBytes(requestString), 0, requestString.Length);
             stream.Position = 0;
             mockSocket = new Mock<ISocket>();
-            mockSocket.Setup(s => s.GetStream()).Returns(stream).Verifiable();
+            //mockSocket.Setup(s => s.GetStream()).Returns(stream).Verifiable();
             //context = new KayakContext(mockSocket.Object);
             //context.Subscribe(n => { }, e => contextException = e, () => contextCompleted = true);
 

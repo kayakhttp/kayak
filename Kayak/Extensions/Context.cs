@@ -43,12 +43,10 @@ namespace Kayak
 
         static IEnumerable<object> CreateContextInternal(ISocket socket)
         {
-            var stream = socket.GetStream();
-
             KayakServerRequest request = null;
-            yield return stream.CreateRequest().Do(r => request = r);
+            yield return socket.CreateRequest().Do(r => request = r);
 
-            var response = new KayakServerResponse(stream);
+            var response = new KayakServerResponse(socket);
 
             yield return new KayakContext(socket, request, response);
         }
@@ -64,15 +62,11 @@ namespace Kayak
 
         static IEnumerable<object> EndInternal(IKayakContext context)
         {
-            var stream = context.Socket.GetStream();
-
             if (context.Response.Headers.GetContentLength() <= 0)
-                yield return stream.WriteAsync(context.Response.CreateHeaderBuffer());
-
-            stream.Flush(); // should be a no-op but you never know...
-
-            stream.Close();
-            stream.Dispose();
+            {
+                var headers = context.Response.CreateHeaderBuffer();
+                yield return context.Socket.Write(headers, 0, headers.Length);
+            }
 
             // close connection, we only support HTTP/1.0
             context.Socket.Dispose();

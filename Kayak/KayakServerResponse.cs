@@ -10,7 +10,7 @@ namespace Kayak
         string ReasonPhrase { get; set; }
         string HttpVersion { get; set; }
         NameValueDictionary Headers { get; set; }
-        Stream Body { get; }
+        ResponseStream Body { get; }
     }
 
     public class KayakServerResponse : IKayakServerResponse
@@ -18,9 +18,9 @@ namespace Kayak
         int statusCode;
         string reasonPhrase;
         string httpVersion;
-        Stream body;
+        ResponseStream body;
         NameValueDictionary headers;
-        Stream stream;
+        ISocket socket;
 
         /// <summary>
         /// Gets or sets the HTTP status code (e.g., 200, 404, 304, etc.) to be sent with the response. An exception
@@ -53,18 +53,18 @@ namespace Kayak
             set { ThrowIfBodyAccessed(); headers = value; } 
         }
 
-        public Stream Body { 
+        public ResponseStream Body { 
             get {
                 if (body == null)
-                    body = this.CreateResponseStream(stream);
+                    body = this.CreateResponseStream(socket);
 
                 return body;
             } 
         }
 
-        public KayakServerResponse(Stream stream)
+        public KayakServerResponse(ISocket socket)
         {
-            this.stream = stream;
+            this.socket = socket;
             statusCode = 200;
             reasonPhrase = "OK";
             httpVersion = "HTTP/1.0";

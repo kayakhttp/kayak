@@ -7,24 +7,24 @@ namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        public static IObservable<Unit> PerformInvocation(this IKayakContext context, IInvocationBehavior behavior)
+        public static void PerformInvocation(this IKayakContext context, IInvocationBehavior behavior)
         {
-            if (behavior == null)
-                throw new ArgumentNullException("behavior");
-
-            return PerformInvocationInternal(context, behavior).AsCoroutine<Unit>();
+            behavior.Invoke(context, context.AsInvocation(behavior.Bind(context)));
         }
 
-        static IEnumerable<object> PerformInvocationInternal(IKayakContext context, IInvocationBehavior behavior)
+        public static IObservable<object> AsInvocation(this IKayakContext context, IObservable<InvocationInfo> bind)
+        {
+            if (bind == null)
+                throw new ArgumentNullException("bind");
+
+            return AsInvocationInternal(context, bind).AsCoroutine<object>();
+        }
+
+        static IEnumerable<object> AsInvocationInternal(IKayakContext context, IObservable<InvocationInfo> bind)
         {
             InvocationInfo info = null;
 
-            var binder = behavior.GetBinder(context);
-
-            if (binder == null)
-                throw new Exception("Behavior returned null binder.");
-
-            yield return binder.Do(i => info = i);
+            yield return bind.Do(i => info = i);
 
             if (info == null)
                 throw new Exception("Binder returned by behavior did not yield an instance of InvocationInfo.");
@@ -33,31 +33,12 @@ namespace Kayak.Framework
             if (info.Target == null)
                 throw new Exception("Binder returned by behavior did not yield an valid instance of InvocationInfo. Target was null.");
 
-            IObserver<object> handler = behavior.GetHandler(context, info);
+            context.SetInvocationInfo(info);
 
-            if (handler == null)
-                throw new Exception("Behavior returned null handler.");
+            object result = info.Invoke();
 
-            object result = null;
-            bool error = false;
-
-            try
-            {
-                result = info.Invoke();
-            }
-            catch (Exception e)
-            {
-                error = true;
-                handler.OnError(e);
-            }
-
-            if (!error)
-            {
-                if (info.Method.ReturnType != typeof(void))
-                    handler.OnNext(result);
-
-                handler.OnCompleted();
-            }
+            if (info.Method.ReturnType != typeof(void))
+                yield return result;
         }
     }
 }

@@ -8,6 +8,7 @@ using Kayak.Framework;
 using Kayak.Oars;
 using System.Reflection;
 using LitJson;
+using System.IO;
 
 namespace KayakTests
 {
@@ -105,6 +106,7 @@ namespace KayakTests
             mapper.AddDefaultOutputConversions();
             mapper.AddDefaultInputConversions();
 
+            behavior.AddFileSupport();
             behavior.AddJsonSupport(mapper);
 
             behavior.ExceptionHandlers.Clear();
@@ -112,21 +114,20 @@ namespace KayakTests
 
             Func<IKayakContext, bool> shouldBeHandledByCustomCode = c => c.Request.Path.StartsWith("/data");
 
-            var contexts = server.ToContexts();
+            server.UseFramework(behavior);
+            //var split = server.ToContexts().Split(
+            //    (c, custom, framework) => { 
+            //        if (shouldBeHandledByCustomCode(c)) 
+            //            custom.OnNext(c); 
+            //        else 
+            //            framework.OnNext(c); 
+            //    });
 
-            var contextsForFramework = new Subject<IKayakContext>();
-            var contextsForCustomCode = new Subject<IKayakContext>();
-            
-            // seems like there should be a prettier way to split an observable sequence, but i don't know it.
-            contexts.Subscribe(c => { 
-                if (shouldBeHandledByCustomCode(c))
-                    contextsForCustomCode.OnNext(c);
-                else
-                    contextsForFramework.OnNext(c);
-            });
+            //var contextsForFramework = split[0];
+            //var contextsForCustomCode = split[1];
 
-            contextsForFramework.UseFramework();
-            contextsForCustomCode.Subscribe(c => { });
+            //contextsForFramework.UseFramework();
+            //contextsForCustomCode.Subscribe(c => { });
 
             Console.ReadLine();
         }
@@ -166,6 +167,12 @@ namespace KayakTests
         public object PathParam(string p)
         {
             return new { p_was = p };
+        }
+
+        [Path("/files/{name}")]
+        public FileInfo GetFile(string name)
+        {
+            return new FileInfo(name);
         }
     }
 }

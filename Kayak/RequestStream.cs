@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Linq;
 
 namespace Kayak
 {
@@ -24,7 +25,7 @@ namespace Kayak
 
     public class RequestStream : Stream
     {
-        Stream underlying;
+        ISocket socket;
         byte[] first;
         long length, position;
         int bytesCopied;
@@ -32,105 +33,128 @@ namespace Kayak
         IAsyncResult asyncResult;
         Stream reading;
 
-        public RequestStream(Stream underlying, byte[] first, long length)
+        public RequestStream(ISocket socket, byte[] first, long length)
         {
-            this.underlying = underlying;
+            this.socket = socket;
             this.first = first;
             this.length = length;
         }
 
-        public override int Read(byte[] buffer, int offset, int count)
+        public IObservable<int> ReadAsync(byte[] buffer, int offset, int count)
         {
             long bytesToRead = Math.Min(length - position, (long)count);
-
-            if (bytesToRead == 0) return 0;
-            int bytesRead = 0;
-
-            if (position < first.Length)
-            {
-                bytesRead = (int)Math.Min(first.Length - position, bytesToRead);
-
-                if (bytesRead > 0)
-                {
-                    //Console.WriteLine("Copying " + bytesRead + " bytes from first.");
-                    Buffer.BlockCopy(first, (int)position, buffer, offset, bytesRead);
-                    bytesToRead -= bytesRead;
-                }
-            }
-
-            if (bytesToRead > 0)
-            {
-                //Console.WriteLine("Reading " + bytesToRead + " bytes from underlying.");
-                bytesRead += underlying.Read(buffer, offset + bytesRead, (int)bytesToRead);
-            }
-
-            position += bytesRead;
-            //Console.WriteLine("Position is " + position);
-            return bytesRead;
-        }
-
-        public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
-        {
-            long bytesToRead = Math.Min(length - position, (long)count);
-            bytesCopied = 0;
 
             if (bytesToRead == 0)
-            {
-                asyncResult = new AsyncResult() { BytesRead = 0, CompletedSynchronously = true };
-                callback(asyncResult);
-                return asyncResult;
-            }
-
-            int bytesRead = 0;
+                return new int[] { 0 }.ToObservable();
 
             if (position < first.Length)
             {
-                bytesCopied = bytesRead = (int)Math.Min(first.Length - position, bytesToRead);
+                bytesToRead = Math.Min(first.Length - position, bytesToRead);
 
-                Trace.Write("Should copy {0} bytes from first.", bytesCopied);
-                if (bytesRead > 0)
-                {
-                    Trace.Write("Copying " + bytesRead + " bytes from first");
-                    Buffer.BlockCopy(first, (int)position, buffer, offset, bytesRead);
-                    bytesToRead -= bytesRead;
+                //Console.WriteLine("Copying " + bytesRead + " bytes from first.");
+                Buffer.BlockCopy(first, (int)position, buffer, offset, (int)bytesToRead);
+                position += bytesToRead;
 
-                    asyncResult = new AsyncResult() { BytesRead = bytesRead, CompletedSynchronously = true };
-                    callback(asyncResult);
-                    return asyncResult;
-                }
+                return new int[] { (int)bytesToRead }.ToObservable();
             }
-            else
-            {
-                Trace.Write("Reading " + bytesToRead + " bytes from underlying.");
-                asyncResult = underlying.BeginRead(buffer, offset + bytesRead, (int)bytesToRead, callback, state);
-            }
+
+            return socket.Read(buffer, offset, count);
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException("No synchronous reads, punk!");
+        }
+
+        //public override int Read(byte[] buffer, int offset, int count)
+        //{
+        //    long bytesToRead = Math.Min(length - position, (long)count);
+
+        //    if (bytesToRead == 0) return 0;
+        //    int bytesRead = 0;
+
+        //    if (position < first.Length)
+        //    {
+        //        bytesRead = (int)Math.Min(first.Length - position, bytesToRead);
+
+        //        //Console.WriteLine("Copying " + bytesRead + " bytes from first.");
+        //        Buffer.BlockCopy(first, (int)position, buffer, offset, bytesRead);
+        //        bytesToRead -= bytesRead;
+        //    }
+
+        //    if (bytesToRead > 0)
+        //    {
+        //        //Console.WriteLine("Reading " + bytesToRead + " bytes from underlying.");
+        //        bytesRead += underlying.Read(buffer, offset + bytesRead, (int)bytesToRead);
+        //    }
+
+        //    position += bytesRead;
+        //    //Console.WriteLine("Position is " + position);
+        //    return bytesRead;
+        //}
+
+        //public override IAsyncResult BeginRead(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        //{
+        //    long bytesToRead = Math.Min(length - position, (long)count);
+        //    bytesCopied = 0;
+
+        //    if (bytesToRead == 0)
+        //    {
+        //        asyncResult = new AsyncResult() { BytesRead = 0, CompletedSynchronously = true };
+        //        callback(asyncResult);
+        //        return asyncResult;
+        //    }
+
+        //    int bytesRead = 0;
+
+        //    if (position < first.Length)
+        //    {
+        //        bytesCopied = bytesRead = (int)Math.Min(first.Length - position, bytesToRead);
+
+        //        Trace.Write("Should copy {0} bytes from first.", bytesCopied);
+        //        if (bytesRead > 0)
+        //        {
+        //            Trace.Write("Copying " + bytesRead + " bytes from first");
+        //            Buffer.BlockCopy(first, (int)position, buffer, offset, bytesRead);
+        //            bytesToRead -= bytesRead;
+
+        //            asyncResult = new AsyncResult() { BytesRead = bytesRead, CompletedSynchronously = true };
+        //            callback(asyncResult);
+        //            return asyncResult;
+        //        }
+        //    }
+        //    else
+        //    {
+        //        Trace.Write("Reading " + bytesToRead + " bytes from underlying.");
+        //        asyncResult = underlying.BeginRead(buffer, offset + bytesRead, (int)bytesToRead, callback, state);
+        //    }
   
-            return asyncResult;
-        }
+        //    return asyncResult;
+        //}
 
-        public override int EndRead(IAsyncResult iasr)
-        {   
-            int bytesRead = bytesCopied;
+        //public override int EndRead(IAsyncResult iasr)
+        //{   
+        //    int bytesRead = bytesCopied;
 
-            if (asyncResult is AsyncResult)
-            {
-                //assert bytesRead = 0;
-                bytesRead = (asyncResult as AsyncResult).BytesRead;
-                asyncResult = null;
-            }
-            else
-            {
-                Trace.Write("Underlying EndRead....");
-                bytesRead = underlying.EndRead(iasr);
-            }
+        //    if (asyncResult is AsyncResult)
+        //    {
+        //        //assert bytesRead = 0;
+        //        bytesRead = (asyncResult as AsyncResult).BytesRead;
+        //        asyncResult = null;
+        //    }
+        //    else
+        //    {
+        //        Trace.Write("Underlying EndRead....");
+        //        bytesRead = underlying.EndRead(iasr);
+        //    }
 
-            Trace.Write("EndRead bytesRead = " + bytesRead);
+        //    Trace.Write("EndRead bytesRead = " + bytesRead);
 
-            position += bytesRead;
+        //    position += bytesRead;
 
-            Trace.Write("Position is " + position);
-            return bytesRead;
-        }
+        //    Trace.Write("Position is " + position);
+        //    return bytesRead;
+        //}
 
         //public override int ReadByte()
         //{

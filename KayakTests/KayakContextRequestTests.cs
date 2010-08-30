@@ -55,7 +55,7 @@ namespace KayakTests
             Console.WriteLine("Sending request with data:\r\n" + requestData);
             var requestStream = new SynchronousMemoryStream(Encoding.UTF8.GetBytes(requestData));
             mockSocket = new Mock<ISocket>();
-            mockSocket.Setup(s => s.GetStream()).Returns(requestStream).Verifiable();
+            //mockSocket.Setup(s => s.GetStream()).Returns(requestStream).Verifiable();
 
             //context = new KayakContext(mockSocket.Object);
 

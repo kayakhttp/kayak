@@ -17,4 +17,19 @@ namespace Kayak.Framework
             return Method.Invoke(Target, Arguments);
         }
     }
+
+    public static partial class Extensions
+    {
+        static object InvocationInfoContextKey = new object();
+
+        public static InvocationInfo GetInvocationInfo(this IKayakContext context)
+        {
+            return context.Items[InvocationInfoContextKey] as InvocationInfo;
+        }
+
+        internal static void SetInvocationInfo(this IKayakContext context, InvocationInfo info)
+        {
+            context.Items[InvocationInfoContextKey] = info;
+        }
+    }
 }

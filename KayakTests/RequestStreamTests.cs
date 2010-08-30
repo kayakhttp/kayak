@@ -44,7 +44,7 @@ namespace KayakTests
             var firstBuffer = new byte[firstBufferSize];
             Buffer.BlockCopy(buffer, firstString.Length, firstBuffer, 0, firstBuffer.Length);
 
-            requestStream = new RequestStream(sourceStream, firstBuffer, restString.Length);
+            //requestStream = new RequestStream(sourceStream, firstBuffer, restString.Length);
         }
 
         public string GetReadString()

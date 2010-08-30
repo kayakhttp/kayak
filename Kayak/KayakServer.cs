@@ -11,7 +11,9 @@ namespace Kayak
     public interface ISocket : IDisposable
     {
         IPEndPoint RemoteEndPoint { get; }
-        Stream GetStream(); // clients of ISocket are responsible for closing/disposing the stream as well as the socket itself.
+        IObservable<int> Write(byte[] buffer, int offset, int count);
+        IObservable<int> WriteFile(string file, int offset, int count);
+        IObservable<int> Read(byte[] buffer, int offset, int count);
     }
 
     public class KayakServer : IObservable<ISocket>
@@ -111,7 +113,6 @@ namespace Kayak
         {
             KayakServer server;
             Socket socket;
-            NetworkStream stream;
 
             public DotNetSocket(KayakServer server, Socket socket)
             {
@@ -124,19 +125,35 @@ namespace Kayak
                 get { return (IPEndPoint)socket.RemoteEndPoint; }
             }
 
-            public Stream GetStream()
-            {
-                if (stream == null)
-                    stream = new NetworkStream(socket, true);
-
-                return stream;
-            }
-
             public void Dispose()
             {
                 socket.Close();
                 server.SocketClosed();
             }
+
+            #region ISocket Members
+
+            public IObservable<int> Write(byte[] buffer, int offset, int count)
+            {
+                return socket.SendAsync(buffer, offset, count);
+            }
+
+            public IObservable<int> WriteFile(string file, int offset, int count)
+            {
+                if (offset != 0)
+                    throw new ArgumentException("Non-zero offset is not supported.");
+                if (count != 0)
+                    throw new ArgumentException("Non-zero count is not supported.");
+
+                return socket.SendFileAsync(file);
+            }
+
+            public IObservable<int> Read(byte[] buffer, int offset, int count)
+            {
+                return socket.ReceiveAsync(buffer, offset, count);
+            }
+
+            #endregion
         }
     }
 }

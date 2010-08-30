@@ -128,7 +128,7 @@ namespace Kayak
 
                         Continue();
                     }
-                    else if (observableInterface != null)
+                    else
                     {
 						var genericArg = observableInterface.GetGenericArguments()[0];
 						var shimType = typeof(ObserverShim<,>).MakeGenericType(genericArg, typeof(T));

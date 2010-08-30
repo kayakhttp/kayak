@@ -96,7 +96,7 @@ namespace Kayak
             return Encoding.ASCII.GetBytes(sb.ToString());
         }
 
-        public static ResponseStream CreateResponseStream(this IKayakServerResponse response, Stream stream)
+        public static ResponseStream CreateResponseStream(this IKayakServerResponse response, ISocket stream)
         {
             var contentLength = response.Headers.GetContentLength();
 

@@ -6,6 +6,12 @@ using System.Reflection;
 
 namespace Kayak.Framework
 {
+    public interface IInvocationBehavior
+    {
+        IObservable<InvocationInfo> Bind(IKayakContext context);
+        void Invoke(IKayakContext context, IObservable<object> invocation);
+    }
+
     public static partial class Extensions
     {
         public static IDisposable UseFramework(this IObservable<ISocket> sockets)
@@ -27,6 +33,7 @@ namespace Kayak.Framework
         {
             var behavior = new KayakInvocationBehavior();
             behavior.MapTypes(types);
+            behavior.AddFileSupport();
             behavior.AddJsonSupport();
 
             return contexts.UseFramework(behavior);
@@ -39,14 +46,7 @@ namespace Kayak.Framework
 
         public static IDisposable UseFramework(this IObservable<IKayakContext> contexts, IInvocationBehavior behavior)
         {
-            return contexts.Subscribe(c => c.PerformInvocation(behavior).Subscribe(
-                u => { }, 
-                e => 
-                { 
-                    Console.WriteLine("Exception while invoking method!");
-                    Console.Out.WriteException(e);
-                }, 
-                () => { }));
+            return contexts.Subscribe(c => c.PerformInvocation(behavior));
         }
     }
 }

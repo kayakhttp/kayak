@@ -8,12 +8,6 @@ using System.IO;
 
 namespace Kayak.Framework
 {
-    public interface IInvocationBehavior
-    {
-        IObservable<InvocationInfo> GetBinder(IKayakContext context);
-        IObserver<object> GetHandler(IKayakContext context, InvocationInfo info);
-    }
-
     public interface IInvocationArgumentBinder
     {
         void BindArgumentsFromHeaders(IKayakContext context, InvocationInfo info);
@@ -50,12 +44,12 @@ namespace Kayak.Framework
             ExceptionHandlers.Add(new DefaultExceptionHandler());
         }
 
-        public IObservable<InvocationInfo> GetBinder(IKayakContext context)
+        public IObservable<InvocationInfo> Bind(IKayakContext context)
         {
-            return Bind(context).AsCoroutine<InvocationInfo>();
+            return BindInternal(context).AsCoroutine<InvocationInfo>();
         }
 
-        IEnumerable<object> Bind(IKayakContext context)
+        IEnumerable<object> BindInternal(IKayakContext context)
         {
             InvocationInfo info = new InvocationInfo();
 
@@ -84,54 +78,89 @@ namespace Kayak.Framework
             yield return info;
         }
 
-        public IObserver<object> GetHandler(IKayakContext context, InvocationInfo info)
+        public void Invoke(IKayakContext context, IObservable<object> invocation)
         {
-            return Observer.Create<object>(
-                r => InvocationResult(context, info, r), 
-                e => InvocationException(context, info, e), 
-                () => InvocationCompleted(context, info));
+            invocation.Subscribe(
+                result => InvocationResult(context, result), 
+                e => InvocationException(context, e), 
+                () => InvocationCompleted(context));
         }
 
-        void InvocationCompleted(IKayakContext context, InvocationInfo info)
+        void InvocationCompleted(IKayakContext context)
         {
-            if (context.Items.ContainsKey(InvocationResultContextKey))
+            if (!context.Items.ContainsKey(InvocationResultContextKey))
             {
-                object result = context.Items[InvocationResultContextKey];
-
-                foreach (var resultHandler in ResultHandlers)
-                {
-                    var h = resultHandler.HandleResult(context, info, result);
-
-                    if (h != null)
-                    {
-                        h.Subscribe(u => { }, () => context.End());
-                        return;
-                    }
-                }
+                context.End();
+                return;
             }
 
-            context.End();
-        }
+            object result = context.Items[InvocationResultContextKey];
 
-        void InvocationException(IKayakContext context, InvocationInfo info, Exception exception)
-        {
-            foreach (var exceptionHandler in ExceptionHandlers)
+            if (result is IEnumerable<object>)
             {
-                var h = exceptionHandler.HandleException(context, info, exception);
-
-                if (h != null)
-                {
-                    h.Subscribe(u => { }, () => context.End());
-                    return;
-                }
+                (result as IEnumerable<object>)
+                    .AsCoroutine<object>()
+                    .Subscribe(o => { }, e => InvocationException(context, e), () => context.End());
             }
+            else
+            {
+                var handler = HandleResult(context, result);
 
-            context.End();
+                if (handler != null)
+                    handler.Subscribe(u => { }, e => InvocationException(context, e), () => context.End());
+                else
+                    context.End();
+            }
         }
 
-        void InvocationResult(IKayakContext context, InvocationInfo info, object result)
+        void InvocationException(IKayakContext context, Exception exception)
+        {
+            var handler = HandleException(context, exception);
+
+            if (handler != null)
+                handler.Subscribe(
+                    u => { }, 
+                    e => { }, 
+                    () => context.End());
+            else
+                context.End();
+        }
+
+        void InvocationResult(IKayakContext context, object result)
         {
             context.Items[InvocationResultContextKey] = result;
+        }
+
+        // this could be made public to support Comet-style shit.
+        // Context.Return(somevalue) { Context.GetBehavior().HandleResult(Context, somevalue); }
+        IObservable<Unit> HandleResult(IKayakContext context, object result)
+        {
+            var info = context.GetInvocationInfo();
+
+            foreach (var resultHandler in ResultHandlers)
+            {
+                var h = resultHandler.HandleResult(context, info, result);
+
+                if (h != null)
+                    return h;
+            }
+
+            return null;
+        }
+
+        IObservable<Unit> HandleException(IKayakContext context, Exception e)
+        {
+            var info = context.GetInvocationInfo();
+
+            foreach (var exceptionHandler in ExceptionHandlers)
+            {
+                var h = exceptionHandler.HandleException(context, info, e);
+
+                if (h != null)
+                    return h;
+            }
+
+            return null;
         }
     }
 }

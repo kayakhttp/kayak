@@ -12,12 +12,12 @@ namespace Kayak
         static int MaxHeaderLength = 1024 * 10;
         static int BufferSize = 1024 * 2;
 
-        public static IObservable<KayakServerRequest> CreateRequest(this Stream stream)
+        public static IObservable<KayakServerRequest> CreateRequest(this ISocket socket)
         {
-            return CreateRequestInternal(stream).AsCoroutine<KayakServerRequest>();
+            return CreateRequestInternal(socket).AsCoroutine<KayakServerRequest>();
         }
 
-        static IEnumerable<object> CreateRequestInternal(Stream stream)
+        static IEnumerable<object> CreateRequestInternal(ISocket socket)
         {
             var buffer = new byte[BufferSize];
             var headerBuffer = new MemoryStream(BufferSize);
@@ -26,7 +26,7 @@ namespace Kayak
             while (endOfHeaders == 0)
             {
                 Trace.Write("About to read header chunk.");
-                yield return stream.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
+                yield return socket.Read(buffer, 0, buffer.Length).Do(n => bytesRead = n);
                 Trace.Write("Read {0} bytes.", bytesRead);
 
                 if (bytesRead == 0)
@@ -57,7 +57,7 @@ namespace Kayak
             headerBuffer.ReadHttpHeaders(out requestLine, out headers);
             headerBuffer.Dispose();
 
-            Stream requestBody = null;
+            RequestStream requestBody = null;
             var contentLength = headers.GetContentLength();
             Trace.Write("Got request with content length " + contentLength);
 
@@ -68,7 +68,7 @@ namespace Kayak
                 var overlap = new byte[overlapLength];
                 Buffer.BlockCopy(buffer, endOfHeaders, overlap, 0, overlapLength);
                 Trace.Write("Creating body stream with overlap " + overlapLength + ", contentLength " + contentLength);
-                requestBody = new RequestStream(stream, overlap, contentLength);
+                requestBody = new RequestStream(socket, overlap, contentLength);
             }
 
             yield return new KayakServerRequest(requestLine, headers, requestBody);

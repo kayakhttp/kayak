@@ -47,7 +47,7 @@ namespace KayakTests.Framework
         public void NullBehaviorException()
         {
             mockContext = new Mock<IKayakContext>();
-            mockContext.Object.PerformInvocation(null);
+            mockContext.Object.AsInvocation(null);
         }
 
         void SetUpExpectedContextErrorMessage(string expectedErrorMessage)
@@ -64,7 +64,7 @@ namespace KayakTests.Framework
 
         void Invoke()
         {
-            mockContext.Object.PerformInvocation(mockBehavior.Object)
+            mockContext.Object.AsInvocation(mockBehavior.Object.Bind(mockContext.Object))
                 .Subscribe(u => gotResult = true, e => { gotException = true; exception = e; }, () => completed++);
         }
 
@@ -76,15 +76,14 @@ namespace KayakTests.Framework
         void SetUpMockBehaviorGetBinder(IObservable<InvocationInfo> bind)
         {
             mockBehavior
-                .Setup(b => b.GetBinder(It.Is<IKayakContext>(c => c == mockContext.Object)))
+                .Setup(b => b.Bind(It.Is<IKayakContext>(c => c == mockContext.Object)))
                 .Returns(bind).Verifiable();
         }
 
-        void SetUpMockBehaviorGetHandler(IObserver<object> handler)
+        void SetUpMockBehaviorGetHandler(IObservable<object> invocation)
         {
             mockBehavior
-                .Setup(b => b.GetHandler(It.Is<IKayakContext>(c => c == mockContext.Object), It.Is<InvocationInfo>(ii => ii == info)))
-                .Returns(handler)
+                .Setup(b => b.Invoke(It.Is<IKayakContext>(c => c == mockContext.Object), It.Is<IObservable<object>>(inv => inv == invocation)))
                 .Verifiable();
         }
 
@@ -342,10 +341,6 @@ namespace KayakTests.Framework
             mockContext = new Mock<IKayakContext>();
 
             SetUpMockBehaviorGetBinder();
-            SetUpMockBehaviorGetHandler(
-                Observer.Create<object>(o => { handlerGotResult = true; handlerResult = o; }, e => { handlerGotException = true; handlerException = e; }, () => handlerCompleted++)
-                );
-
             Invoke();
         }
     }

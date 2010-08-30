@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Disposables;
 using System.IO;
+using System.Net.Sockets;
 
 namespace Kayak
 {
@@ -21,6 +22,27 @@ namespace Kayak
         {
             return new AsyncOperation<Unit>((c, st) => s.BeginWrite(buffer, offset, count, c, st), iasr => { s.EndWrite(iasr); return new Unit(); });
             //return Observable.FromAsyncPattern<byte[], int, int>(s.BeginWrite, s.EndWrite)(buffer, offset, count).Repeat(1);
+        }
+
+        public static IObservable<int> SendAsync(this Socket s, byte[] buffer, int offset, int count)
+        {
+            return new AsyncOperation<int>(
+                (c, st) => s.BeginSend(buffer, offset, count, SocketFlags.None, c, st),
+                iasr => { return s.EndSend(iasr); });
+        }
+
+        public static IObservable<int> SendFileAsync(this Socket s, string file)
+        {
+            return new AsyncOperation<int>(
+                (c, st) => s.BeginSendFile(file, c, st),
+                iasr => { s.EndSendFile(iasr); return 0; });
+        }
+
+        public static IObservable<int> ReceiveAsync(this Socket s, byte[] buffer, int offset, int count)
+        {
+            return new AsyncOperation<int>(
+                (c, st) => s.BeginReceive(buffer, offset, count, SocketFlags.None, c, st),
+                iasr => { return s.EndReceive(iasr); });
         }
     }
 
