@@ -94,14 +94,16 @@ namespace Kayak.Framework
             int bytesRead = 0;
             byte[] buffer = new byte[1024];
 
+            int contentLength = context.Request.Headers.GetContentLength();
+
             while (true)
             {
                 yield return context.Request.Body.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
 
-                if (bytesRead == 0)
-                    break;
-
                 stream.Write(buffer, 0, bytesRead);
+
+                if (stream.Length == contentLength)
+                    break;
             }
 
             buffer = null;
