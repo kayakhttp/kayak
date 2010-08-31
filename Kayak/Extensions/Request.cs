@@ -21,7 +21,8 @@ namespace Kayak
         {
             var buffer = new byte[BufferSize];
             var headerBuffer = new MemoryStream(BufferSize);
-            int endOfHeaders = 0, bytesRead = 0;
+            int endOfHeaders = 0, bytesRead = 0, rawBufferLength = 0;
+            byte[] rawBuffer = null;
 
             while (endOfHeaders == 0)
             {
@@ -34,7 +35,7 @@ namespace Kayak
 
                 headerBuffer.Write(buffer, 0, bytesRead);
 
-                var rawBuffer = headerBuffer.GetBuffer();
+                rawBuffer = headerBuffer.GetBuffer();
 
                 // looking for CRLF CRLF
                 for (int i = (int)headerBuffer.Position - bytesRead; i < headerBuffer.Position; i++)
@@ -43,6 +44,7 @@ namespace Kayak
                         rawBuffer[i - 2] == 10 && rawBuffer[i - 3] == 13)
                     {
                         endOfHeaders = i + 1;
+                        rawBufferLength = (int)headerBuffer.Position;
                         break;
                     }
                 }
@@ -56,7 +58,6 @@ namespace Kayak
 
             headerBuffer.Position = 0;
             headerBuffer.ReadHttpHeaders(out requestLine, out headers);
-            headerBuffer.Dispose();
 
             RequestStream requestBody = null;
             var contentLength = headers.GetContentLength();
@@ -64,13 +65,15 @@ namespace Kayak
 
             if (contentLength > 0)
             {
-                var overlapLength = bytesRead - endOfHeaders;
+                var overlapLength = (int)rawBufferLength - endOfHeaders;
                 // this first bit gets copied around a lot...
                 var overlap = new byte[overlapLength];
-                Buffer.BlockCopy(buffer, endOfHeaders, overlap, 0, overlapLength);
+                Buffer.BlockCopy(rawBuffer, endOfHeaders, overlap, 0, overlapLength);
                 Trace.Write("Creating body stream with overlap " + overlapLength + ", contentLength " + contentLength);
                 requestBody = new RequestStream(socket, overlap, contentLength);
             }
+
+            headerBuffer.Dispose();
 
             yield return new KayakServerRequest(requestLine, headers, requestBody);
         }

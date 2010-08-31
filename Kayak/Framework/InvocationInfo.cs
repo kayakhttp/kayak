@@ -24,6 +24,7 @@ namespace Kayak.Framework
 
         public static InvocationInfo GetInvocationInfo(this IKayakContext context)
         {
+            if (!context.Items.ContainsKey(InvocationInfoContextKey)) return null;
             return context.Items[InvocationInfoContextKey] as InvocationInfo;
         }
 

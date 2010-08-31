@@ -79,24 +79,19 @@ namespace Kayak.Framework
 
             if (result is IEnumerable<object>)
             {
+                object lastObject = null;
+
                 (result as IEnumerable<object>)
                     .AsCoroutine<object>()
-                    .Subscribe(o => { }, e => InvocationException(context, e), () => context.End());
+                    .Subscribe(o => { lastObject = o; }, e => InvocationException(context, e), () => HandleResult(context, lastObject));
             }
             else
-            {
-                var handler = HandleResult(context, result);
-
-                if (handler != null)
-                    handler.Subscribe(u => { }, e => InvocationException(context, e), () => context.End());
-                else
-                    context.End();
-            }
+                HandleResult(context, result);
         }
 
         void InvocationException(IKayakContext context, Exception exception)
         {
-            var handler = HandleException(context, exception);
+            var handler = GetExceptionHandler(context, exception);
 
             if (handler != null)
                 handler.Subscribe(
@@ -112,9 +107,19 @@ namespace Kayak.Framework
             context.Items[InvocationResultContextKey] = result;
         }
 
+        void HandleResult(IKayakContext context, object result)
+        {
+            var handler = GetResultHandler(context, result);
+
+            if (handler != null)
+                handler.Subscribe(u => { }, e => InvocationException(context, e), () => context.End());
+            else
+                context.End();
+        }
+
         // this could be made public to support Comet-style shit.
-        // Context.Return(somevalue) { Context.GetBehavior().HandleResult(Context, somevalue); }
-        IObservable<Unit> HandleResult(IKayakContext context, object result)
+        // Context.Return(somevalue) { Context.GetBehavior().GetResultHandler(Context, somevalue); }
+        IObservable<Unit> GetResultHandler(IKayakContext context, object result)
         {
             var info = context.GetInvocationInfo();
 
@@ -129,7 +134,7 @@ namespace Kayak.Framework
             return null;
         }
 
-        IObservable<Unit> HandleException(IKayakContext context, Exception e)
+        IObservable<Unit> GetExceptionHandler(IKayakContext context, Exception e)
         {
             var info = context.GetInvocationInfo();
 

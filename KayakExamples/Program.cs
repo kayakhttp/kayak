@@ -70,5 +70,36 @@ namespace KayakExamples
             return new FileInfo(name);
         }
 
+        [Verb("POST")]
+        [Path("/echo")]
+        public IEnumerable<object> Echo()
+        {
+            var contentLength = int.Parse(Request.Headers["Content-Length"]);
+            Response.Headers["Content-Length"] = contentLength.ToString();
+
+            var buffer = new byte[1024];
+            int bytesCopied = 0;
+
+            while (bytesCopied < contentLength)
+            {
+                int bytesRead = 0;
+                yield return Request.Body.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
+                yield return Response.Body.WriteAsync(buffer, 0, bytesRead);
+                bytesCopied += bytesRead;
+            }
+        }
+
+        [Path("/yield")]
+        public IEnumerable<object> Yield()
+        {
+            object phue = null;
+            yield return GetPhue().Do(p => phue = p);
+            yield return phue;
+        }
+
+        public IObservable<object> GetPhue()
+        {
+            return new object[] { new { bar = "phue" } }.ToObservable();
+        }
     }
 }
