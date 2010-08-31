@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakTests", "KayakTests\Ka
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kayak.Oars", "Kayak.Oars\Kayak.Oars.csproj", "{AEDCAE89-F0C1-41FA-820D-DF96D79BCB3C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakExamples", "KayakExamples\KayakExamples.csproj", "{33318990-37F5-4B9D-B3F9-19E7736EE1DC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,6 +27,10 @@ Global
 		{AEDCAE89-F0C1-41FA-820D-DF96D79BCB3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AEDCAE89-F0C1-41FA-820D-DF96D79BCB3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AEDCAE89-F0C1-41FA-820D-DF96D79BCB3C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{33318990-37F5-4B9D-B3F9-19E7736EE1DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{33318990-37F5-4B9D-B3F9-19E7736EE1DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{33318990-37F5-4B9D-B3F9-19E7736EE1DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{33318990-37F5-4B9D-B3F9-19E7736EE1DC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

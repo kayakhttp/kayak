@@ -10,9 +10,14 @@ namespace Kayak
     {
         public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets)
         {
+            return sockets.ToContexts(s => s.CreateContext());
+        }
+
+        public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets, Func<ISocket, IObservable<IKayakContext>> transform)
+        {
             return Observable.CreateWithDisposable<IKayakContext>(o => sockets.Subscribe(s =>
                     {
-                        s.CreateContext().Subscribe(c =>
+                        transform(s).Subscribe(c =>
                             {
                                 o.OnNext(c);
                             },
@@ -20,6 +25,7 @@ namespace Kayak
                             {
                                 Console.WriteLine("Exception while creating context!");
                                 Console.Out.WriteException(e);
+                                s.Dispose();
                             });
                     },
                     e =>
@@ -53,16 +59,22 @@ namespace Kayak
 
         public static void End(this IKayakContext context)
         {
-            EndInternal(context).AsCoroutine<Unit>().Subscribe(u => { }, e => 
+            // TODO this is wrong.
+            context.End(context.Response.Headers.GetContentLength() <= 0);
+        }
+
+        public static void End(this IKayakContext context, bool writeHeaders)
+        {
+            EndInternal(context, writeHeaders).AsCoroutine<Unit>().Subscribe(u => { }, e => 
             {
                 Console.WriteLine("Exception while ending context!");
                 Console.Out.WriteException(e);
             });
         }
 
-        static IEnumerable<object> EndInternal(IKayakContext context)
+        static IEnumerable<object> EndInternal(IKayakContext context, bool writeHeaders)
         {
-            if (context.Response.Headers.GetContentLength() <= 0)
+            if (writeHeaders)
             {
                 var headers = context.Response.CreateHeaderBuffer();
                 yield return context.Socket.Write(headers, 0, headers.Length);

@@ -67,8 +67,6 @@ namespace Kayak
 
         public static void Redirect(this IKayakServerResponse response, string url)
         {
-            response.Headers.Clear();
-
             response.SetStatusToFound();
             response.Headers["Location"] = url;
         }
@@ -99,9 +97,6 @@ namespace Kayak
         public static ResponseStream CreateResponseStream(this IKayakServerResponse response, ISocket stream)
         {
             var contentLength = response.Headers.GetContentLength();
-
-            if (contentLength <= 0)
-                throw new InvalidOperationException("Response does not have a valid Content-Length header value.");
 
             return new ResponseStream(stream, response.CreateHeaderBuffer(), contentLength);
         }

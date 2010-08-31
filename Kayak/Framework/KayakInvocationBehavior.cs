@@ -8,22 +8,6 @@ using System.IO;
 
 namespace Kayak.Framework
 {
-    public interface IInvocationArgumentBinder
-    {
-        void BindArgumentsFromHeaders(IKayakContext context, InvocationInfo info);
-        IObservable<Unit> BindArgumentsFromBody(IKayakContext context, InvocationInfo info);
-    }
-
-    public interface IInvocationResultHandler
-    {
-        IObservable<Unit> HandleResult(IKayakContext context, InvocationInfo info, object result);
-    }
-
-    public interface IInvocationExceptionHandler
-    {
-        IObservable<Unit> HandleException(IKayakContext context, InvocationInfo info, Exception exception);
-    }
-
     // not thread-safe!
     public class KayakInvocationBehavior : IInvocationBehavior
     {
@@ -39,9 +23,6 @@ namespace Kayak.Framework
             Binders = new List<IInvocationArgumentBinder>();
             ResultHandlers = new List<IInvocationResultHandler>();
             ExceptionHandlers = new List<IInvocationExceptionHandler>();
-
-            Binders.Add(new HeaderBinder());
-            ExceptionHandlers.Add(new DefaultExceptionHandler());
         }
 
         public IObservable<InvocationInfo> Bind(IKayakContext context)
@@ -65,10 +46,10 @@ namespace Kayak.Framework
             if (service != null)
                 service.Context = context;
 
-            var argumentCount = info.Method.GetParameters().Length;
-            info.Arguments = new object[argumentCount];
+            var parameterCount = info.Method.GetParameters().Length;
+            info.Arguments = new object[parameterCount];
 
-            if (argumentCount > 0)
+            if (parameterCount > 0)
                 foreach (var binder in Binders)
                 {
                     binder.BindArgumentsFromHeaders(context, info);

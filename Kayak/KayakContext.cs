@@ -5,14 +5,6 @@ using System.Linq;
 
 namespace Kayak
 {
-    public interface IKayakContext
-    {
-        ISocket Socket { get; }
-        IKayakServerRequest Request { get; }
-        IKayakServerResponse Response { get; }
-        Dictionary<object, object> Items { get; }
-    }
-
     public class KayakContext : IKayakContext
     {
         public ISocket Socket { get; private set; }

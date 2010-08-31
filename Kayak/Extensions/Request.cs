@@ -32,19 +32,20 @@ namespace Kayak
                 if (bytesRead == 0)
                     break;
 
+                headerBuffer.Write(buffer, 0, bytesRead);
+
+                var rawBuffer = headerBuffer.GetBuffer();
+
                 // looking for CRLF CRLF
-                for (int i = 0; i < bytesRead; i++)
+                for (int i = (int)headerBuffer.Position - bytesRead; i < headerBuffer.Position; i++)
                 {
-                    if (buffer[i] == 10 && buffer[i - 1] == 13 &&
-                        buffer[i - 2] == 10 && buffer[i - 3] == 13)
+                    if (rawBuffer[i] == 10 && rawBuffer[i - 1] == 13 &&
+                        rawBuffer[i - 2] == 10 && rawBuffer[i - 3] == 13)
                     {
                         endOfHeaders = i + 1;
                         break;
                     }
                 }
-
-                // write up to and including CRLF CRLF into the header buffer
-                headerBuffer.Write(buffer, 0, endOfHeaders > 0 ? endOfHeaders : bytesRead);
 
                 if (headerBuffer.Length > MaxHeaderLength)
                     throw new Exception("Request headers data exceeds max header length.");

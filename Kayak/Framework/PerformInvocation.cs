@@ -14,6 +14,9 @@ namespace Kayak.Framework
 
         public static IObservable<object> AsInvocation(this IKayakContext context, IObservable<InvocationInfo> bind)
         {
+            if (context == null)
+                throw new ArgumentNullException("context");
+
             if (bind == null)
                 throw new ArgumentNullException("bind");
 

@@ -3,22 +3,6 @@ using System.Web;
 
 namespace Kayak
 {
-    public interface IKayakServerRequest
-    {
-        string Verb { get; }
-        string RequestUri { get; }
-        string HttpVersion { get; }
-        NameValueDictionary Headers { get; }
-        RequestStream Body { get; }
-
-        #region Derived properties
-
-        string Path { get; }
-        NameValueDictionary QueryString { get; }
-
-        #endregion
-    }
-
     public class KayakServerRequest : IKayakServerRequest
     {
         HttpRequestLine requestLine;

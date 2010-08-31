@@ -7,23 +7,6 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IObservable<int> ReadAsync(this Stream s, byte[] buffer, int offset, int count)
-        {
-            return new AsyncOperation<int>((cb, st) => s.BeginRead(buffer, offset, count, cb, st), s.EndRead);
-            //return Observable.FromAsyncPattern<byte[], int, int, int>(s.BeginRead, s.EndRead)(buffer, offset, count).Repeat(1);
-        }
-
-        public static IObservable<Unit> WriteAsync(this Stream s, byte[] buffer)
-        {
-            return s.WriteAsync(buffer, 0, buffer.Length);
-        }
-
-        public static IObservable<Unit> WriteAsync(this Stream s, byte[] buffer, int offset, int count)
-        {
-            return new AsyncOperation<Unit>((c, st) => s.BeginWrite(buffer, offset, count, c, st), iasr => { s.EndWrite(iasr); return new Unit(); });
-            //return Observable.FromAsyncPattern<byte[], int, int>(s.BeginWrite, s.EndWrite)(buffer, offset, count).Repeat(1);
-        }
-
         public static IObservable<int> SendAsync(this Socket s, byte[] buffer, int offset, int count)
         {
             return new AsyncOperation<int>(
@@ -43,6 +26,13 @@ namespace Kayak
             return new AsyncOperation<int>(
                 (c, st) => s.BeginReceive(buffer, offset, count, SocketFlags.None, c, st),
                 iasr => { return s.EndReceive(iasr); });
+        }
+
+        public static IObservable<Socket> AcceptSocketAsync(this TcpListener listener)
+        {
+            return new AsyncOperation<Socket>(
+                (c, st) => listener.BeginAcceptSocket(c, st),
+                iasr => listener.EndAcceptSocket(iasr));
         }
     }
 

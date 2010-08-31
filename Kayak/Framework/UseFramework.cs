@@ -6,17 +6,11 @@ using System.Reflection;
 
 namespace Kayak.Framework
 {
-    public interface IInvocationBehavior
-    {
-        IObservable<InvocationInfo> Bind(IKayakContext context);
-        void Invoke(IKayakContext context, IObservable<object> invocation);
-    }
-
     public static partial class Extensions
     {
         public static IDisposable UseFramework(this IObservable<ISocket> sockets)
         {
-            return sockets.ToContexts().UseFramework();
+            return sockets.ToContexts().UseFramework(Assembly.GetCallingAssembly().GetTypes());
         }
 
         public static IDisposable UseFramework(this IObservable<IKayakContext> contexts)
@@ -32,6 +26,8 @@ namespace Kayak.Framework
         public static IDisposable UseFramework(this IObservable<IKayakContext> contexts, Type[] types)
         {
             var behavior = new KayakInvocationBehavior();
+            behavior.Binders.Add(new HeaderBinder((s, t) => s.Coerce(t)));
+            behavior.ExceptionHandlers.Add(new DefaultExceptionHandler());
             behavior.MapTypes(types);
             behavior.AddFileSupport();
             behavior.AddJsonSupport();

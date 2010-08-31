@@ -4,15 +4,6 @@ using System.Collections.Generic;
 
 namespace Kayak
 {
-    public interface IKayakServerResponse
-    {
-        int StatusCode { get; set; }
-        string ReasonPhrase { get; set; }
-        string HttpVersion { get; set; }
-        NameValueDictionary Headers { get; set; }
-        ResponseStream Body { get; }
-    }
-
     public class KayakServerResponse : IKayakServerResponse
     {
         int statusCode;
@@ -45,7 +36,7 @@ namespace Kayak
         public string HttpVersion
         {
             get { return httpVersion; }
-            set { throw new NotSupportedException("Kayak only supports " + httpVersion); }
+            set { ThrowIfBodyAccessed(); httpVersion = value; }
         }
 
         public NameValueDictionary Headers { 

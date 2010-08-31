@@ -6,6 +6,13 @@ namespace Kayak.Framework
 {
     public class HeaderBinder : IInvocationArgumentBinder
     {
+        Func<string, Type, object> coerce;
+
+        public HeaderBinder(Func<string, Type, object> coerce)
+        {
+            this.coerce = coerce;
+        }
+
         public void BindArgumentsFromHeaders(IKayakContext context, InvocationInfo info)
         {
             var request = context.Request;
@@ -27,7 +34,7 @@ namespace Kayak.Framework
                 if (value != null)
                     try
                     {
-                        info.Arguments[param.Position] = value.Coerce(param.ParameterType);
+                        info.Arguments[param.Position] = coerce(value, param.ParameterType);
                     }
                     catch (Exception e)
                     {
