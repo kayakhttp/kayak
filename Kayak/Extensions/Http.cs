@@ -14,49 +14,6 @@ namespace Kayak
 
     public static partial class Extensions
     {
-        /// <summary>
-        /// Parses the first line of an incoming HTTP request.
-        /// </summary>
-        public static void ReadHttpHeaders(this Stream stream, out HttpRequestLine requestLine, out NameValueDictionary headers)
-        {
-            var reader = new StreamReader(stream, Encoding.ASCII);
-
-            string statusLine = reader.ReadLine();
-
-            if (string.IsNullOrEmpty(statusLine))
-                throw new Exception("Could not parse request status.");
-
-            int firstSpace = statusLine.IndexOf(' ');
-            int lastSpace = statusLine.LastIndexOf(' ');
-
-            if (firstSpace == -1 || lastSpace == -1)
-                throw new Exception("Could not parse request status.");
-
-            requestLine = new HttpRequestLine();
-            requestLine.Verb = statusLine.Substring(0, firstSpace);
-
-            bool hasVersion = lastSpace != firstSpace;
-
-            if (hasVersion)
-                requestLine.HttpVersion = statusLine.Substring(lastSpace + 1);
-            else
-                requestLine.HttpVersion = "HTTP/1.0";
-
-            requestLine.RequestUri = hasVersion
-                ? statusLine.Substring(firstSpace + 1, lastSpace - firstSpace - 1)
-                : statusLine.Substring(firstSpace + 1);
-
-            headers = new NameValueDictionary();
-            string line = null;
-
-            while (!string.IsNullOrEmpty(line = reader.ReadLine()))
-            {
-                int colon = line.IndexOf(':');
-                headers.Add(line.Substring(0, colon), line.Substring(colon + 1).Trim());
-            }
-
-            headers.BecomeReadOnly();
-        }
 
         public static int GetContentLength(this NameValueDictionary headers)
         {

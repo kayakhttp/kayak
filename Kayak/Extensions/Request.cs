@@ -12,6 +12,99 @@ namespace Kayak
         static int MaxHeaderLength = 1024 * 10;
         static int BufferSize = 1024 * 2;
 
+        // last ArraySegment is any data beyond headers which was read, which may be of zero length.
+        public static IObservable<List<ArraySegment<byte>>> ReadHeaders(this ISocket socket)
+        {
+            return socket.ReadHeadersInternal().AsCoroutine<List<ArraySegment<byte>>>();
+        }
+
+        static IEnumerable<object> ReadHeadersInternal(this ISocket socket)
+        {
+            List<ArraySegment<byte>> result = new List<ArraySegment<byte>>();
+
+            int bufferPosition = 0, totalBytesRead = 0;
+            byte[] buffer = null;
+
+            while (true)
+            {
+                if (buffer == null || bufferPosition > BufferSize / 2)
+                {
+                    buffer = new byte[BufferSize];
+                    bufferPosition = 0;
+                }
+
+                int bytesRead = 0;
+
+                Trace.Write("About to read header chunk.");
+                yield return socket.Read(buffer, bufferPosition, buffer.Length - bufferPosition).Do(n => bytesRead = n);
+                Trace.Write("Read {0} bytes.", bytesRead);
+
+                if (bytesRead == 0)
+                    break;
+
+                result.Add(new ArraySegment<byte>(buffer, bufferPosition, bytesRead));
+
+                bufferPosition += bytesRead;
+                totalBytesRead += bytesRead;
+
+                var bodyDataPosition = result.IndexOfAfterCRLFCRLF();
+
+                if (bodyDataPosition != -1)
+                {
+                    Console.WriteLine("Read " + totalBytesRead + ", body starts at " + bodyDataPosition);
+                    var last = result[result.Count - 1];
+                    var overlapLength = totalBytesRead - bodyDataPosition;
+                    result[result.Count - 1] = new ArraySegment<byte>(last.Array, last.Offset, last.Count - overlapLength); 
+                    result.Add(new ArraySegment<byte>(last.Array, last.Offset + last.Count - overlapLength, overlapLength)); 
+                    break;
+                }
+
+                if (totalBytesRead > MaxHeaderLength)
+                    throw new Exception("Request headers data exceeds max header length.");
+            }
+
+            yield return result;
+        }
+
+        public static int IndexOfAfterCRLFCRLF(this IEnumerable<ArraySegment<byte>> buffers)
+        {
+            Queue<byte> lastFour = new Queue<byte>(4);
+
+            int i = 0;
+            foreach (var b in buffers.GetBytes())
+            {
+                if (lastFour.Count == 4)
+                    lastFour.Dequeue();
+
+                lastFour.Enqueue(b);
+
+                if (lastFour.ElementAt(0) == 0x0d && lastFour.ElementAt(1) == 0x0a &&
+                    lastFour.ElementAt(2) == 0x0d && lastFour.ElementAt(3) == 0x0a)
+                    return i + 1;
+
+                i++;
+            }
+
+            return -1;
+        }
+
+        static IEnumerable<byte> GetBytes(this IEnumerable<ArraySegment<byte>> buffers)
+        {
+            foreach (var seg in buffers)
+                for (int i = seg.Offset; i < seg.Offset + seg.Count; i++)
+                    yield return seg.Array[i];
+        }
+
+        public static string GetString(this IEnumerable<ArraySegment<byte>> buffers)
+        {
+            var sb = new StringBuilder(buffers.Sum(s => s.Count));
+
+            foreach (var b in buffers)
+                sb.Append(Encoding.ASCII.GetString(b.Array, b.Offset, b.Count));
+
+            return sb.ToString();
+        }
+
         public static IObservable<KayakServerRequest> CreateRequest(this ISocket socket)
         {
             return CreateRequestInternal(socket).AsCoroutine<KayakServerRequest>();
@@ -19,63 +112,71 @@ namespace Kayak
 
         static IEnumerable<object> CreateRequestInternal(ISocket socket)
         {
-            var buffer = new byte[BufferSize];
-            var headerBuffer = new MemoryStream(BufferSize);
-            int endOfHeaders = 0, bytesRead = 0, rawBufferLength = 0;
-            byte[] rawBuffer = null;
+            List<ArraySegment<byte>> headerBuffer = null;
+            yield return socket.ReadHeaders().Do(h => headerBuffer = h);
 
-            while (endOfHeaders == 0)
-            {
-                Trace.Write("About to read header chunk.");
-                yield return socket.Read(buffer, 0, buffer.Length).Do(n => bytesRead = n);
-                Trace.Write("Read {0} bytes.", bytesRead);
-
-                if (bytesRead == 0)
-                    break;
-
-                headerBuffer.Write(buffer, 0, bytesRead);
-
-                rawBuffer = headerBuffer.GetBuffer();
-
-                // looking for CRLF CRLF
-                for (int i = (int)headerBuffer.Position - bytesRead; i < headerBuffer.Position; i++)
-                {
-                    if (rawBuffer[i] == 10 && rawBuffer[i - 1] == 13 &&
-                        rawBuffer[i - 2] == 10 && rawBuffer[i - 3] == 13)
-                    {
-                        endOfHeaders = i + 1;
-                        rawBufferLength = (int)headerBuffer.Position;
-                        break;
-                    }
-                }
-
-                if (headerBuffer.Length > MaxHeaderLength)
-                    throw new Exception("Request headers data exceeds max header length.");
-            }
-
+            var overlap = headerBuffer.Last();
+            headerBuffer.Remove(overlap);
+            
             HttpRequestLine requestLine;
             NameValueDictionary headers;
-
-            headerBuffer.Position = 0;
-            headerBuffer.ReadHttpHeaders(out requestLine, out headers);
+            headerBuffer.GetString().ParseHttpHeaders(out requestLine, out headers);
 
             RequestStream requestBody = null;
             var contentLength = headers.GetContentLength();
             Trace.Write("Got request with content length " + contentLength);
 
+            // TODO what if content-length is not given (i.e., chunked transfer)
+            // prolly something like:
+            // if (overlap.Count > 0)
             if (contentLength > 0)
             {
-                var overlapLength = (int)rawBufferLength - endOfHeaders;
-                // this first bit gets copied around a lot...
-                var overlap = new byte[overlapLength];
-                Buffer.BlockCopy(rawBuffer, endOfHeaders, overlap, 0, overlapLength);
-                Trace.Write("Creating body stream with overlap " + overlapLength + ", contentLength " + contentLength);
+                Trace.Write("Creating body stream with overlap " + overlap.Count + ", contentLength " + contentLength);
                 requestBody = new RequestStream(socket, overlap, contentLength);
             }
 
-            headerBuffer.Dispose();
-
             yield return new KayakServerRequest(requestLine, headers, requestBody);
+        }
+
+        public static void ParseHttpHeaders(this string s, out HttpRequestLine requestLine, out NameValueDictionary headers)
+        {
+            var reader = new StringReader(s);
+
+            string statusLine = reader.ReadLine();
+
+            if (string.IsNullOrEmpty(statusLine))
+                throw new Exception("Could not parse request status.");
+
+            int firstSpace = statusLine.IndexOf(' ');
+            int lastSpace = statusLine.LastIndexOf(' ');
+
+            if (firstSpace == -1 || lastSpace == -1)
+                throw new Exception("Could not parse request status.");
+
+            requestLine = new HttpRequestLine();
+            requestLine.Verb = statusLine.Substring(0, firstSpace);
+
+            bool hasVersion = lastSpace != firstSpace;
+
+            if (hasVersion)
+                requestLine.HttpVersion = statusLine.Substring(lastSpace + 1);
+            else
+                requestLine.HttpVersion = "HTTP/1.0";
+
+            requestLine.RequestUri = hasVersion
+                ? statusLine.Substring(firstSpace + 1, lastSpace - firstSpace - 1)
+                : statusLine.Substring(firstSpace + 1);
+
+            headers = new NameValueDictionary();
+            string line = null;
+
+            while (!string.IsNullOrEmpty(line = reader.ReadLine()))
+            {
+                int colon = line.IndexOf(':');
+                headers.Add(line.Substring(0, colon), line.Substring(colon + 1).Trim());
+            }
+
+            headers.BecomeReadOnly();
         }
 
         public static string GetPath(this IKayakServerRequest request)

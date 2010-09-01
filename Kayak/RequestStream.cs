@@ -7,10 +7,12 @@ namespace Kayak
     public class RequestStream : Stream
     {
         ISocket socket;
-        byte[] first;
+        ArraySegment<byte> first;
+        int firstOffset, firstLength;
         long length, position;
 
-        public RequestStream(ISocket socket, byte[] first, long length)
+        // TODO consider the possibility that length is -1 (unknown)
+        public RequestStream(ISocket socket, ArraySegment<byte> first, long length)
         {
             this.socket = socket;
             this.first = first;
@@ -24,12 +26,12 @@ namespace Kayak
             if (bytesToRead == 0)
                 return new int[] { 0 }.ToObservable();
 
-            if (position < first.Length)
+            if (position < first.Count)
             {
-                bytesToRead = Math.Min(first.Length - position, bytesToRead);
+                bytesToRead = Math.Min(first.Count - position, bytesToRead);
 
                 //Console.WriteLine("Copying " + bytesRead + " bytes from first.");
-                Buffer.BlockCopy(first, (int)position, buffer, offset, (int)bytesToRead);
+                Buffer.BlockCopy(first.Array, first.Offset + (int)position, buffer, offset, (int)bytesToRead);
                 position += bytesToRead;
 
                 return new int[] { (int)bytesToRead }.ToObservable();
