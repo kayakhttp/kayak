@@ -51,7 +51,7 @@ namespace Kayak
 
                 if (bodyDataPosition != -1)
                 {
-                    Console.WriteLine("Read " + totalBytesRead + ", body starts at " + bodyDataPosition);
+                    //Console.WriteLine("Read " + totalBytesRead + ", body starts at " + bodyDataPosition);
                     var last = result[result.Count - 1];
                     var overlapLength = totalBytesRead - bodyDataPosition;
                     result[result.Count - 1] = new ArraySegment<byte>(last.Array, last.Offset, last.Count - overlapLength); 
@@ -59,6 +59,7 @@ namespace Kayak
                     break;
                 }
 
+                // TODO test this
                 if (totalBytesRead > MaxHeaderLength)
                     throw new Exception("Request headers data exceeds max header length.");
             }

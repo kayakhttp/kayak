@@ -18,15 +18,6 @@ namespace Kayak
     /// </summary>
     public class Coroutine<T> : IObservable<T>
     {
-        // ideally, Coroutine would be declared as:
-        // 
-        // Coroutine<T> : ISubject<T>
-        //
-        // but this is only useful if ISubject is co- and contra-variant
-        // (where ISubject<T> : IObservable<out T>, IObserver<in T>).
-        // 
-        // for now we fake it by introducing a shim type which casts to object.
-
         IObserver<T> observer;
         IEnumerator<object> continuation;
         IDisposable subscription;
@@ -88,7 +79,6 @@ namespace Kayak
 
             try
             {
-                //Trace.Write("Executing continuation " + continuation);
                 continues = continuation.MoveNext();
             }
             catch (Exception e)
@@ -97,67 +87,69 @@ namespace Kayak
                 return;
             }
 
-            if (continues)
-            {
-                try
-                {
-                    var value = continuation.Current;
-					
-                    // if we could support variance:
-
-					// this way enumerator blocks could yield any sort of object, we would be able
-					// to test for IObservable<T> (T would be covariant), and we could subscribe to it,
-					// and subscribers to us could observe values produced by that observable.
-					
-					// but unfortunately we can't get the variant versions of IObservable/IObserver
-					// to work with mono! so Coroutine is not generic, it implements ISubject<object>,
-					// and we use a crazy shim type to observe any IObservable a block may yield,
-					// and it forwards calls from that observable to us (with values cast to object).
-					
-					// bleh.
-
-                    Type observableInterface = null;
-
-                    if (value != null)
-                        observableInterface = value.GetType().GetInterface("IObservable`1");
-
-                    if (observableInterface == null)
-                    {
-                        if (value is T)
-                            observer.OnNext((T)value);
-
-                        Continue();
-                    }
-                    else
-                    {
-						var genericArg = observableInterface.GetGenericArguments()[0];
-						var shimType = typeof(ObserverShim<,>).MakeGenericType(genericArg, typeof(T));
-                        var shimConstructor = shimType.GetConstructor(new Type[] { typeof(Coroutine<T>) });
-                        var shim = shimConstructor.Invoke(new object[] { this });
-						var genericSubscribe = observableInterface.GetMethod("Subscribe");
-
-						subscription = (IDisposable)genericSubscribe.Invoke(value, new object[] { shim });
-                    }
-                }
-                catch (Exception e)
-                {
-                    OnError(e);
-                }
-            }
-            else
+            if (!continues)
             {
                 Complete();
+                return;
+            }
+
+            try
+            {
+                var value = continuation.Current;
+
+                // really i want to type
+                //
+                // if (value is IObservable<object>)
+                //     (value as IObservable<object>).Subscribe(o => { }, e => OnError, OnCompleted)
+                // else
+                //     ...
+
+                // unfortunately i can't get the variant versions of IObservable/IObserver
+                // to work with mono! i can't call IObservable<T>.Subscribe() with
+                // an IObserver<object>, so I bake up a crazy shim type which forwards
+                // Exception and Complete messages to us. Values are discarded; they're 
+                // only meaningful to the enclosing scope, which is opaque to this class.
+
+                Type observableInterface = null;
+
+                if (value != null)
+                    observableInterface = value.GetType().GetInterface("IObservable`1");
+
+                if (observableInterface != null)
+                {
+                    var genericArg = observableInterface.GetGenericArguments()[0];
+                    var shimType = typeof(ObserverShim<,>).MakeGenericType(genericArg, typeof(T));
+
+                    var shimConstructor = shimType.GetConstructor(new Type[] { typeof(Coroutine<T>) });
+                    var shim = shimConstructor.Invoke(new object[] { this });
+
+                    var genericSubscribe = observableInterface.GetMethod("Subscribe");
+                    subscription = (IDisposable)genericSubscribe.Invoke(value, new object[] { shim });
+                }
+                else
+                {
+                    if (value is T)
+                        observer.OnNext((T)value);
+
+                    Continue();
+                }
+
+            }
+            catch (Exception e)
+            {
+                OnError(e);
             }
 	    }
     }
 
+    // this must be outside Coroutine<T> or else their generic types will get tangled.
     class ObserverShim<T0, T1> : IObserver<T0>
     {
         Coroutine<T1> coroutine;
 
         public void OnNext(T0 value)
         {
-            // discard
+            // discard!
         }
 
         public void OnError(Exception exception)

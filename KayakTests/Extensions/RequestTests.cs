@@ -39,7 +39,6 @@ namespace KayakTests.Extensions
                     .Setup(s => s.Read(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>()))
                     .Returns<byte[], int, int>((byte[] b, int o, int c) =>
                     {
-                        Console.WriteLine("got call.");
                         return Observable.Create<int>(ob => {
                             var chunk = chunks[readCount++];
                             Buffer.BlockCopy(chunk.Array, chunk.Offset, b, o, chunk.Count);
@@ -47,7 +46,7 @@ namespace KayakTests.Extensions
                             ob.OnCompleted();
                             return null;
                         });
-                    });
+                    }).Verifiable();
 
                 gotException = gotCompleted = gotResult = false;
                 exception = null;
@@ -62,19 +61,6 @@ namespace KayakTests.Extensions
                     () => { gotCompleted = true; });
             }
 
-            void AssertData()
-            {
-                Assert.AreEqual(chunks.Count, result.Count - 1, "Unexpected result count.");
-                for (int i = 0; i < chunks.Count; i++)
-                {
-                    var c = chunks[i];
-                    var r = result[i];
-                    Assert.AreEqual(
-                        Encoding.ASCII.GetString(c.Array, c.Offset, c.Count), 
-                        Encoding.ASCII.GetString(r.Array, r.Offset, r.Count), "Invalid chunk.");
-                }
-            }
-
             void AssertResult()
             {
                 Assert.AreEqual(headers, result.Take(result.Count - 1).GetString(), "Incorrect header result.");
@@ -85,6 +71,13 @@ namespace KayakTests.Extensions
                 Assert.AreEqual(rest.Substring(0, length), result.Skip(result.Count - 1).GetString(), "Incorrect rest result.");
             }
 
+            void AssertObservableBehavior()
+            {
+                Assert.IsFalse(gotException, "Unexpected exception.");
+                Assert.IsTrue(gotResult, "Didn't get result.");
+                Assert.IsTrue(gotCompleted, "Didn't get completed.");
+            }
+
             [Test]
             public void SingleReadNoOverlap()
             {
@@ -92,8 +85,7 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                Assert.IsFalse(gotException, "Unexpected exception.");
-                Assert.IsTrue(gotResult, "Didn't get result.");
+                AssertObservableBehavior();
                 Assert.AreEqual(2, result.Count, "Unexpected result buffer count.");
                 AssertResult();
                 Assert.AreEqual(14, result[0].Count, "Unexpected header buffer length.");
@@ -107,8 +99,7 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                Assert.IsFalse(gotException, "Unexpected exception.");
-                Assert.IsTrue(gotResult, "Didn't get result.");
+                AssertObservableBehavior();
                 Assert.AreEqual(2, result.Count, "Unexpected result buffer count.");
                 AssertResult();
                 Assert.AreEqual(14, result[0].Count, "Unexpected header buffer length.");
@@ -123,8 +114,7 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                Assert.IsFalse(gotException, "Unexpected exception.");
-                Assert.IsTrue(gotResult, "Didn't get result.");
+                AssertObservableBehavior();
                 Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
                 AssertResult();
                 Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
@@ -140,8 +130,7 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                Assert.IsFalse(gotException, "Unexpected exception.");
-                Assert.IsTrue(gotResult, "Didn't get result.");
+                AssertObservableBehavior();
                 Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
                 AssertResult();
                 Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
@@ -157,8 +146,7 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                Assert.IsFalse(gotException, "Unexpected exception.");
-                Assert.IsTrue(gotResult, "Didn't get result.");
+                AssertObservableBehavior();
                 Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
                 AssertResult();
                 Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
@@ -174,8 +162,7 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                Assert.IsFalse(gotException, "Unexpected exception.");
-                Assert.IsTrue(gotResult, "Didn't get result.");
+                AssertObservableBehavior();
                 Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
                 AssertResult();
                 Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");

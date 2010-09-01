@@ -23,6 +23,12 @@ namespace Kayak
             return WriteAsync(buffer, 0, buffer.Length);
         }
 
+        public IObservable<Unit> WriteAsync(ArraySegment<byte> buffer)
+        {
+            // TODO implement all other write overloads in terms of this one.
+            return WriteAsync(buffer.Array, buffer.Offset, buffer.Count);
+        }
+
         public IObservable<Unit> WriteAsync(byte[] buffer, int offset, int count)
         {
             if (first != null)

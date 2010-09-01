@@ -74,10 +74,10 @@ namespace Kayak.Framework
             if (parameters.Count() == 0 || context.Request.Body == null)
                 yield break;
 
-            MemoryStream buffer = new MemoryStream();
-            yield return BufferRequestBody(context, buffer).AsCoroutine<Unit>();
+            IList<ArraySegment<byte>> requestBody = null;
+            yield return BufferRequestBody(context).AsCoroutine<IList<ArraySegment<byte>>>().Do(d => requestBody = d);
 
-            var reader = new JsonReader(new StreamReader(buffer));
+            var reader = new JsonReader(new StringReader(requestBody.GetString()));
 
             if (parameters.Count() > 1)
                 reader.Read(); // read array start
@@ -89,25 +89,24 @@ namespace Kayak.Framework
                 reader.Read(); // read array end
         }
 
-        IEnumerable<object> BufferRequestBody(IKayakContext context, MemoryStream stream)
+        IEnumerable<object> BufferRequestBody(IKayakContext context)
         {
-            int bytesRead = 0;
-            byte[] buffer = new byte[1024];
-
-            int contentLength = context.Request.Headers.GetContentLength();
+            var bytesRead = 0;
+            var contentLength = context.Request.Headers.GetContentLength();
+            var result = new List<ArraySegment<byte>>();
 
             while (true)
             {
-                yield return context.Request.Body.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
+                ArraySegment<byte> data = default(ArraySegment<byte>);
+                yield return context.Request.Body.ReadAsync().Do(d => data = d);
 
-                stream.Write(buffer, 0, bytesRead);
+                result.Add(data);
 
-                if (stream.Length == contentLength)
+                bytesRead += data.Count;
+
+                if (bytesRead == contentLength)
                     break;
             }
-
-            buffer = null;
-            stream.Position = 0;
         }
     }
 

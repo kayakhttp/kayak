@@ -77,15 +77,14 @@ namespace KayakExamples
             var contentLength = int.Parse(Request.Headers["Content-Length"]);
             Response.Headers["Content-Length"] = contentLength.ToString();
 
-            var buffer = new byte[1024];
-            int bytesCopied = 0;
+            int bytesRead = 0;
 
-            while (bytesCopied < contentLength)
+            while (bytesRead < contentLength)
             {
-                int bytesRead = 0;
-                yield return Request.Body.ReadAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
-                yield return Response.Body.WriteAsync(buffer, 0, bytesRead);
-                bytesCopied += bytesRead;
+                ArraySegment<byte> data = default(ArraySegment<byte>);
+                yield return Request.Body.ReadAsync().Do(d => data = d);
+                yield return Response.Body.WriteAsync(data);
+                bytesRead += data.Count;
             }
         }
 
