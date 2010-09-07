@@ -1,4 +1,4 @@
-using System;
+ using System;
 using System.IO;
 using System.Net;
 using System.Disposables;
@@ -15,7 +15,6 @@ namespace Kayak
         int backlog;
 
         Socket listener;
-        Func<IObservable<Socket>> accept;
         IObserver<ISocket> observer;
 
         ManualResetEvent wh;
@@ -49,8 +48,6 @@ namespace Kayak
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 10000);
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
             listener.Listen(backlog);
-
-            accept = Observable.FromAsyncPattern<Socket>(listener.BeginAccept, listener.EndAccept);
 
             try
             {

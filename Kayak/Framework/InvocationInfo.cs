@@ -16,6 +16,12 @@ namespace Kayak.Framework
         {
             return Method.Invoke(Target, Arguments);
         }
+
+        public override string ToString()
+        {
+            if (Method == null) return base.ToString();
+            return Method.DeclaringType.Namespace + "." + Method.DeclaringType.Name + "." + Method.Name;
+        }
     }
 
     public static partial class Extensions

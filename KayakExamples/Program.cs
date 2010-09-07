@@ -81,7 +81,7 @@ namespace KayakExamples
 
             while (bytesRead < contentLength)
             {
-                ArraySegment<byte> data = default(ArraySegment<byte>);
+                var data = default(ArraySegment<byte>);
                 yield return Request.Body.ReadAsync().Do(d => data = d);
                 yield return Response.Body.WriteAsync(data);
                 bytesRead += data.Count;

@@ -112,6 +112,7 @@
     <Compile Include="KayakServerRequest.cs" />
     <Compile Include="KayakServerResponse.cs" />
     <Compile Include="NameValueDictionary.cs" />
+    <Compile Include="Observables.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RequestStream.cs" />
     <Compile Include="ResponseStream.cs" />

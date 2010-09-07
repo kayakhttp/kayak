@@ -1,53 +1,37 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.IO;
 
 namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets)
+        public static IConnectableObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets)
         {
-            return sockets.ToContexts(s => s.CreateContext());
+            return sockets.ToContexts(s => s.BeginContext(), (s, e) =>
+            {
+                Console.Error.WriteLine("Exception while creating context!");
+                Console.Error.WriteException(e);
+                s.Dispose();
+            }); 
         }
 
-        public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets, Func<ISocket, IObservable<IKayakContext>> transform)
+        public static IConnectableObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets, 
+            Func<ISocket, IObservable<IKayakContext>> transform,
+            Action<ISocket, Exception> transformExceptionHandler)
         {
-            return Observable.CreateWithDisposable<IKayakContext>(o => sockets.Subscribe(s =>
-                    {
-                        transform(s).Subscribe(c =>
-                            {
-                                o.OnNext(c);
-                            },
-                            e =>
-                            {
-                                Console.WriteLine("Exception while creating context!");
-                                Console.Out.WriteException(e);
-                                s.Dispose();
-                            });
-                    },
-                    e =>
-                    {
-                        o.OnError(e);
-                    },
-                    () =>
-                    {
-                        o.OnCompleted();
-                    })
-            );
+            return new AsyncTransform<ISocket, IKayakContext>(sockets, transform, transformExceptionHandler);
         }
 
-        public static IObservable<IKayakContext> CreateContext(this ISocket socket)
+        public static IObservable<IKayakContext> BeginContext(this ISocket socket)
         {
             if (socket == null)
                 throw new ArgumentNullException("socket");
 
-            return CreateContextInternal(socket).AsCoroutine<IKayakContext>();
+            return BeginContextInternal(socket).AsCoroutine<IKayakContext>();
         }
 
-        static IEnumerable<object> CreateContextInternal(ISocket socket)
+        static IEnumerable<object> BeginContextInternal(ISocket socket)
         {
             KayakServerRequest request = null;
             yield return socket.CreateRequest().Do(r => request = r);
@@ -60,6 +44,7 @@ namespace Kayak
         public static void End(this IKayakContext context)
         {
             // TODO this is wrong.
+            // maybe some internal property, (!context.Response.Body.DataWritten)
             context.End(context.Response.Headers.GetContentLength() <= 0);
         }
 
@@ -67,8 +52,8 @@ namespace Kayak
         {
             EndInternal(context, writeHeaders).AsCoroutine<Unit>().Subscribe(u => { }, e => 
             {
-                Console.WriteLine("Exception while ending context!");
-                Console.Out.WriteException(e);
+                Console.Error.WriteLine("Exception while ending context!");
+                Console.Error.WriteException(e);
             });
         }
 

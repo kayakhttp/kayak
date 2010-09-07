@@ -25,6 +25,17 @@ namespace Kayak.Framework
             ExceptionHandlers = new List<IInvocationExceptionHandler>();
         }
 
+        public static KayakInvocationBehavior CreateDefaultBehavior(Type[] types)
+        {
+            var behavior = new KayakInvocationBehavior();
+            behavior.Binders.Add(new HeaderBinder((s, t) => s.Coerce(t)));
+            behavior.ExceptionHandlers.Add(new DefaultExceptionHandler());
+            behavior.MapTypes(types);
+            behavior.AddFileSupport();
+            behavior.AddJsonSupport();
+            return behavior;
+        }
+
         public IObservable<InvocationInfo> Bind(IKayakContext context)
         {
             return BindInternal(context).AsCoroutine<InvocationInfo>();
