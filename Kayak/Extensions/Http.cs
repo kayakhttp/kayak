@@ -14,7 +14,6 @@ namespace Kayak
 
     public static partial class Extensions
     {
-
         public static int GetContentLength(this NameValueDictionary headers)
         {
             int contentLength = -1;
