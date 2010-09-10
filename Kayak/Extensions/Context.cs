@@ -10,33 +10,7 @@ namespace Kayak
     {
         public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets)
         {
-            return sockets.ToContexts(s => s.CreateContext());
-        }
-
-        public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets, Func<ISocket, IObservable<IKayakContext>> transform)
-        {
-            return Observable.CreateWithDisposable<IKayakContext>(o => sockets.Subscribe(s =>
-                    {
-                        transform(s).Subscribe(c =>
-                            {
-                                o.OnNext(c);
-                            },
-                            e =>
-                            {
-                                Console.WriteLine("Exception while creating context!");
-                                Console.Out.WriteException(e);
-                                s.Dispose();
-                            });
-                    },
-                    e =>
-                    {
-                        o.OnError(e);
-                    },
-                    () =>
-                    {
-                        o.OnCompleted();
-                    })
-            );
+            return sockets.SelectMany(s => s.CreateContext());
         }
 
         public static IObservable<IKayakContext> CreateContext(this ISocket socket)
