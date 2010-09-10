@@ -56,5 +56,25 @@ namespace Kayak.Oars
             if (IsClosed)
                 throw new ObjectDisposedException("Connection");
         }
+
+        #region ISocket Members
+
+
+        public IObservable<int> Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IObservable<int> WriteFile(string file, int offset, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IObservable<int> Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotImplementedException();
+        }
+
+        #endregion
     }
 }
