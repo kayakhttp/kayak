@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Web;
+using System.Collections.Generic;
 
 namespace Kayak
 {
@@ -7,12 +8,12 @@ namespace Kayak
     {
         HttpRequestLine requestLine;
         string path;
-        NameValueDictionary queryString;
+        IDictionary<string, string> queryString;
 
         public string Verb { get { return requestLine.Verb; } }
         public string RequestUri { get { return requestLine.RequestUri; } }
         public string HttpVersion { get { return requestLine.HttpVersion; } }
-        public NameValueDictionary Headers { get; private set; }
+        public IDictionary<string, string> Headers { get; private set; }
         public RequestStream Body { get; private set; }
 
         #region Derived properties
@@ -28,14 +29,14 @@ namespace Kayak
         /// <summary>
         /// Gets the collection of parameters defined in the request uri's query string.
         /// </summary>
-        public NameValueDictionary QueryString
+        public IDictionary<string, string> QueryString
         {
             get { return queryString ?? (queryString = this.GetQueryString()); }
         }
 
         #endregion
 
-        public KayakServerRequest(HttpRequestLine requestLine, NameValueDictionary headers, RequestStream body)
+        public KayakServerRequest(HttpRequestLine requestLine, IDictionary<string, string> headers, RequestStream body)
         {
             this.requestLine = requestLine;
             Headers = headers;

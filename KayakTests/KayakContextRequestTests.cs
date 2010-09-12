@@ -17,7 +17,7 @@ namespace KayakTests
         Mock<ISocket> mockSocket;
 
         string verb, requestUri, httpVersion;
-        NameValueDictionary headers;
+        Dictionary<string, string> headers;
         string body;
 
         KayakContext context;
@@ -44,7 +44,7 @@ namespace KayakTests
 
             if (headers != null)
                 foreach (var pair in headers)
-                    requestData += string.Format("{0}: {1}\r\n", pair.Name, pair.Value);
+                    requestData += string.Format("{0}: {1}\r\n", pair.Key, pair.Value);
 
             requestData += "\r\n";
 
@@ -79,8 +79,8 @@ namespace KayakTests
             if (headers != null)
                 foreach (var pair in headers)
                 {
-                    Assert.IsTrue(context.Request.Headers.Names.Contains(pair.Name), "Parsed headers did not contain name '" + pair.Name + "'");
-                    Assert.AreEqual(pair.Value, context.Request.Headers[pair.Name], "Parsed headers contained unexpected value.");
+                    Assert.IsTrue(context.Request.Headers.ContainsKey(pair.Key), "Parsed headers did not contain name '" + pair.Key + "'");
+                    Assert.AreEqual(pair.Value, context.Request.Headers[pair.Key], "Parsed headers contained unexpected value.");
                 }
             else
                 Assert.AreEqual(0, context.Request.Headers.Count, "Expected no headers.");
@@ -110,7 +110,7 @@ namespace KayakTests
             verb = "GET";
             requestUri = "/foobar";
             httpVersion = "HTTP/1.0";
-            headers = new NameValueDictionary();
+            headers = new Dictionary<string, string>();
             headers["User-Agent"] = "KayakTests";
 
             SetUpContext();
@@ -126,7 +126,7 @@ namespace KayakTests
             verb = "POST";
             requestUri = "/foobar";
             httpVersion = "HTTP/1.0";
-            headers = new NameValueDictionary();
+            headers = new Dictionary<string, string>();
             headers["User-Agent"] = "KayakTests";
             body = "Fooooooo. Baaaaarrrrrr.";
             headers["Content-Length"] = body.Length.ToString();

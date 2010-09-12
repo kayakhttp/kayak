@@ -6,6 +6,9 @@ using System.Net;
 
 namespace Kayak
 {
+    /// <summary>
+    /// Represents a socket which supports asynchronous IO operations.
+    /// </summary>
     public interface ISocket : IDisposable
     {
         IPEndPoint RemoteEndPoint { get; }
@@ -19,7 +22,7 @@ namespace Kayak
         ISocket Socket { get; }
         IKayakServerRequest Request { get; }
         IKayakServerResponse Response { get; }
-        Dictionary<object, object> Items { get; }
+        IDictionary<object, object> Items { get; }
     }
 
     public interface IKayakServerRequest
@@ -27,13 +30,13 @@ namespace Kayak
         string Verb { get; }
         string RequestUri { get; }
         string HttpVersion { get; }
-        NameValueDictionary Headers { get; }
+        IDictionary<string, string> Headers { get; }
         RequestStream Body { get; }
 
         #region Derived properties
 
         string Path { get; }
-        NameValueDictionary QueryString { get; }
+        IDictionary<string, string> QueryString { get; }
 
         #endregion
     }
@@ -43,7 +46,7 @@ namespace Kayak
         int StatusCode { get; set; }
         string ReasonPhrase { get; set; }
         string HttpVersion { get; set; }
-        NameValueDictionary Headers { get; set; }
+        IDictionary<string, string> Headers { get; set; }
         ResponseStream Body { get; }
     }
 }

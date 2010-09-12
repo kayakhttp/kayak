@@ -10,7 +10,7 @@ namespace Kayak
         string reasonPhrase;
         string httpVersion;
         ResponseStream body;
-        NameValueDictionary headers;
+        IDictionary<string, string> headers;
         ISocket socket;
 
         /// <summary>
@@ -39,7 +39,7 @@ namespace Kayak
             set { ThrowIfBodyAccessed(); httpVersion = value; }
         }
 
-        public NameValueDictionary Headers { 
+        public IDictionary<string, string> Headers { 
             get { return headers; }
             set { ThrowIfBodyAccessed(); headers = value; } 
         }
@@ -59,7 +59,7 @@ namespace Kayak
             statusCode = 200;
             reasonPhrase = "OK";
             httpVersion = "HTTP/1.0";
-            headers = new NameValueDictionary();
+            headers = new Dictionary<string,string>();
         }
         
         void ThrowIfBodyAccessed()

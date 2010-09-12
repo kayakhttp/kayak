@@ -79,15 +79,14 @@ namespace Kayak
             
             var headers = response.Headers;
 
-            if (!headers.Names.Contains("Server"))
+            if (!headers.ContainsKey("Server"))
                 headers["Server"] = "Kayak";
 
-            if (!headers.Names.Contains("Date"))
+            if (!headers.ContainsKey("Date"))
                 headers["Date"] = DateTime.UtcNow.ToString();
 
-            foreach (NameValuePair pair in headers)
-                foreach (string value in pair.Values)
-                    sb.AppendFormat("{0}: {1}\r\n", pair.Name, value);
+            foreach (var pair in headers)
+                sb.AppendFormat("{0}: {1}\r\n", pair.Key, pair.Value);
 
             sb.Append("\r\n");
 

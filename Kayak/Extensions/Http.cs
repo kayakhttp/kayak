@@ -2,26 +2,40 @@
 using System.IO;
 using System.Text;
 using System.Web;
+using System.Collections.Generic;
 
 namespace Kayak
 {
+    /// <summary>
+    /// Represents the first line of an HTTP request. Used when constructing a `KayakServerRequest`.
+    /// </summary>
     public struct HttpRequestLine
     {
+        /// <summary>
+        /// The verb component of the request line (e.g., GET, POST, etc).
+        /// </summary>
         public string Verb;
+        /// <summary>
+        /// The request URI component of the request line (e.g., /path/and?query=string).
+        /// </summary>
         public string RequestUri;
+
+        /// <summary>
+        /// The HTTP version conmponent of the request line (e.g., HTTP/1.0).
+        /// </summary>
         public string HttpVersion;
     }
 
     public static partial class Extensions
     {
-        public static int GetContentLength(this NameValueDictionary headers)
+        public static int GetContentLength(this IDictionary<string, string> headers)
         {
             int contentLength = -1;
             
             // ugly. we need to decide in one spot whether or not we're case-sensitive for all headers.
-            if (headers["Content-Length"] != null)
+            if (headers.ContainsKey("Content-Length"))
                 int.TryParse(headers["Content-Length"], out contentLength);
-            else if (headers["Content-length"] != null)
+            else if (headers.ContainsKey("Content-length"))
                 int.TryParse(headers["Content-length"], out contentLength);
 
             return contentLength;
@@ -30,15 +44,15 @@ namespace Kayak
         const char EqualsChar = '=';
         const char AmpersandChar = '&';
 
-        public static NameValueDictionary DecodeQueryString(this string encodedString)
+        public static IDictionary<string, string> DecodeQueryString(this string encodedString)
         {
             return DecodeQueryString(encodedString, 0, encodedString.Length);
         }
 
-        public static NameValueDictionary DecodeQueryString(this string encodedString,
+        public static IDictionary<string, string> DecodeQueryString(this string encodedString,
             int charIndex, int charCount)
         {
-            var result = new NameValueDictionary();
+            var result = new Dictionary<string, string>();
             var name = new StringBuilder();
             var value = new StringBuilder();
             var hasValue = false;
@@ -71,7 +85,7 @@ namespace Kayak
             return result;
         }
 
-        static void AddNameValuePair(NameValueDictionary dict, StringBuilder name, StringBuilder value, bool hasValue)
+        static void AddNameValuePair(IDictionary<string, string> dict, StringBuilder name, StringBuilder value, bool hasValue)
         {
             if (name.Length > 0)
                 dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);

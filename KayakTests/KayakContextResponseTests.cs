@@ -17,7 +17,7 @@ namespace KayakTests
 
         int statusCode;
         string reasonPhrase;
-        NameValueDictionary headers;
+        IDictionary<string, string> headers;
         string body;
 
         Mock<ISocket> mockSocket;
@@ -40,7 +40,7 @@ namespace KayakTests
             //context = new KayakContext(mockSocket.Object);
             //context.Subscribe(n => { }, e => contextException = e, () => contextCompleted = true);
 
-            headers = new NameValueDictionary();
+            headers = new Dictionary<string, string>();
             headers["Server"] = "Kayak";
             headers["Date"] = DateTime.UtcNow.ToString();
 
@@ -65,7 +65,7 @@ namespace KayakTests
 
             if (headers != null)
                 foreach (var pair in headers)
-                    expected += string.Format("{0}: {1}\r\n", pair.Name, pair.Value);
+                    expected += string.Format("{0}: {1}\r\n", pair.Key, pair.Value);
 
             expected += "\r\n";
 
@@ -104,7 +104,7 @@ namespace KayakTests
         {
             statusCode = 302;
             reasonPhrase = "Found";
-            headers = new NameValueDictionary();
+            headers = new Dictionary<string, string>();
             headers["Location"] = "http://yo.momma/";
             headers["Server"] = "Yo Daddy";
 

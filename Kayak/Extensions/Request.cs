@@ -120,7 +120,7 @@ namespace Kayak
             headerBuffer.Remove(overlap);
             
             HttpRequestLine requestLine;
-            NameValueDictionary headers;
+            IDictionary<string, string> headers;
             headerBuffer.GetString().ParseHttpHeaders(out requestLine, out headers);
 
             RequestStream requestBody = null;
@@ -139,7 +139,7 @@ namespace Kayak
             yield return new KayakServerRequest(requestLine, headers, requestBody);
         }
 
-        public static void ParseHttpHeaders(this string s, out HttpRequestLine requestLine, out NameValueDictionary headers)
+        public static void ParseHttpHeaders(this string s, out HttpRequestLine requestLine, out IDictionary<string, string> headers)
         {
             var reader = new StringReader(s);
 
@@ -168,7 +168,7 @@ namespace Kayak
                 ? statusLine.Substring(firstSpace + 1, lastSpace - firstSpace - 1)
                 : statusLine.Substring(firstSpace + 1);
 
-            headers = new NameValueDictionary();
+            headers = new Dictionary<string, string>();
             string line = null;
 
             while (!string.IsNullOrEmpty(line = reader.ReadLine()))
@@ -177,7 +177,7 @@ namespace Kayak
                 headers.Add(line.Substring(0, colon), line.Substring(colon + 1).Trim());
             }
 
-            headers.BecomeReadOnly();
+            //headers.BecomeReadOnly();
         }
 
         public static string GetPath(this IKayakServerRequest request)
@@ -186,12 +186,12 @@ namespace Kayak
             return HttpUtility.UrlDecode(question >= 0 ? request.RequestUri.Substring(0, question) : request.RequestUri);
         }
 
-        public static NameValueDictionary GetQueryString(this IKayakServerRequest request)
+        public static IDictionary<string, string> GetQueryString(this IKayakServerRequest request)
         {
             int question = request.RequestUri.IndexOf('?');
             return question >= 0 ?
                 request.RequestUri.DecodeQueryString(question + 1, request.RequestUri.Length - question - 1) :
-                new NameValueDictionary();
+                new Dictionary<string, string>();
         }
     }
 }

@@ -10,7 +10,7 @@ namespace Kayak
         public ISocket Socket { get; private set; }
         public IKayakServerRequest Request { get; private set; }
         public IKayakServerResponse Response { get; private set; }
-        public Dictionary<object, object> Items { get; private set; }
+        public IDictionary<object, object> Items { get; private set; }
 
         public KayakContext(ISocket socket, IKayakServerRequest request, IKayakServerResponse response)
         {

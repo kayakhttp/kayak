@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Reflection;
+using System.Collections.Generic;
 
 namespace Kayak.Framework
 {
@@ -17,7 +18,7 @@ namespace Kayak.Framework
         {
             var request = context.Request;
             var parameters = info.Method.GetParameters().Where(p => !RequestBodyAttribute.IsDefinedOn(p));
-            var pathParams = context.Items[MethodMap.PathParamsContextKey] as NameValueDictionary;
+            var pathParams = context.Items[MethodMap.PathParamsContextKey] as Dictionary<string, string>;
 
             foreach (ParameterInfo param in parameters)
             {

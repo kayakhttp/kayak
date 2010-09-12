@@ -7,6 +7,7 @@ using Kayak;
 using JimBlackler.DocsByReflection;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Web;
 
 namespace KayakDocs
 {
@@ -14,7 +15,6 @@ namespace KayakDocs
     {
         static void Main(string[] args)
         {
-
             var fileName = "docs.html";
 
             if (File.Exists(fileName))
@@ -26,20 +26,23 @@ namespace KayakDocs
             tw.WriteLine("<html><head><title>Kayak Documentation</title></head><body><h1>Kayak Documentation</h1>");
 
             var types = Assembly.GetAssembly(typeof(IKayakContext)).GetExportedTypes()
-                .OrderBy(t => t.Namespace + "." + t.Name)
+                .OrderBy(t => (t.Namespace.Contains("Framework") ? "1" : "0") + "." + t.Name)
+                .Where(t => t.Name != "Extensions" && !t.Namespace.Contains("LitJson"))
                 .Select(t => new DocumentedType(t));
 
             foreach (var type in types)
             {
-                tw.WriteLine(string.Format("<h2>{0}</h2>", type.Name));
-                tw.WriteLine(string.Format("<p>{0}</p>", type.Description));
+                Console.WriteLine("Documenting type " + type.Type.Namespace + "." + type.Type.Name + "...");
+
+                tw.WriteLine(string.Format("<h2>{0}</h2>", HttpUtility.HtmlEncode(DocumentedMember.GetFriendlyTypeName(type.Type))));
+                tw.WriteLine(string.Format("<p>{0}</p>", HttpUtility.HtmlEncode(type.Description)));
 
                 if (type.Properties.Count > 0)
                     WriteMemberList(tw, type.Properties, "Properties");
                 if (type.Methods.Count > 0)
-                    WriteMemberList(tw, type.Properties, "Methods");
+                    WriteMemberList(tw, type.Methods, "Methods");
                 if (type.Extensions.Count > 0)
-                    WriteMemberList(tw, type.Properties, "Extensions");
+                    WriteMemberList(tw, type.Extensions, "Extensions");
             }
 
             tw.WriteLine("</body></html>");
@@ -57,7 +60,7 @@ namespace KayakDocs
 
             foreach (var property in memberList)
             {
-                tw.WriteLine(string.Format("<li><code>{0}</code> &mdash; {1}</li>", property.Signature, property.Description));
+                tw.WriteLine(string.Format("<li><code>{0}</code> &mdash; {1}</li>", HttpUtility.HtmlEncode(property.Signature), HttpUtility.HtmlEncode(property.Description)));
             }
 
             tw.WriteLine("</ul>");
@@ -66,7 +69,6 @@ namespace KayakDocs
 
     class DocumentedType
     {
-        public string Name { get { return Type.Name; } }
         public string Description
         {
             get
@@ -105,11 +107,11 @@ namespace KayakDocs
         {
             var result = new List<DocumentedMember>();
 
-            foreach (var property in type.GetProperties(BindingFlags.DeclaredOnly))
+            foreach (var property in type.IsInterface ? type.GetProperties() : type.GetProperties(BindingFlags.DeclaredOnly))
             {
                 var documentedMember = new DocumentedMember();
 
-                documentedMember.Signature = string.Format("{0} {1}", property.PropertyType, property.Name);
+                documentedMember.Signature = string.Format("{0} {1}", FixPrimitives(GetFriendlyTypeName(property.PropertyType)), property.Name);
                 documentedMember.Description = GetDescription(property);
 
                 result.Add(documentedMember);
@@ -122,8 +124,10 @@ namespace KayakDocs
         {
             var result = new List<DocumentedMember>();
 
-            foreach (var method in type.GetMethods())
+            foreach (var method in type.IsInterface ? type.GetMethods() : type.GetMethods(BindingFlags.DeclaredOnly))
             {
+                if (method.IsSpecialName) continue;
+
                 var documentedMember = new DocumentedMember();
 
                 documentedMember.Signature = GetSignature(method, method.GetParameters());
@@ -159,9 +163,54 @@ namespace KayakDocs
 
         static string GetSignature(MethodInfo method, IEnumerable<ParameterInfo> parameters)
         {
-            var paramsString = parameters.Aggregate("", (s, p) => string.Format("{0} {1}, ", p.ParameterType, p.Name));
+            var paramsString = parameters.Aggregate("", (s, p) => string.Format("{0} {1}, ", GetFriendlyTypeName(p.ParameterType), p.Name)).TrimEnd(", ".ToCharArray());
 
-            return string.Format("{0} {1}({2})", method.ReturnType, method.Name, paramsString);
+            var returnType = FixPrimitives(GetFriendlyTypeName(method.ReturnType));
+            paramsString = FixPrimitives(paramsString);
+                
+
+            return string.Format("{0} {1}({2})", returnType, method.Name, paramsString);
+        }
+
+        public static string GetFriendlyTypeName(Type type)
+        {
+            if (type.IsGenericParameter)
+            {
+                return type.Name;
+            }
+
+            if (!type.IsGenericType)
+            {
+                return type.FullName;
+            }
+
+            var builder = new System.Text.StringBuilder();
+            var name = type.Name;
+            var index = name.IndexOf("`");
+            builder.Append(name.Substring(0, index));
+            builder.Append('<');
+            var first = true;
+            foreach (var arg in type.GetGenericArguments())
+            {
+                if (!first)
+                {
+                    builder.Append(", ");
+                }
+                builder.Append(GetFriendlyTypeName(arg));
+                first = false;
+            }
+            builder.Append('>');
+            return builder.ToString();
+        }
+
+        static string FixPrimitives(string s)
+        {
+            return s.Replace("System.String", "string")
+                .Replace("System.Boolean", "bool")
+                .Replace("System.Void", "void")
+                .Replace("System.Byte", "byte")
+                .Replace("System.Object", "object")
+                .Replace("System.Int32", "int");
         }
 
         static string GetDescription(MemberInfo method)

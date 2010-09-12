@@ -13,7 +13,7 @@ namespace Kayak.Framework
         {
             public MethodInfo Method;
             public int Score;
-            public NameValueDictionary Params = new NameValueDictionary();
+            public Dictionary<string, string> Params = new Dictionary<string, string>();
         }
 
         string parameter;
@@ -110,7 +110,7 @@ namespace Kayak.Framework
         }
     }
 
-    public static class MethodMapExtensions
+    public static partial class Extensions
     {
         public static MethodMap CreateMethodMap(this Type[] types)
         {
