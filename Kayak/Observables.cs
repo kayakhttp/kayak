@@ -77,7 +77,9 @@ namespace Kayak
             var ss = source.Subscribe((TIn o) =>
             {
                 var transformed = transform(o);
-                transformed.Catch<TOut, Exception>(e => { transformExceptionHandler(o, e); return null; }).Subscribe(subject);
+                transformed
+                    .Catch<TOut, Exception>(e => { transformExceptionHandler(o, e); return null; })
+                    .Subscribe(ob => subject.OnNext(ob));
             });
             // we don't care about errors or completed on the source observable right now.
 

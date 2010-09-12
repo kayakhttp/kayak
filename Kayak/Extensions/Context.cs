@@ -6,21 +6,15 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IConnectableObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets)
+        public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets)
         {
-            return sockets.ToContexts(s => s.BeginContext(), (s, e) =>
-            {
-                Console.Error.WriteLine("Exception while creating context!");
-                Console.Error.WriteException(e);
-                s.Dispose();
-            }); 
+            return sockets.ToContexts(s => s.BeginContext());
         }
 
-        public static IConnectableObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets, 
-            Func<ISocket, IObservable<IKayakContext>> transform,
-            Action<ISocket, Exception> transformExceptionHandler)
+        public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets, 
+            Func<ISocket, IObservable<IKayakContext>> transform)
         {
-            return new AsyncTransform<ISocket, IKayakContext>(sockets, transform, transformExceptionHandler);
+            return sockets.SelectMany(transform);
         }
 
         public static IObservable<IKayakContext> BeginContext(this ISocket socket)
