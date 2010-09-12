@@ -50,49 +50,4 @@ namespace Kayak
 
         #endregion
     }
-
-
-    // A mechanism which allows you to transform an observable of one type into an
-    // observable of another type in an asynchronous manner.
-    // Not thread-safe.
-    class AsyncTransform<TIn, TOut> : IConnectableObservable<TOut>
-    {
-        IObservable<TIn> source;
-        Func<TIn, IObservable<TOut>> transform;
-        Action<TIn, Exception> transformExceptionHandler;
-        ISubject<TOut> subject;
-
-        public AsyncTransform(IObservable<TIn> source,
-            Func<TIn, IObservable<TOut>> transform,
-            Action<TIn, Exception> transformExceptionHandler)
-        {
-            this.source = source;
-            this.transform = transform;
-            this.transformExceptionHandler = transformExceptionHandler;
-            this.subject = new Subject<TOut>();
-        }
-
-        public IDisposable Connect()
-        {
-            var ss = source.Subscribe((TIn o) =>
-            {
-                var transformed = transform(o);
-                transformed
-                    .Catch<TOut, Exception>(e => { transformExceptionHandler(o, e); return null; })
-                    .Subscribe(ob => subject.OnNext(ob));
-            });
-            // we don't care about errors or completed on the source observable right now.
-
-            return Disposable.Create(() =>
-            {
-                ss.Dispose();
-                subject.OnCompleted();
-            });
-        }
-
-        public IDisposable Subscribe(IObserver<TOut> observer)
-        {
-            return subject.Subscribe(observer);
-        }
-    }
 }
