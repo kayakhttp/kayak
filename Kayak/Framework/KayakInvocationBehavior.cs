@@ -25,6 +25,11 @@ namespace Kayak.Framework
             ExceptionHandlers = new List<IInvocationExceptionHandler>();
         }
 
+        public static KayakInvocationBehavior CreateDefaultBehavior()
+        {
+            return CreateDefaultBehavior(Assembly.GetCallingAssembly().GetTypes());
+        }
+
         public static KayakInvocationBehavior CreateDefaultBehavior(Type[] types)
         {
             var behavior = new KayakInvocationBehavior();

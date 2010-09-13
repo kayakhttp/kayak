@@ -24,10 +24,10 @@ namespace Kayak.Framework
             {
                 string value = null;
 
-                if (pathParams != null)
+                if (pathParams != null && pathParams.ContainsKey(param.Name))
                     value = pathParams[param.Name];
 
-                if (value == null)
+                if (value == null && request.QueryString.ContainsKey(param.Name))
                     value = request.QueryString[param.Name];
 
                 // TODO also pull from cookies?

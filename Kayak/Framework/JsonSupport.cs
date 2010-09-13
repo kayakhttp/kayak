@@ -32,26 +32,26 @@ namespace Kayak.Framework
 
     public class JsonHandler : IInvocationResultHandler
     {
-        TypedJsonMapper mapper;
+        public TypedJsonMapper Mapper { get; set; }
 
         public JsonHandler(TypedJsonMapper mapper)
         {
-            this.mapper = mapper;
+            Mapper = mapper;
         }
 
         public IObservable<Unit> HandleResult(IKayakContext context, InvocationInfo info, object result)
         {
-            return result.WriteJsonResponse(context, mapper);
+            return result.WriteJsonResponse(context, Mapper);
         }
     }
 
     public class JsonBinder : IInvocationArgumentBinder
     {
-        TypedJsonMapper mapper;
+        public TypedJsonMapper Mapper { get; set; }
 
         public JsonBinder(TypedJsonMapper mapper)
         {
-            this.mapper = mapper;
+            Mapper = mapper;
         }
 
         public void BindArgumentsFromHeaders(IKayakContext context, InvocationInfo info)
@@ -83,7 +83,7 @@ namespace Kayak.Framework
                 reader.Read(); // read array start
 
             foreach (var param in parameters)
-                info.Arguments[param.Position] = mapper.Read(param.ParameterType, reader);
+                info.Arguments[param.Position] = Mapper.Read(param.ParameterType, reader);
 
             if (parameters.Count() > 1)
                 reader.Read(); // read array end

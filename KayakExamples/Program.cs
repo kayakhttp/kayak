@@ -5,6 +5,7 @@ using System.Text;
 using Kayak;
 using Kayak.Framework;
 using System.IO;
+using System.Reflection;
 
 namespace KayakExamples
 {
@@ -33,7 +34,7 @@ namespace KayakExamples
         [Path("/")]
         public object SayHello(string name)
         {
-            return new { greeting = "hello, " + name + "." };
+            return new { greeting = "hello, " + name + ".", number = 5 };
         }
 
         static object foo;
@@ -74,8 +75,13 @@ namespace KayakExamples
         [Path("/echo")]
         public IEnumerable<object> Echo()
         {
-            var contentLength = int.Parse(Request.Headers["Content-Length"]);
-            Response.Headers["Content-Length"] = contentLength.ToString();
+            int contentLength = -1;
+            
+            if (Request.Headers.ContainsKey("Content-Length"))
+                contentLength = int.Parse(Request.Headers["Content-Length"]);
+
+            if (contentLength != -1)
+                Response.Headers["Content-Length"] = contentLength.ToString();
 
             int bytesRead = 0;
 
