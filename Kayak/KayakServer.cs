@@ -9,6 +9,12 @@ using System.Threading;
 
 namespace Kayak
 {
+    /// <summary>
+    /// KayakServer is a simple server implementation using `System.Net.Sockets.Socket`. It is an 
+    /// observable which, upon subscription, starts a new thread on which it listens for connections,
+    /// and yields an `ISocket` object each time a client connects. Cancelling the subscription causes
+    /// the listen thread to exit. Values are yielded on `ThreadPool` threads.
+    /// </summary>
     public class KayakServer : IObservable<ISocket>
     {
         public IPEndPoint ListenEndPoint { get; private set; }
@@ -19,8 +25,22 @@ namespace Kayak
 
         ManualResetEvent wh;
 
+        /// <summary>
+        /// Constructs a server which binds to port 8080 on all interfaces upon subscription
+        /// and maintains a default connection backlog count.
+        /// </summary>
         public KayakServer() : this(new IPEndPoint(IPAddress.Any, 8080)) { }
+
+        /// <summary>
+        /// Constructs a server which binds to the given local end point upon subscription
+        /// and maintains a default connection backlog count.
+        /// </summary>
         public KayakServer(IPEndPoint listenEndPoint) : this(listenEndPoint, 1000) { }
+
+        /// <summary>
+        /// Constructs a server which binds to the given local end point upon subscription
+        /// and maintains the given connection backlog count.
+        /// </summary>
         public KayakServer(IPEndPoint listenEndPoint, int backlog)
         {
             ListenEndPoint = listenEndPoint;

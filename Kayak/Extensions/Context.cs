@@ -17,6 +17,12 @@ namespace Kayak
             return sockets.SelectMany(transform);
         }
 
+        /// <summary>
+        /// Returns an observable which, upon subscription, attempts to read an HTTP
+        /// request from the socket. Reading stops after the end of the request headers
+        /// is reached, and the observable then yields an IKayakContext representing the
+        /// transaction and completes. 
+        /// </summary>
         public static IObservable<IKayakContext> BeginContext(this ISocket socket)
         {
             if (socket == null)
@@ -35,6 +41,11 @@ namespace Kayak
             yield return new KayakContext(socket, request, response);
         }
 
+        /// <summary>
+        /// Signals to the server implementation that processing of the HTTP transaction
+        /// is finished. Writes the response headers to the socket if they haven't been
+        /// written already, and closes the socket.
+        /// </summary>
         public static void End(this IKayakContext context)
         {
             // TODO this is wrong.
@@ -42,7 +53,7 @@ namespace Kayak
             context.End(context.Response.Headers.GetContentLength() <= 0);
         }
 
-        public static void End(this IKayakContext context, bool writeHeaders)
+        internal static void End(this IKayakContext context, bool writeHeaders)
         {
             EndInternal(context, writeHeaders).AsCoroutine<Unit>().Subscribe(u => { }, e => 
             {

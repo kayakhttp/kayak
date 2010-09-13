@@ -4,6 +4,10 @@ using System.Collections.Generic;
 
 namespace Kayak
 {
+    /// <summary>
+    /// A simple implementation of IKayakServerRequest. An `HttpRequestLine`, the headers dictionary, and a `RequestStream`
+    /// are provided to the constructor.
+    /// </summary>
     public class KayakServerRequest : IKayakServerRequest
     {
         HttpRequestLine requestLine;
@@ -18,17 +22,11 @@ namespace Kayak
 
         #region Derived properties
 
-        /// <summary>
-        /// Get the Uri Path for this request, i.e. "/some/path" without querystring or "http://".
-        /// </summary>
         public string Path
         {
             get { return path ?? (path = this.GetPath()); }
         }
 
-        /// <summary>
-        /// Gets the collection of parameters defined in the request uri's query string.
-        /// </summary>
         public IDictionary<string, string> QueryString
         {
             get { return queryString ?? (queryString = this.GetQueryString()); }
@@ -36,6 +34,10 @@ namespace Kayak
 
         #endregion
 
+        /// <summary>
+        /// Constructs a new `KayakServerRequest` with the given `HttpRequestLine`, headers dictionary,
+        /// and `RequestStream`.
+        /// </summary>
         public KayakServerRequest(HttpRequestLine requestLine, IDictionary<string, string> headers, RequestStream body)
         {
             this.requestLine = requestLine;

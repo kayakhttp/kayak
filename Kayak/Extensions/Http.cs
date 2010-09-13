@@ -21,7 +21,7 @@ namespace Kayak
         public string RequestUri;
 
         /// <summary>
-        /// The HTTP version conmponent of the request line (e.g., HTTP/1.0).
+        /// The HTTP version component of the request line (e.g., HTTP/1.0).
         /// </summary>
         public string HttpVersion;
     }

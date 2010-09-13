@@ -5,16 +5,24 @@ using System.Disposables;
 
 namespace Kayak
 {
-    /// <summary>
-    /// An observable that enumerates an enumerator.
+    /// <summary>This is an observable that enumerates an enumerator.
     /// 
-    /// Coroutine yields whatever the enumerator returns, except
-    /// if it returns an obserable, it subscribes to it, yields an error if
-    /// the observable yields an error, and only continues enumerating after the observable completes.
+    /// Coroutine yields any object the enumerator yields, except if it returns 
+    /// an observable, it subscribes to it, yields an error if the observable 
+    /// yields an error, and only continues enumerating after the observable 
+    /// completes (the values in the observable sequence are discarded by Coroutine).
     /// 
-    /// Very handy for writing asynchronous code using iterator blocks. Simply yield
-    /// obserables that complete after the operation is complete (and possibly assign
-    /// some resultant value to a variable in your local scope).
+    /// Coroutine allows you to easily write asynchronous code using iterator 
+    /// blocks declared to return `IEnumerable&lt;object&gt;`. To perform an asynchronous
+    /// operation, yield an observable which completes after the operation is complete. If the
+    /// operation returns one or more values, you can use the `Observable.Do` method to capture
+    /// those values and do something with them in your local scope.
+    /// 
+    /// TODO (maybe): Add an option to prevent exceptions from being passed on to observers. In this
+    /// way, users can handle exceptions locally. Unfortunately, if you don't explicitly handle
+    /// exceptions when this option is set, your program will just continue, possibly leading to 
+    /// strange behavior, because there's no way for coroutine to know if the exception was handled. Is there?
+    /// Seems like a pretty hacky, horrible abuse of C#.
     /// </summary>
     public class Coroutine<T> : IObservable<T>
     {
@@ -22,6 +30,10 @@ namespace Kayak
         IEnumerator<object> continuation;
         IDisposable subscription;
 
+        /// <summary>
+        /// Constructs a coroutine using the given enumerator. Usually this will be an enumerator of
+        /// an iterator block, which represents a continuation.
+        /// </summary>
         public Coroutine(IEnumerator<object> continuation)
         {
             this.continuation = continuation;

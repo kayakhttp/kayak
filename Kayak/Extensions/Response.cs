@@ -7,56 +7,82 @@ namespace Kayak
     public static partial class Extensions
     {
         #region Common Statuses
-        // might set an internal flag on some of these so that we can send some default content (i.e., 404 page)
-
+        
+        /// <summary>
+        /// Sets the response status to 200 OK.
+        /// </summary>
         public static void SetStatusToOK(this IKayakServerResponse response)
         {
             response.StatusCode = 200;
             response.ReasonPhrase = "OK";
         }
 
+        /// <summary>
+        /// Sets the response status to 201 Created.
+        /// </summary>
         public static void SetStatusToCreated(this IKayakServerResponse response)
         {
             response.StatusCode = 201;
             response.ReasonPhrase = "Created";
         }
 
+        /// <summary>
+        /// Sets the response status to 302 Found.
+        /// </summary>
         public static void SetStatusToFound(this IKayakServerResponse response)
         {
             response.StatusCode = 302;
             response.ReasonPhrase = "Found";
         }
 
+        /// <summary>
+        /// Sets the response status to 304 Not Modified.
+        /// </summary>
         public static void SetStatusToNotModified(this IKayakServerResponse response)
         {
             response.StatusCode = 304;
             response.ReasonPhrase = "Not Modified";
         }
 
+        /// <summary>
+        /// Sets the response status to 400 Bad Request.
+        /// </summary>
         public static void SetStatusToBadRequest(this IKayakServerResponse response)
         {
             response.StatusCode = 400;
             response.ReasonPhrase = "Bad Request";
         }
 
+        /// <summary>
+        /// Sets the response status to 403 Forbidden.
+        /// </summary>
         public static void SetStatusToForbidden(this IKayakServerResponse response)
         {
             response.StatusCode = 403;
             response.ReasonPhrase = "Forbidden";
         }
 
+        /// <summary>
+        /// Sets the response status to 404 Not Found.
+        /// </summary>
         public static void SetStatusToNotFound(this IKayakServerResponse response)
         {
             response.StatusCode = 404;
             response.ReasonPhrase = "Not Found";
         }
 
+        /// <summary>
+        /// Sets the response status to 409 Conflict.
+        /// </summary>
         public static void SetStatusToConflict(this IKayakServerResponse response)
         {
             response.StatusCode = 409;
             response.ReasonPhrase = "Conflict";
         }
 
+        /// <summary>
+        /// Sets the response status to 503 Internal Server Error.
+        /// </summary>
         public static void SetStatusToInternalServerError(this IKayakServerResponse response)
         {
             response.StatusCode = 503;
@@ -65,13 +91,16 @@ namespace Kayak
 
         #endregion
 
+        /// <summary>
+        /// Sets the response status to 302 Found, and the Location header to the given URL.
+        /// </summary>
         public static void Redirect(this IKayakServerResponse response, string url)
         {
             response.SetStatusToFound();
             response.Headers["Location"] = url;
         }
 
-        public static byte[] CreateHeaderBuffer(this IKayakServerResponse response)
+        internal static byte[] CreateHeaderBuffer(this IKayakServerResponse response)
         {
             var sb = new StringBuilder();
 
@@ -93,11 +122,11 @@ namespace Kayak
             return Encoding.ASCII.GetBytes(sb.ToString());
         }
 
-        public static ResponseStream CreateResponseStream(this IKayakServerResponse response, ISocket stream)
+        internal static ResponseStream CreateResponseStream(this IKayakServerResponse response, ISocket socket, Func<byte[]> headerBuffer)
         {
             var contentLength = response.Headers.GetContentLength();
 
-            return new ResponseStream(stream, response.CreateHeaderBuffer(), contentLength);
+            return new ResponseStream(socket, headerBuffer, contentLength);
         }
     }
 }

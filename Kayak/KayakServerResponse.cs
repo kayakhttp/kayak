@@ -4,8 +4,14 @@ using System.Collections.Generic;
 
 namespace Kayak
 {
+    /// <summary>
+    /// A simple implementation of `IKayakServerResponse`. Default status is "200 OK HTTP/1.0". An attempt
+    /// to modify the response status or headers after the headers have been written to the socket will
+    /// throw an exception.
+    /// </summary>
     public class KayakServerResponse : IKayakServerResponse
     {
+        bool headersSent;
         int statusCode;
         string reasonPhrase;
         string httpVersion;
@@ -13,41 +19,36 @@ namespace Kayak
         IDictionary<string, string> headers;
         ISocket socket;
 
-        /// <summary>
-        /// Gets or sets the HTTP status code (e.g., 200, 404, 304, etc.) to be sent with the response. An exception
-        /// will be thrown if this property is set after the headers have been sent.
-        /// </summary>
         public int StatusCode
         {
             get { return statusCode; }
-            set { ThrowIfBodyAccessed(); statusCode = value; }
+            set { ThrowIfHeadersSent(); statusCode = value; }
         }
 
-        /// <summary>
-        /// Gets or sets the HTTP status description (e.g., "OK", "Not Found", etc.) to be sent with the response. An exception
-        /// will be thrown if this property is set after the headers have been sent.
-        /// </summary>
         public string ReasonPhrase
         {
             get { return reasonPhrase; }
-            set { ThrowIfBodyAccessed(); reasonPhrase = value; }
+            set { ThrowIfHeadersSent(); reasonPhrase = value; }
         }
 
         public string HttpVersion
         {
             get { return httpVersion; }
-            set { ThrowIfBodyAccessed(); httpVersion = value; }
+            set { ThrowIfHeadersSent(); httpVersion = value; }
         }
 
         public IDictionary<string, string> Headers { 
             get { return headers; }
-            set { ThrowIfBodyAccessed(); headers = value; } 
+            set { ThrowIfHeadersSent(); headers = value; } 
         }
 
         public ResponseStream Body { 
             get {
                 if (body == null)
-                    body = this.CreateResponseStream(socket);
+                    body = this.CreateResponseStream(socket, () => {
+                        headersSent = true;
+                        return this.CreateHeaderBuffer();
+                    });
 
                 return body;
             } 
@@ -62,10 +63,10 @@ namespace Kayak
             headers = new Dictionary<string,string>();
         }
         
-        void ThrowIfBodyAccessed()
+        void ThrowIfHeadersSent()
         {
-            if (body != null)
-                throw new InvalidOperationException("Headers have already been sent to the client, cannot modify or send again.");
+            if (headersSent)
+                throw new InvalidOperationException("Headers have already been sent to the client and cannot be modified.");
         }
     }
 }

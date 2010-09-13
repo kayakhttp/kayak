@@ -8,10 +8,10 @@ namespace Kayak
     public class ResponseStream : Stream
     {
         ISocket socket;
-        byte[] first;
+        Func<byte[]> first;
         long length, position;
 
-        public ResponseStream(ISocket socket, byte[] first, long length)
+        public ResponseStream(ISocket socket, Func<byte[]> first, long length)
         {
             this.socket = socket;
             this.first = first;
@@ -34,9 +34,11 @@ namespace Kayak
             if (first != null)
             {
                 //Console.WriteLine("Writing first.");
-                var combined = new byte[first.Length + buffer.Length];
-                Buffer.BlockCopy(first, 0, combined, 0, first.Length);
-                Buffer.BlockCopy(buffer, offset, combined, first.Length, count);
+                var firstBytes = first();
+
+                var combined = new byte[firstBytes.Length + buffer.Length];
+                Buffer.BlockCopy(firstBytes, 0, combined, 0, firstBytes.Length);
+                Buffer.BlockCopy(buffer, offset, combined, firstBytes.Length, count);
                 first = null;
 
                 return WriteAsync(combined, 0, combined.Length);
@@ -62,9 +64,9 @@ namespace Kayak
         {
             if (first != null)
             {
-                var ferst = first;
+                var firstBytes = first();
                 first = null;
-                yield return WriteAsync(ferst, 0, ferst.Length);
+                yield return WriteAsync(firstBytes, 0, firstBytes.Length);
             }
 
             yield return socket.WriteFile(file, offset, count).Do(n => position += n);

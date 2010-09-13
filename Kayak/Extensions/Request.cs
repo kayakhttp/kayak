@@ -180,12 +180,19 @@ namespace Kayak
             //headers.BecomeReadOnly();
         }
 
+        /// <summary>
+        /// Returns the path component from the `RequestUri` property of the `IKayakServerRequest`.
+        /// </summary>
         public static string GetPath(this IKayakServerRequest request)
         {
             int question = request.RequestUri.IndexOf('?');
             return HttpUtility.UrlDecode(question >= 0 ? request.RequestUri.Substring(0, question) : request.RequestUri);
         }
 
+        /// <summary>
+        /// Returns a dictionary representation of the query string component from the `RequestUri`
+        /// property of the `IKayakServerRequest`.
+        /// </summary>
         public static IDictionary<string, string> GetQueryString(this IKayakServerRequest request)
         {
             int question = request.RequestUri.IndexOf('?');
