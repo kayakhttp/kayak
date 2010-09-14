@@ -83,11 +83,21 @@ namespace Kayak.Framework
                 () => InvocationCompleted(context));
         }
 
+        void EndContext(IKayakContext context)
+        {
+            context.Response.End().Finally(() =>
+            {
+                Console.WriteLine("[{0}] {1} {2} {3} : {4} {5} {6}", DateTime.Now,
+                    context.Request.Verb, context.Request.Path, context.Request.HttpVersion,
+                    context.Response.HttpVersion, context.Response.StatusCode, context.Response.ReasonPhrase);
+            }).Subscribe();
+        }
+
         void InvocationCompleted(IKayakContext context)
         {
             if (!context.Items.ContainsKey(InvocationResultContextKey))
             {
-                context.End();
+                EndContext(context);
                 return;
             }
 
@@ -111,11 +121,11 @@ namespace Kayak.Framework
 
             if (handler != null)
                 handler.Subscribe(
-                    u => { }, 
-                    e => { }, 
-                    () => context.End());
+                    u => { },
+                    e => { },
+                    () => EndContext(context));
             else
-                context.End();
+                EndContext(context);
         }
 
         void InvocationResult(IKayakContext context, object result)
@@ -128,9 +138,9 @@ namespace Kayak.Framework
             var handler = GetResultHandler(context, result);
 
             if (handler != null)
-                handler.Subscribe(u => { }, e => InvocationException(context, e), () => context.End());
+                handler.Subscribe(u => { }, e => InvocationException(context, e), () => EndContext(context));
             else
-                context.End();
+                EndContext(context);
         }
 
         // this could be made public to support Comet-style shit.

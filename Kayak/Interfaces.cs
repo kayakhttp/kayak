@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Net;
 
 namespace Kayak
@@ -28,7 +26,7 @@ namespace Kayak
         /// to the socket. When the copy operation completes, the observable yields
         /// the number of bytes written and completes.
         /// </summary>
-        IObservable<int> WriteFile(string file, int offset, int count);
+        IObservable<int> WriteFile(string file);
 
         /// <summary>
         /// Returns an observable which, upon subscription, begins an asynchronous read
@@ -90,11 +88,17 @@ namespace Kayak
         IDictionary<string, string> Headers { get; }
 
         /// <summary>
-        /// Gets a stream representing the body portion of the request. The stream's length is limited
-        /// to the value of the Content-Length header, if any. If no Content-Length header is
-        /// present, the stream's length is unknown.
+        /// Returns an observable which, upon subscription, attempts to read an HTTP
+        /// request from the socket. Reading stops after the end of the request headers
+        /// is reached, and the observable completes. After that point, the
+        /// status line properties and the `Headers` property should be populated.
         /// </summary>
-        RequestStream Body { get; }
+        IObservable<Unit> Begin();
+
+        /// <summary>
+        /// Reads a chunk of request body data from the socket.
+        /// </summary>
+        IObservable<ArraySegment<byte>> Read();
 
         #region Derived properties
 
@@ -146,10 +150,24 @@ namespace Kayak
         IDictionary<string, string> Headers { get; set; }
 
         /// <summary>
-        /// A stream representing the body portion of the HTTP response. The stream's length
-        /// is limited to the value of the Content-Length header, if any. If no Content-Length
-        /// header is present, the stream's length is unknown.
+        /// Writes a chunk of data to the response body, sending the headers first if necessary.
+        /// After the headers are sent, the setters for the status line properties and the Headers 
+        /// property will throw `InvalidOperationException` if invoked.
         /// </summary>
-        ResponseStream Body { get; }
+        IObservable<Unit> Write(byte[] buffer, int offset, int count);
+
+        /// <summary>
+        /// Writes a the named file to the response body, sending the headers first if necessary.
+        /// After the headers are sent, the setters for the status line properties and the Headers 
+        /// property will throw `InvalidOperationException` if invoked.
+        /// </summary>
+        IObservable<Unit> WriteFile(string file);
+
+        /// <summary>
+        /// Signals to the server implementation that processing of the HTTP transaction
+        /// is finished. Writes the response headers to the socket if they haven't been
+        /// written already. Implementations may close or reuse the socket.
+        /// </summary>
+        IObservable<Unit> End();
     }
 }

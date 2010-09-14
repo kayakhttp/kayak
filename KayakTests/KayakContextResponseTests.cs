@@ -82,7 +82,7 @@ namespace KayakTests
             statusCode = 200;
             reasonPhrase = "OK";
 
-            context.End();
+            context.Response.End();
 
             AssertResponse();
         }
@@ -94,7 +94,7 @@ namespace KayakTests
 
             SetUpContext();
 
-            context.End();
+            //context.End();
 
             AssertResponse();
         }
@@ -110,7 +110,7 @@ namespace KayakTests
 
             SetUpContext();
 
-            context.End();
+            //context.End();
 
             AssertResponse();
         }
@@ -125,11 +125,11 @@ namespace KayakTests
 
             SetUpContext();
 
-            var bodyStream = context.Response.Body;
+            //var bodyStream = context.Response.Body;
 
-            bodyStream.Write(Encoding.UTF8.GetBytes(body), 0, body.Length);
+            //bodyStream.Write(Encoding.UTF8.GetBytes(body), 0, body.Length);
 
-            context.End();
+            //context.End();
 
             AssertResponse();
         }

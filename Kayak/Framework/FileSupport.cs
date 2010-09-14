@@ -22,7 +22,7 @@ namespace Kayak.Framework
 
         IEnumerable<object> WriteFile(IKayakContext context, FileInfo file)
         {
-            yield return context.Response.Body.WriteFileAsync(file.Name, 0, 0);
+            yield return context.Response.WriteFile(file.Name);
         }
     }
 

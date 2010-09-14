@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
-using System.IO;
 using System.Web;
 
 namespace Kayak
@@ -12,15 +12,18 @@ namespace Kayak
         static int MaxHeaderLength = 1024 * 10;
         static int BufferSize = 1024 * 2;
 
-        // last ArraySegment is any data beyond headers which was read, which may be of zero length.
-        public static IObservable<List<ArraySegment<byte>>> ReadHeaders(this ISocket socket)
+        /// <summary>
+        /// Buffers HTTP headers from a socket. The last ArraySegment in the list is any 
+        /// data beyond headers which was read, which may be of zero length.
+        /// </summary>
+        public static IObservable<LinkedList<ArraySegment<byte>>> ReadHeaders(this ISocket socket)
         {
-            return socket.ReadHeadersInternal().AsCoroutine<List<ArraySegment<byte>>>();
+            return socket.ReadHeadersInternal().AsCoroutine<LinkedList<ArraySegment<byte>>>();
         }
 
         static IEnumerable<object> ReadHeadersInternal(this ISocket socket)
         {
-            List<ArraySegment<byte>> result = new List<ArraySegment<byte>>();
+            LinkedList<ArraySegment<byte>> result = new LinkedList<ArraySegment<byte>>();
 
             int bufferPosition = 0, totalBytesRead = 0;
             byte[] buffer = null;
@@ -42,7 +45,7 @@ namespace Kayak
                 if (bytesRead == 0)
                     break;
 
-                result.Add(new ArraySegment<byte>(buffer, bufferPosition, bytesRead));
+                result.AddLast(new ArraySegment<byte>(buffer, bufferPosition, bytesRead));
 
                 bufferPosition += bytesRead;
                 totalBytesRead += bytesRead;
@@ -52,10 +55,11 @@ namespace Kayak
                 if (bodyDataPosition != -1)
                 {
                     //Console.WriteLine("Read " + totalBytesRead + ", body starts at " + bodyDataPosition);
-                    var last = result[result.Count - 1];
+                    var last = result.Last.Value;
+                    result.RemoveLast();
                     var overlapLength = totalBytesRead - bodyDataPosition;
-                    result[result.Count - 1] = new ArraySegment<byte>(last.Array, last.Offset, last.Count - overlapLength); 
-                    result.Add(new ArraySegment<byte>(last.Array, last.Offset + last.Count - overlapLength, overlapLength)); 
+                    result.AddLast(new ArraySegment<byte>(last.Array, last.Offset, last.Count - overlapLength)); 
+                    result.AddLast(new ArraySegment<byte>(last.Array, last.Offset + last.Count - overlapLength, overlapLength)); 
                     break;
                 }
 
@@ -98,50 +102,22 @@ namespace Kayak
 
         public static string GetString(this IEnumerable<ArraySegment<byte>> buffers)
         {
+            return buffers.GetString(Encoding.UTF8);
+        }
+
+        public static string GetString(this IEnumerable<ArraySegment<byte>> buffers, Encoding encoding)
+        {
             var sb = new StringBuilder(buffers.Sum(s => s.Count));
 
             foreach (var b in buffers)
-                sb.Append(Encoding.ASCII.GetString(b.Array, b.Offset, b.Count));
+                sb.Append(encoding.GetString(b.Array, b.Offset, b.Count));
 
             return sb.ToString();
         }
 
-        public static IObservable<KayakServerRequest> CreateRequest(this ISocket socket)
+        public static void ParseHttpHeaders(this IEnumerable<ArraySegment<byte>> buffers, out HttpRequestLine requestLine, out IDictionary<string, string> headers)
         {
-            return CreateRequestInternal(socket).AsCoroutine<KayakServerRequest>();
-        }
-
-        static IEnumerable<object> CreateRequestInternal(ISocket socket)
-        {
-            List<ArraySegment<byte>> headerBuffer = null;
-            yield return socket.ReadHeaders().Do(h => headerBuffer = h);
-
-            var overlap = headerBuffer.Last();
-            headerBuffer.Remove(overlap);
-            
-            HttpRequestLine requestLine;
-            IDictionary<string, string> headers;
-            headerBuffer.GetString().ParseHttpHeaders(out requestLine, out headers);
-
-            RequestStream requestBody = null;
-            var contentLength = headers.GetContentLength();
-            Trace.Write("Got request with content length " + contentLength);
-
-            // TODO what if content-length is not given (i.e., chunked transfer)
-            // prolly something like:
-            // if (overlap.Count > 0)
-            if (contentLength > 0)
-            {
-                Trace.Write("Creating body stream with overlap " + overlap.Count + ", contentLength " + contentLength);
-                requestBody = new RequestStream(socket, overlap, contentLength);
-            }
-
-            yield return new KayakServerRequest(requestLine, headers, requestBody);
-        }
-
-        public static void ParseHttpHeaders(this string s, out HttpRequestLine requestLine, out IDictionary<string, string> headers)
-        {
-            var reader = new StringReader(s);
+            var reader = new StringReader(buffers.GetString());
 
             string statusLine = reader.ReadLine();
 
@@ -176,8 +152,6 @@ namespace Kayak
                 int colon = line.IndexOf(':');
                 headers.Add(line.Substring(0, colon), line.Substring(colon + 1).Trim());
             }
-
-            //headers.BecomeReadOnly();
         }
 
         /// <summary>

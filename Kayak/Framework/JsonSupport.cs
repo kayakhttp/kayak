@@ -26,7 +26,7 @@ namespace Kayak.Framework
             var bufferBytes = buffer.ToArray();
 
             context.Response.Headers["Content-Length"] = bufferBytes.Length.ToString();
-            return context.Response.Body.WriteAsync(bufferBytes, 0, bufferBytes.Length);
+            return context.Response.Write(bufferBytes, 0, bufferBytes.Length);
         }
     }
 
@@ -71,7 +71,7 @@ namespace Kayak.Framework
         {
             var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p));
 
-            if (parameters.Count() == 0 || context.Request.Body == null)
+            if (parameters.Count() == 0 || context.Request.Headers.GetContentLength() == 0)
                 yield break;
 
             IList<ArraySegment<byte>> requestBody = null;
@@ -98,7 +98,7 @@ namespace Kayak.Framework
             while (true)
             {
                 ArraySegment<byte> data = default(ArraySegment<byte>);
-                yield return context.Request.Body.ReadAsync().Do(d => data = d);
+                yield return context.Request.Read().Do(d => data = d);
 
                 result.Add(data);
 

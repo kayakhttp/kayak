@@ -111,8 +111,6 @@
     <Compile Include="KayakServerRequestTests.cs" />
     <Compile Include="KayakServerTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RequestStreamTests.cs" />
-    <Compile Include="ResponseStreamTests.cs" />
     <Compile Include="SynchronousMemoryStream.cs" />
   </ItemGroup>
   <ItemGroup>

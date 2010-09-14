@@ -25,6 +25,8 @@ namespace Kayak.Framework
 
         static IEnumerable<object> AsInvocationInternal(IKayakContext context, IObservable<InvocationInfo> bind)
         {
+            yield return context.Request.Begin();
+
             InvocationInfo info = null;
 
             yield return bind.Do(i => info = i);

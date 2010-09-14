@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Disposables;
-using System.IO;
 using System.Net.Sockets;
 
 namespace Kayak

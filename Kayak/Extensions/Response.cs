@@ -1,7 +1,6 @@
-﻿
-using System.IO;
-using System;
+﻿using System;
 using System.Text;
+
 namespace Kayak
 {
     public static partial class Extensions
@@ -100,6 +99,11 @@ namespace Kayak
             response.Headers["Location"] = url;
         }
 
+        public static IObservable<Unit> Write(this IKayakServerResponse response, ArraySegment<byte> buffer)
+        {
+            return response.Write(buffer.Array, buffer.Offset, buffer.Count);
+        }
+
         internal static byte[] CreateHeaderBuffer(this IKayakServerResponse response)
         {
             var sb = new StringBuilder();
@@ -120,13 +124,6 @@ namespace Kayak
             sb.Append("\r\n");
 
             return Encoding.ASCII.GetBytes(sb.ToString());
-        }
-
-        internal static ResponseStream CreateResponseStream(this IKayakServerResponse response, ISocket socket, Func<byte[]> headerBuffer)
-        {
-            var contentLength = response.Headers.GetContentLength();
-
-            return new ResponseStream(socket, headerBuffer, contentLength);
         }
     }
 }

@@ -8,37 +8,41 @@ namespace Kayak
     public class ResponseStream : Stream
     {
         ISocket socket;
-        Func<byte[]> first;
+        byte[] first;
         long length, position;
 
-        public ResponseStream(ISocket socket, Func<byte[]> first, long length)
+        public ResponseStream()
+        {
+
+        }
+
+        public ResponseStream(ISocket socket, byte[] first, long length)
         {
             this.socket = socket;
             this.first = first;
             this.length = length;
         }
 
-        public IObservable<Unit> WriteAsync(byte[] buffer)
+        public virtual IObservable<Unit> WriteAsync(byte[] buffer)
         {
             return WriteAsync(buffer, 0, buffer.Length);
         }
 
-        public IObservable<Unit> WriteAsync(ArraySegment<byte> buffer)
+        public virtual IObservable<Unit> WriteAsync(ArraySegment<byte> buffer)
         {
             // TODO implement all other write overloads in terms of this one.
             return WriteAsync(buffer.Array, buffer.Offset, buffer.Count);
         }
 
-        public IObservable<Unit> WriteAsync(byte[] buffer, int offset, int count)
+        public virtual IObservable<Unit> WriteAsync(byte[] buffer, int offset, int count)
         {
             if (first != null)
             {
                 //Console.WriteLine("Writing first.");
-                var firstBytes = first();
 
-                var combined = new byte[firstBytes.Length + buffer.Length];
-                Buffer.BlockCopy(firstBytes, 0, combined, 0, firstBytes.Length);
-                Buffer.BlockCopy(buffer, offset, combined, firstBytes.Length, count);
+                var combined = new byte[first.Length + buffer.Length];
+                Buffer.BlockCopy(first, 0, combined, 0, first.Length);
+                Buffer.BlockCopy(buffer, offset, combined, first.Length, count);
                 first = null;
 
                 return WriteAsync(combined, 0, combined.Length);
@@ -64,7 +68,7 @@ namespace Kayak
         {
             if (first != null)
             {
-                var firstBytes = first();
+                var firstBytes = first;
                 first = null;
                 yield return WriteAsync(firstBytes, 0, firstBytes.Length);
             }

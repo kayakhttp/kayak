@@ -78,11 +78,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Coroutine.cs" />
-    <Compile Include="Extensions\Context.cs" />
     <Compile Include="Extensions\Http.cs" />
     <Compile Include="Extensions\IO.cs" />
     <Compile Include="Extensions\Request.cs" />
     <Compile Include="Extensions\Response.cs" />
+    <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
     <Compile Include="Framework\DefaultExceptionHandler.cs" />
     <Compile Include="Framework\Extensions\Coerce.cs" />
@@ -114,8 +114,6 @@
     <Compile Include="KayakServerResponse.cs" />
     <Compile Include="Observables.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="RequestStream.cs" />
-    <Compile Include="ResponseStream.cs" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

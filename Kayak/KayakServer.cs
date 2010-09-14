@@ -1,10 +1,7 @@
 using System;
-using System.IO;
-using System.Net;
 using System.Disposables;
-using System.Collections.Generic;
+using System.Net;
 using System.Net.Sockets;
-using System.Linq;
 using System.Threading;
 
 namespace Kayak
@@ -145,13 +142,8 @@ namespace Kayak
             return socket.SendAsync(buffer, offset, count);
         }
 
-        public IObservable<int> WriteFile(string file, int offset, int count)
+        public IObservable<int> WriteFile(string file)
         {
-            if (offset != 0)
-                throw new ArgumentException("Non-zero offset is not supported.");
-            if (count != 0)
-                throw new ArgumentException("Non-zero count is not supported.");
-
             return socket.SendFileAsync(file);
         }
 

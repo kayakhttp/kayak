@@ -23,7 +23,7 @@ namespace KayakTests.Extensions
 
             bool gotException, gotCompleted, gotResult;
             Exception exception;
-            List<ArraySegment<byte>> result;
+            IList<ArraySegment<byte>> result;
 
             [SetUp]
             public void SetUp()
@@ -56,7 +56,7 @@ namespace KayakTests.Extensions
             void DoRead()
             {
                 mockSocket.Object.ReadHeaders().Subscribe(
-                    b => { gotResult = true; result = b; },
+                    b => { gotResult = true; result = (IList<ArraySegment<byte>>)b; },
                     e => { gotException = true; exception = e; Console.Out.WriteException(e); },
                     () => { gotCompleted = true; });
             }

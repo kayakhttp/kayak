@@ -15,7 +15,7 @@ namespace KayakTests
         ISubject<object> subject;
         Exception e1;
 
-        Coroutine<object> coroutine;
+        IObservable<object> coroutine;
 
         List<object> results, expectedResults;
         List<Exception> errors, expectedErrors;

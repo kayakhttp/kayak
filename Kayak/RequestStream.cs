@@ -20,38 +20,7 @@ namespace Kayak
             this.length = length;
         }
 
-        public IObservable<ArraySegment<byte>> ReadAsync()
-        {
-            return ReadAsyncInternal().AsCoroutine<ArraySegment<byte>>();
-        }
         
-        public IEnumerable<object> ReadAsyncInternal()
-        {
-            int bytesToRead = (int)Math.Min(length - position, 1024);
-
-            if (bytesToRead == 0)
-            {
-                yield return default(ArraySegment<byte>);
-                yield break;
-            }
-
-            if (first.Count > 0)
-            {
-                var result = first;
-                first = default(ArraySegment<byte>);
-
-                yield return result;
-                yield break;
-            }
-
-            // crazy allocation scheme, anyone?
-            byte[] buffer = new byte[1024];
-
-            int bytesRead = 0;
-
-            yield return socket.Read(buffer, 0, buffer.Length).Do(n => bytesRead = n);
-            yield return new ArraySegment<byte>(buffer, 0, bytesRead);
-        }
 
         public IObservable<int> ReadAsync(byte[] buffer, int offset, int count)
         {

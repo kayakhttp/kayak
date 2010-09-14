@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Disposables;
 
 namespace Kayak
@@ -182,7 +181,7 @@ namespace Kayak
 
     public static partial class Extensions
     {
-        public static Coroutine<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock)
+        public static IObservable<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock)
         {
             return new Coroutine<T>(iteratorBlock.GetEnumerator());
         }

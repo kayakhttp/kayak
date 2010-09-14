@@ -62,7 +62,7 @@ namespace KayakExamples
         [Path("/path/{p}")]
         public IEnumerable<object> PathParam(string p)
         {
-            yield return Response.Body.WriteAsync(Encoding.UTF8.GetBytes("The value of p is '" + p + "'."));
+            yield return Response.Write(new ArraySegment<byte>(Encoding.UTF8.GetBytes("The value of p is '" + p + "'.")));
         }
 
         [Path("/files/{name}")]
@@ -88,8 +88,8 @@ namespace KayakExamples
             while (bytesRead < contentLength)
             {
                 var data = default(ArraySegment<byte>);
-                yield return Request.Body.ReadAsync().Do(d => data = d);
-                yield return Response.Body.WriteAsync(data);
+                yield return Request.Read().Do(d => data = d);
+                yield return Response.Write(data);
                 bytesRead += data.Count;
             }
         }
