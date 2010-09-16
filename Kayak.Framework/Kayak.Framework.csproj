@@ -5,11 +5,11 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>9.0.30729</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{33318990-37F5-4B9D-B3F9-19E7736EE1DC}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <ProjectGuid>{88EB6BDB-6585-4CA3-87BE-11F7262B95DF}</ProjectGuid>
+    <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>KayakExamples</RootNamespace>
-    <AssemblyName>KayakExamples</AssemblyName>
+    <RootNamespace>Kayak.Framework</RootNamespace>
+    <AssemblyName>Kayak.Framework</AssemblyName>
     <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
@@ -21,6 +21,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Debug\Kayak.Framework.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -29,6 +30,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <DocumentationFile>bin\Release\Kayak.Framework.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -47,29 +49,38 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Reactive.dll</HintPath>
     </Reference>
-    <Reference Include="System.Threading, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\rx3.5\System.Threading.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Program.cs" />
+    <Compile Include="Binding\BindingAttributes.cs" />
+    <Compile Include="Binding\MethodMap.cs" />
+    <Compile Include="DefaultExceptionHandler.cs" />
+    <Compile Include="Extensions\Coerce.cs" />
+    <Compile Include="FileSupport.cs" />
+    <Compile Include="HeaderBinder.cs" />
+    <Compile Include="Interfaces.cs" />
+    <Compile Include="InvocationInfo.cs" />
+    <Compile Include="JsonSupport.cs" />
+    <Compile Include="KayakInvocationBehavior.cs" />
+    <Compile Include="KayakService.cs" />
+    <Compile Include="LitJson\IJsonWrapper.cs" />
+    <Compile Include="LitJson\JsonData.cs" />
+    <Compile Include="LitJson\JsonException.cs" />
+    <Compile Include="LitJson\JsonMapper.cs" />
+    <Compile Include="LitJson\JsonMapper2.cs" />
+    <Compile Include="LitJson\JsonReader.cs" />
+    <Compile Include="LitJson\JsonWriter.cs" />
+    <Compile Include="LitJson\Lexer.cs" />
+    <Compile Include="LitJson\ParserToken.cs" />
+    <Compile Include="LitJson\TypeExtensions.cs" />
+    <Compile Include="PerformInvocation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UseFramework.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Kayak.Framework\Kayak.Framework.csproj">
-      <Project>{88EB6BDB-6585-4CA3-87BE-11F7262B95DF}</Project>
-      <Name>Kayak.Framework</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
       <Name>Kayak</Name>
     </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="testfile.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
@@ -79,4 +90,7 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <PropertyGroup>
+    <PostBuildEvent>$(SolutionDir)tools\KayakDocs\bin\Release\KayakDocs.exe $(TargetPath)</PostBuildEvent>
+  </PropertyGroup>
 </Project>

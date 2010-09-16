@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Text;
 using System.Web;
+using System;
+using System.IO;
 
 namespace Kayak
 {
@@ -42,12 +44,12 @@ namespace Kayak
         const char EqualsChar = '=';
         const char AmpersandChar = '&';
 
-        public static IDictionary<string, string> DecodeQueryString(this string encodedString)
+        public static IDictionary<string, string> ParseQueryString(this string encodedString)
         {
-            return DecodeQueryString(encodedString, 0, encodedString.Length);
+            return ParseQueryString(encodedString, 0, encodedString.Length);
         }
 
-        public static IDictionary<string, string> DecodeQueryString(this string encodedString,
+        public static IDictionary<string, string> ParseQueryString(this string encodedString,
             int charIndex, int charCount)
         {
             var result = new Dictionary<string, string>();
@@ -87,6 +89,67 @@ namespace Kayak
         {
             if (name.Length > 0)
                 dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);
+        }
+
+        public static void ParseHttpHeaders(this IEnumerable<ArraySegment<byte>> buffers, out HttpRequestLine requestLine, out IDictionary<string, string> headers)
+        {
+            var reader = new StringReader(buffers.GetString());
+
+            string statusLine = reader.ReadLine();
+
+            if (string.IsNullOrEmpty(statusLine))
+                throw new Exception("Could not parse request status.");
+
+            int firstSpace = statusLine.IndexOf(' ');
+            int lastSpace = statusLine.LastIndexOf(' ');
+
+            if (firstSpace == -1 || lastSpace == -1)
+                throw new Exception("Could not parse request status.");
+
+            requestLine = new HttpRequestLine();
+            requestLine.Verb = statusLine.Substring(0, firstSpace);
+
+            bool hasVersion = lastSpace != firstSpace;
+
+            if (hasVersion)
+                requestLine.HttpVersion = statusLine.Substring(lastSpace + 1);
+            else
+                requestLine.HttpVersion = "HTTP/1.0";
+
+            requestLine.RequestUri = hasVersion
+                ? statusLine.Substring(firstSpace + 1, lastSpace - firstSpace - 1)
+                : statusLine.Substring(firstSpace + 1);
+
+            headers = new Dictionary<string, string>();
+            string line = null;
+
+            while (!string.IsNullOrEmpty(line = reader.ReadLine()))
+            {
+                int colon = line.IndexOf(':');
+                headers.Add(line.Substring(0, colon), line.Substring(colon + 1).Trim());
+            }
+        }
+
+        internal static byte[] ComposeHttpHeaders(this IKayakServerResponse response)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendFormat("{0} {1} {2}\r\n", response.HttpVersion, response.StatusCode, response.ReasonPhrase);
+
+            var headers = response.Headers;
+
+            if (!headers.ContainsKey("Server"))
+                headers["Server"] = "Kayak";
+
+            if (!headers.ContainsKey("Date"))
+                headers["Date"] = DateTime.UtcNow.ToString();
+
+            foreach (var pair in headers)
+                sb.AppendFormat("{0}: {1}\r\n", pair.Key, pair.Value);
+
+            sb.Append("\r\n");
+
+            return Encoding.UTF8.GetBytes(sb.ToString());
         }
     }
 }

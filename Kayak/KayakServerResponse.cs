@@ -44,9 +44,8 @@ namespace Kayak
         }
 
         /// <summary>
-        /// Constructs a `KayakServerResponse` that will write its data to the given `ISocket`.
+        /// Constructs a `KayakServerResponse` that will write to the given `ISocket`.
         /// </summary>
-        /// <param name="socket"></param>
         public KayakServerResponse(ISocket socket)
         {
             this.socket = socket;
@@ -87,7 +86,7 @@ namespace Kayak
 
         IObservable<Unit> WriteHeaders()
         {
-            return WriteInternal(new ArraySegment<byte>(this.CreateHeaderBuffer())).AsCoroutine<Unit>();
+            return WriteInternal(new ArraySegment<byte>(this.ComposeHttpHeaders())).AsCoroutine<Unit>();
         }
 
         IObservable<Unit> PrependWithWriteHeaders(IObservable<Unit> write)

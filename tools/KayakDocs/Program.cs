@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Reflection;
-using Kayak;
 using JimBlackler.DocsByReflection;
 using System.IO;
 using System.Runtime.CompilerServices;
@@ -15,6 +14,7 @@ namespace KayakDocs
     class Program
     {
         static Markdown markdown = new Markdown();
+        static Assembly assembly;
 
         static string Transform(string s)
         {
@@ -32,7 +32,13 @@ namespace KayakDocs
 
         static void Main(string[] args)
         {
-            var fileName = "docs.html";
+            var assemblyToDocument = Path.GetFullPath(args[0]);
+
+            var fileName = assemblyToDocument.Replace(".dll", "Docs.html");
+
+            Console.WriteLine("Documenting assembly " + assemblyToDocument + " in file " + fileName);
+
+            var assembly = Assembly.LoadFrom(assemblyToDocument);
 
             if (File.Exists(fileName))
                 File.Delete(fileName);
@@ -42,10 +48,12 @@ namespace KayakDocs
 
             tw.WriteLine("<html><head><title>Kayak Documentation</title></head><body><h1>Kayak Documentation</h1>");
 
-            var types = Assembly.GetAssembly(typeof(IKayakContext)).GetExportedTypes()
-                .OrderBy(t => ((t.Namespace.Contains("Framework") ? "1" : "0") + (t.IsInterface ? "0" : "1") + "." + t.Name))
+            var extensionType = assembly.GetTypes().Where(et => et.Name == "Extensions").First();
+
+            var types = assembly.GetExportedTypes()
+                .OrderBy(t => ((t.IsInterface ? "0" : "1") + "." + t.Name))
                 .Where(t => t.Name != "Extensions" && !t.Namespace.Contains("LitJson"))
-                .Select(t => new DocumentedType(t));
+                .Select(t => new DocumentedType(extensionType, t));
 
             foreach (var type in types)
             {
@@ -113,13 +121,15 @@ namespace KayakDocs
         public List<DocumentedMember> Extensions;
         public List<DocumentedMember> Fields;
 
-        public DocumentedType(Type type)
+        public DocumentedType(Type extensionsType, Type type)
         {
             Type = type;
             Constructors = DocumentedMember.GetConstructors(type);
             Properties = DocumentedMember.GetProperties(type);
             Methods = DocumentedMember.GetMethods(type);
-            Extensions = DocumentedMember.GetExtensions(type);
+            
+            if (extensionsType != null)
+                Extensions = DocumentedMember.GetExtensions(extensionsType, type);
 
             if (type.IsValueType && !type.IsPrimitive) // is struct (?)
             {
@@ -191,9 +201,9 @@ namespace KayakDocs
             return result;
         }
 
-        public static List<DocumentedMember> GetExtensions(Type type)
+        public static List<DocumentedMember> GetExtensions(Type extensionsType, Type type)
         {
-            var extensions = from method in typeof(Extensions).GetMethods(BindingFlags.Static | BindingFlags.Public)
+            var extensions = from method in extensionsType.GetMethods(BindingFlags.Static | BindingFlags.Public)
                              where method.IsDefined(typeof(ExtensionAttribute), false)
                              where method.GetParameters()[0].ParameterType == type
                              select method;

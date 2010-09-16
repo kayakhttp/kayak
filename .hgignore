@@ -4,6 +4,8 @@ obj
 Kayak.suo
 Kayak.userprefs
 Kayak.csproj.user
+Kayak.Framework.csproj.user
 KayakTests.csproj.user
+KayakFrameworkTests.csproj.user
 Kayak.pidb
 KayakTests.pidb

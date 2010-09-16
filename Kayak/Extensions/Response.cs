@@ -99,31 +99,24 @@ namespace Kayak
             response.Headers["Location"] = url;
         }
 
+        public static IObservable<Unit> Write(this IKayakServerResponse response, string str)
+        {
+            return response.Write(str, Encoding.UTF8);
+        }
+
+        public static IObservable<Unit> Write(this IKayakServerResponse response, string str, Encoding enc)
+        {
+            return response.Write(enc.GetBytes(str));
+        }
+
+        public static IObservable<Unit> Write(this IKayakServerResponse response, byte[] buffer)
+        {
+            return response.Write(buffer, 0, buffer.Length);
+        }
+
         public static IObservable<Unit> Write(this IKayakServerResponse response, ArraySegment<byte> buffer)
         {
             return response.Write(buffer.Array, buffer.Offset, buffer.Count);
-        }
-
-        internal static byte[] CreateHeaderBuffer(this IKayakServerResponse response)
-        {
-            var sb = new StringBuilder();
-
-            sb.AppendFormat("{0} {1} {2}\r\n", response.HttpVersion, response.StatusCode, response.ReasonPhrase);
-            
-            var headers = response.Headers;
-
-            if (!headers.ContainsKey("Server"))
-                headers["Server"] = "Kayak";
-
-            if (!headers.ContainsKey("Date"))
-                headers["Date"] = DateTime.UtcNow.ToString();
-
-            foreach (var pair in headers)
-                sb.AppendFormat("{0}: {1}\r\n", pair.Key, pair.Value);
-
-            sb.Append("\r\n");
-
-            return Encoding.ASCII.GetBytes(sb.ToString());
         }
     }
 }
