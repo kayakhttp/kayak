@@ -16,7 +16,7 @@ namespace Kayak
         /// Buffers HTTP headers from a socket. The last ArraySegment in the list is any 
         /// data beyond headers which was read, which may be of zero length.
         /// </summary>
-        public static IObservable<LinkedList<ArraySegment<byte>>> ReadHeaders(this ISocket socket)
+        internal static IObservable<LinkedList<ArraySegment<byte>>> ReadHeaders(this ISocket socket)
         {
             return socket.ReadHeadersInternal().AsCoroutine<LinkedList<ArraySegment<byte>>>();
         }
@@ -71,7 +71,7 @@ namespace Kayak
             yield return result;
         }
 
-        public static int IndexOfAfterCRLFCRLF(this IEnumerable<ArraySegment<byte>> buffers)
+        internal static int IndexOfAfterCRLFCRLF(this IEnumerable<ArraySegment<byte>> buffers)
         {
             Queue<byte> lastFour = new Queue<byte>(4);
 
@@ -116,7 +116,7 @@ namespace Kayak
         }
 
         /// <summary>
-        /// Returns the path component from the `RequestUri` property of the `IKayakServerRequest`.
+        /// Returns the path component from the `RequestUri` property of the `IKayakServerRequest` (e.g., /some/path).
         /// </summary>
         public static string GetPath(this IKayakServerRequest request)
         {

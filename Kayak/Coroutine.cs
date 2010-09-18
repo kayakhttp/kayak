@@ -16,13 +16,14 @@ namespace Kayak
     /// operation, yield an observable which completes after the operation is complete. If the
     /// operation returns one or more values, you can use the `Observable.Do` method to capture
     /// those values and do something with them in your local scope.
-    /// 
+    /// </summary>
+    /// <remarks>
     /// TODO (maybe): Add an option to prevent exceptions from being passed on to observers. In this
     /// way, users can handle exceptions locally. Unfortunately, if you don't explicitly handle
     /// exceptions when this option is set, your program will just continue, possibly leading to 
     /// strange behavior, because there's no way for coroutine to know if the exception was handled. Is there?
     /// Seems like a pretty hacky, horrible abuse of C#.
-    /// </summary>
+    /// </remarks>
     public class Coroutine<T> : IObservable<T>
     {
         IObserver<T> observer;
@@ -179,8 +180,15 @@ namespace Kayak
         }
     }
 
-    public static partial class Extensions
+    public static partial class CoroutineExtensions
     {
+        /// <summary>
+        /// Creates a Coroutine over an `IEnumerable&lt;object&gt;` defined using the C# iterator
+        /// block syntax. The iterator block must be an enumerator of type `object`. You can `yield return` 
+        /// objects of any type from the iterator block (including observables, which are handled as described
+        /// above), but the observable that this method returns will only yield values yielded by the iterator block
+        /// which can be cast to the type `T`.
+        /// </summary>
         public static IObservable<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock)
         {
             return new Coroutine<T>(iteratorBlock.GetEnumerator());

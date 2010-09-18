@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Reflection;
-using JimBlackler.DocsByReflection;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Web;
+using System.Xml;
+using JimBlackler.DocsByReflection;
 using MarkdownSharp;
 
 namespace KayakDocs
@@ -34,6 +35,18 @@ namespace KayakDocs
         {
             var assemblyToDocument = Path.GetFullPath(args[0]);
 
+            try
+            {
+                DocumentAssemblyAtPath(assemblyToDocument);
+            }
+            catch (DocsByReflectionException e)
+            {
+                Console.Out.WriteLine("Could not find documentation file, aborting.");
+            }
+        }
+
+        static void DocumentAssemblyAtPath(string assemblyToDocument)
+        {
             var fileName = assemblyToDocument.Replace(".dll", "Docs.html");
 
             Console.WriteLine("Documenting assembly " + assemblyToDocument + " in file " + fileName);
@@ -46,20 +59,23 @@ namespace KayakDocs
             var file = File.Open(fileName, FileMode.Create);
             var tw = new StreamWriter(file);
 
-            tw.WriteLine("<html><head><title>Kayak Documentation</title></head><body><h1>Kayak Documentation</h1>");
-
             var extensionType = assembly.GetTypes().Where(et => et.Name == "Extensions").First();
 
             var types = assembly.GetExportedTypes()
                 .OrderBy(t => ((t.IsInterface ? "0" : "1") + "." + t.Name))
-                .Where(t => t.Name != "Extensions" && !t.Namespace.Contains("LitJson"))
+                .Where(t => !t.Name.Contains("Extensions") && !t.Namespace.Contains("LitJson"))
                 .Select(t => new DocumentedType(extensionType, t));
+
+            tw.WriteLine("<ul>");
+            foreach (var type in types)
+                tw.WriteLine(string.Format("<li><a href=\"#{0}\">{1}</a></li>", type.FragmentName, HttpUtility.HtmlEncode(type.FriendlyName)));
+            tw.WriteLine("</ul>");
 
             foreach (var type in types)
             {
                 Console.WriteLine("Documenting type " + type.Type.Namespace + "." + type.Type.Name + "...");
 
-                tw.WriteLine(string.Format("<h2>{0}</h2>", HttpUtility.HtmlEncode(DocumentedMember.GetFriendlyTypeName(type.Type))));
+                tw.WriteLine(string.Format("<a name=\"{0}\"></a><h2>{1}</h2>", type.FragmentName, HttpUtility.HtmlEncode(DocumentedMember.GetFriendlyTypeName(type.Type))));
                 tw.WriteLine(Transform(type.Description.Trim()));
 
                 if (type.Constructors.Count > 0)
@@ -73,8 +89,6 @@ namespace KayakDocs
                 if (type.Fields.Count > 0)
                     WriteMemberList(tw, type.Fields, "Fields");
             }
-
-            tw.WriteLine("</body></html>");
 
             tw.Flush();
             file.Flush();
@@ -120,6 +134,23 @@ namespace KayakDocs
         public List<DocumentedMember> Methods;
         public List<DocumentedMember> Extensions;
         public List<DocumentedMember> Fields;
+
+        public string FriendlyName
+        {
+            get
+            {
+                return DocumentedMember.GetFriendlyTypeName(Type);
+            }
+        }
+
+        public string FragmentName
+        {
+            get
+            {
+                // HACK
+                return FriendlyName.Replace("<T>", "");
+            }
+        }
 
         public DocumentedType(Type extensionsType, Type type)
         {
@@ -192,7 +223,7 @@ namespace KayakDocs
 
                 var documentedMember = new DocumentedMember();
 
-                documentedMember.Signature = GetSignature(method, method.GetParameters());
+                documentedMember.Signature = GetSignature(method, false);
                 documentedMember.Description = GetDescription(method);
 
                 result.Add(documentedMember);
@@ -207,6 +238,21 @@ namespace KayakDocs
                              where method.IsDefined(typeof(ExtensionAttribute), false)
                              where method.GetParameters()[0].ParameterType == type
                              select method;
+            
+            var extensionType = type.Assembly.GetTypes().FirstOrDefault(t => 
+                { 
+                    var name = type.Name;
+                    var tick = name.IndexOf('`');
+
+                    if (tick > 0)
+                        name = name.Substring(0, tick);
+
+                    return t.Name == name + "Extensions";
+                });
+
+            if (extensionType != null)
+                extensions = extensions.Concat(from method in extensionType.GetMethods(BindingFlags.Static | BindingFlags.Public)
+                             where method.IsDefined(typeof(ExtensionAttribute), false) select method);
 
             var result = new List<DocumentedMember>();
 
@@ -214,11 +260,13 @@ namespace KayakDocs
             {
                 var documentedMember = new DocumentedMember();
 
-                documentedMember.Signature = GetSignature(method, method.GetParameters().Skip(1));
+                documentedMember.Signature = GetSignature(method, true);
                 documentedMember.Description = GetDescription(method);
 
                 result.Add(documentedMember);
             }
+
+
 
             return result;
         }
@@ -240,12 +288,16 @@ namespace KayakDocs
             return result;
         }
 
-        static string GetSignature(MethodInfo method, IEnumerable<ParameterInfo> parameters)
+        static string GetSignature(MethodInfo method, bool extension)
         {
             var returnType = FixPrimitives(GetFriendlyTypeName(method.ReturnType));
                 
+            var parameters = method.GetParameters();
 
-            return string.Format("{0} {1}({2})", returnType, method.Name, GetParameterString(parameters));
+            if (extension) 
+                return string.Format("{0} {1}.{2}({3})", returnType, parameters.First().Name, GetFriendlyMethodName(method), GetParameterString(parameters.Skip(1)));
+
+            return string.Format("{0} {1}({2})", returnType, GetFriendlyMethodName(method), GetParameterString(parameters));
         }
 
         static string GetParameterString(IEnumerable<ParameterInfo> parameters)
@@ -267,6 +319,29 @@ namespace KayakDocs
             return FixPrimitives(sb.ToString());
         }
 
+        public static string GetFriendlyMethodName(MethodInfo method)
+        {
+            if (!method.IsGenericMethod)
+                return method.Name;
+
+            var sb = new StringBuilder();
+            sb.Append(method.Name);
+            sb.Append("<");
+            var first = true;
+
+            foreach (var gp in method.GetGenericArguments())
+            {
+                if (!first)
+                    sb.Append(", ");
+
+                sb.Append(gp.Name);
+                first = false;
+            }
+
+            sb.Append(">");
+            return sb.ToString();
+        }
+
         public static string GetFriendlyTypeName(Type type)
         {
             if (type.IsGenericParameter)
@@ -276,7 +351,7 @@ namespace KayakDocs
 
             if (!type.IsGenericType)
             {
-                return type.FullName;
+                return type.Name;
             }
 
             var builder = new System.Text.StringBuilder();
@@ -288,9 +363,8 @@ namespace KayakDocs
             foreach (var arg in type.GetGenericArguments())
             {
                 if (!first)
-                {
                     builder.Append(", ");
-                }
+
                 builder.Append(GetFriendlyTypeName(arg));
                 first = false;
             }
@@ -300,17 +374,49 @@ namespace KayakDocs
 
         static string FixPrimitives(string s)
         {
-            return s.Replace("System.String", "string")
-                .Replace("System.Boolean", "bool")
-                .Replace("System.Void", "void")
-                .Replace("System.Byte", "byte")
-                .Replace("System.Object", "object")
-                .Replace("System.Int32", "int");
+            return s.Replace("String", "string")
+                .Replace("Boolean", "bool")
+                .Replace("Void", "void")
+                .Replace("Byte", "byte")
+                .Replace("Object", "object")
+                .Replace("Int32", "int");
         }
 
-        static string GetDescription(MemberInfo method)
+        static XmlDocument xmlDocument;
+
+        static XmlElement GetXmlForMember(MemberInfo member)
         {
-            var xml = DocsByReflection.XMLFromMember(method);
+            if (xmlDocument == null)
+                xmlDocument = DocsByReflection.XMLFromAssembly(member.DeclaringType.Assembly);
+
+            string fullName = null;
+
+            if (member is MethodInfo)
+                fullName = Jolt.Convert.ToXmlDocCommentMember(member as MethodInfo);
+            if (member is ConstructorInfo)
+                fullName = Jolt.Convert.ToXmlDocCommentMember(member as ConstructorInfo);
+            if (member is PropertyInfo)
+                fullName = Jolt.Convert.ToXmlDocCommentMember(member as PropertyInfo);
+            if (member is FieldInfo)
+                fullName = Jolt.Convert.ToXmlDocCommentMember(member as FieldInfo);
+
+            return xmlDocument["doc"]["members"].Cast<XmlElement>()
+                .FirstOrDefault(e => {
+                    var name = e.Attributes["name"].Value;
+                        
+                    if (name.Equals(fullName))
+                        return true;
+                    
+                    // HACK for:
+                    // public static IObservable<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock)
+                    var tickSplit = name.Split('`');
+                    return fullName.Contains(tickSplit.First()) && fullName.Contains(tickSplit.Last().TrimStart("1234567890".ToCharArray()));
+                });
+        }
+
+        static string GetDescription(MemberInfo member)
+        {
+            var xml = GetXmlForMember(member);
             
             if (xml == null) return null;
             

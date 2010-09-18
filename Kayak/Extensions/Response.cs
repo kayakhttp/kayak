@@ -99,21 +99,33 @@ namespace Kayak
             response.Headers["Location"] = url;
         }
 
+        /// <summary>
+        /// Returns an observable which, upon subscription, writes the given `string` to the response.
+        /// </summary>
         public static IObservable<Unit> Write(this IKayakServerResponse response, string str)
         {
             return response.Write(str, Encoding.UTF8);
         }
 
+        /// <summary>
+        /// Returns an observable which, upon subscription, writes the given `string` to the response using the given `Encoding`.
+        /// </summary>
         public static IObservable<Unit> Write(this IKayakServerResponse response, string str, Encoding enc)
         {
             return response.Write(enc.GetBytes(str));
         }
 
+        /// <summary>
+        /// Returns an observable which, upon subscription, writes the entirety of the given buffer to the response.
+        /// </summary>
         public static IObservable<Unit> Write(this IKayakServerResponse response, byte[] buffer)
         {
             return response.Write(buffer, 0, buffer.Length);
         }
 
+        /// <summary>
+        /// Returns an observable which, upon subscription, writes the given byte array segment to the response.
+        /// </summary>
         public static IObservable<Unit> Write(this IKayakServerResponse response, ArraySegment<byte> buffer)
         {
             return response.Write(buffer.Array, buffer.Offset, buffer.Count);

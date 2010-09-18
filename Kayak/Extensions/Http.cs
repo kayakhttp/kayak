@@ -9,7 +9,7 @@ namespace Kayak
     /// <summary>
     /// Represents the first line of an HTTP request. Used when constructing a `KayakServerRequest`.
     /// </summary>
-    public struct HttpRequestLine
+    internal struct HttpRequestLine
     {
         /// <summary>
         /// The verb component of the request line (e.g., GET, POST, etc).
@@ -44,12 +44,12 @@ namespace Kayak
         const char EqualsChar = '=';
         const char AmpersandChar = '&';
 
-        public static IDictionary<string, string> ParseQueryString(this string encodedString)
+        internal static IDictionary<string, string> ParseQueryString(this string encodedString)
         {
             return ParseQueryString(encodedString, 0, encodedString.Length);
         }
 
-        public static IDictionary<string, string> ParseQueryString(this string encodedString,
+        internal static IDictionary<string, string> ParseQueryString(this string encodedString,
             int charIndex, int charCount)
         {
             var result = new Dictionary<string, string>();
@@ -91,7 +91,7 @@ namespace Kayak
                 dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);
         }
 
-        public static void ParseHttpHeaders(this IEnumerable<ArraySegment<byte>> buffers, out HttpRequestLine requestLine, out IDictionary<string, string> headers)
+        internal static void ParseHttpHeaders(this IEnumerable<ArraySegment<byte>> buffers, out HttpRequestLine requestLine, out IDictionary<string, string> headers)
         {
             var reader = new StringReader(buffers.GetString());
 

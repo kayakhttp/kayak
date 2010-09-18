@@ -10,7 +10,11 @@ namespace Kayak
     /// KayakServer is a simple server implementation using `System.Net.Sockets.Socket`. It is an 
     /// observable which, upon subscription, starts a new thread on which it listens for connections,
     /// and yields an `ISocket` object each time a client connects. Cancelling the subscription causes
-    /// the listen thread to exit. Values are yielded on `ThreadPool` threads.
+    /// the listen thread to exit. 
+    /// 
+    /// `ISocket` values are yielded on `ThreadPool` threads. The observables returned
+    /// by these `ISocket` values yield and complete on `ThreadPool` threads
+    /// as well. Thus, you must take care to synchronize resources shared by concurrent requests.
     /// </summary>
     public class KayakServer : IObservable<ISocket>
     {

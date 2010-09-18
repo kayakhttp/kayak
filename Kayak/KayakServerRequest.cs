@@ -37,8 +37,7 @@ namespace Kayak
         #endregion
 
         /// <summary>
-        /// Constructs a new `KayakServerRequest` with the given `HttpRequestLine`, headers dictionary,
-        /// and `RequestStream`.
+        /// Constructs a new `KayakServerRequest` which will read from the given `ISocket`.
         /// </summary>
         public KayakServerRequest(ISocket socket)
         {
