@@ -4,12 +4,13 @@ using System.Linq;
 using System.Text;
 using System.IO;
 using LitJson;
+using System.Reflection;
 
 namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        public static IObservable<Unit> WriteJsonResponse(this object o, IKayakContext context, TypedJsonMapper mapper)
+        public static IObservable<Unit> WriteJsonResponse(this IKayakContext context, object o, TypedJsonMapper mapper)
         {
             var buffer = new MemoryStream();
             var writer = new StreamWriter(buffer);
@@ -30,49 +31,67 @@ namespace Kayak.Framework
         }
     }
 
-    public class JsonHandler : IInvocationResultHandler
+    public static partial class Extensions
     {
-        public TypedJsonMapper Mapper { get; set; }
+        static readonly string MinifiedOutputKey = "JsonSerializerPrettyPrint";
 
-        public JsonHandler(TypedJsonMapper mapper)
+        public static void SetJsonOutputMinified(this IKayakContext context, bool value)
         {
-            Mapper = mapper;
+            context.Items[MinifiedOutputKey] = value;
         }
 
-        public IObservable<Unit> HandleResult(IKayakContext context, InvocationInfo info, object result)
+        public static bool GetJsonOutputMinified(this IKayakContext context)
         {
-            return result.WriteJsonResponse(context, Mapper);
-        }
-    }
-
-    public class JsonBinder : IInvocationArgumentBinder
-    {
-        public TypedJsonMapper Mapper { get; set; }
-
-        public JsonBinder(TypedJsonMapper mapper)
-        {
-            Mapper = mapper;
+            return
+                context.Items.ContainsKey(MinifiedOutputKey) &&
+                (bool)Convert.ChangeType(context.Items[MinifiedOutputKey], typeof(bool));
         }
 
-        public void BindArgumentsFromHeaders(IKayakContext context, InvocationInfo info)
+        public static IObservable<object> SerializeToJson(this IObservable<object> invocation, IKayakContext c, TypedJsonMapper mapper)
         {
-            return;
+            return invocation.SerializeToJsonInternal(c, mapper).AsCoroutine<object>();
         }
 
-        public IObservable<Unit> BindArgumentsFromBody(IKayakContext context, InvocationInfo info)
+        static IEnumerable<object> SerializeToJsonInternal(this IObservable<object> invocation, IKayakContext c, TypedJsonMapper mapper)
         {
-            if (!RequestBodyAttribute.IsDefinedOnParameters(info.Method))
-                return null;
+            object result = null;
+            Exception exception = null;
 
-            return BindArgumentsFromBodyInternal(context, info).AsCoroutine<Unit>();
+            yield return invocation.Do(o => result = o, e => exception = e, () => { }).Catch(Observable.Empty<object>());
+
+            if (result != null)
+                yield return c.WriteJsonResponse(result, mapper);
+            else if (exception != null)
+            {
+                if (exception is TargetInvocationException)
+                    exception = exception.InnerException;
+
+                c.Response.SetStatusToInternalServerError();
+
+                yield return c.WriteJsonResponse(new { Error = exception.Message }, mapper);
+            }
         }
 
-        IEnumerable<object> BindArgumentsFromBodyInternal(IKayakContext context, InvocationInfo info)
+        public static IObservable<InvocationInfo> BindJsonArgs(this IObservable<InvocationInfo> bind, 
+            IKayakContext context, TypedJsonMapper mapper)
         {
+            return BindJsonArgsInternal(bind, context, mapper).AsCoroutine<InvocationInfo>();
+        }
+
+        static IEnumerable<object> BindJsonArgsInternal(IObservable<InvocationInfo> bind, 
+            IKayakContext context, TypedJsonMapper mapper)
+        {
+            InvocationInfo info = null;
+
+            yield return bind.Do(i => info = i);
+
             var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p));
 
             if (parameters.Count() == 0 || context.Request.Headers.GetContentLength() == 0)
+            {
+                yield return info;
                 yield break;
+            }
 
             IList<ArraySegment<byte>> requestBody = null;
             yield return BufferRequestBody(context).AsCoroutine<IList<ArraySegment<byte>>>().Do(d => requestBody = d);
@@ -83,13 +102,13 @@ namespace Kayak.Framework
                 reader.Read(); // read array start
 
             foreach (var param in parameters)
-                info.Arguments[param.Position] = Mapper.Read(param.ParameterType, reader);
+                info.Arguments[param.Position] = mapper.Read(param.ParameterType, reader);
 
             if (parameters.Count() > 1)
                 reader.Read(); // read array end
         }
 
-        IEnumerable<object> BufferRequestBody(IKayakContext context)
+        static IEnumerable<object> BufferRequestBody(IKayakContext context)
         {
             var bytesRead = 0;
             var contentLength = context.Request.Headers.GetContentLength();
@@ -107,37 +126,6 @@ namespace Kayak.Framework
                 if (bytesRead == contentLength)
                     break;
             }
-        }
-    }
-
-    public static partial class Extensions
-    {
-        static readonly string MinifiedOutputKey = "JsonSerializerPrettyPrint";
-
-        public static void SetJsonOutputMinified(this IKayakContext context, bool value)
-        {
-            context.Items[MinifiedOutputKey] = value;
-        }
-
-        public static bool GetJsonOutputMinified(this IKayakContext context)
-        {
-            return
-                context.Items.ContainsKey(MinifiedOutputKey) &&
-                (bool)Convert.ChangeType(context.Items[MinifiedOutputKey], typeof(bool));
-        }
-
-        public static void AddJsonSupport(this KayakInvocationBehavior behavior)
-        {
-            var mapper = new TypedJsonMapper();
-            mapper.AddDefaultOutputConversions();
-            mapper.AddDefaultInputConversions();
-
-            behavior.AddJsonSupport(mapper);
-        }
-        public static void AddJsonSupport(this KayakInvocationBehavior behavior, TypedJsonMapper mapper)
-        {
-            behavior.Binders.Add(new JsonBinder(mapper));
-            behavior.ResultHandlers.Add(new JsonHandler(mapper));
         }
     }
 }

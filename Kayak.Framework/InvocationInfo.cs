@@ -6,6 +6,9 @@ using System.Reflection;
 
 namespace Kayak.Framework
 {
+    /// <summary>
+    /// Defines a method invocation, including the target object, the `MethodInfo` to be invoked, and the arguments to the method.
+    /// </summary>
     public sealed class InvocationInfo
     {
         public object Target;
@@ -21,6 +24,11 @@ namespace Kayak.Framework
         {
             if (Method == null) return base.ToString();
             return Method.DeclaringType.Namespace + "." + Method.DeclaringType.Name + "." + Method.Name;
+        }
+
+        public static IObservable<InvocationInfo> CreateObservable()
+        {
+            return (new InvocationInfo[] { new InvocationInfo() }).ToObservable();
         }
     }
 

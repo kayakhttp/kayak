@@ -1,54 +1,51 @@
 ﻿using System;
-using System.Linq;
-using System.Reflection;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Reflection;
 
 namespace Kayak.Framework
 {
-    public class HeaderBinder : IInvocationArgumentBinder
+    public static partial class Extensions
     {
-        Func<string, Type, object> coerce;
-
-        public HeaderBinder(Func<string, Type, object> coerce)
+        public static IObservable<InvocationInfo> BindHeaderArgs(this IObservable<InvocationInfo> bind, IKayakContext c)
         {
-            this.coerce = coerce;
-        }
-
-        public void BindArgumentsFromHeaders(IKayakContext context, InvocationInfo info)
-        {
-            var request = context.Request;
-            var parameters = info.Method.GetParameters().Where(p => !RequestBodyAttribute.IsDefinedOn(p));
-            var pathParams = context.Items[MethodMap.PathParamsContextKey] as Dictionary<string, string>;
-
-            foreach (ParameterInfo param in parameters)
+            return bind.Select(i =>
             {
-                string value = null;
+                var request = c.Request;
+                var parameters = i.Method.GetParameters().Where(p => !RequestBodyAttribute.IsDefinedOn(p));
 
-                if (pathParams != null && pathParams.ContainsKey(param.Name))
-                    value = pathParams[param.Name];
+                var pathParams = c.Items.ContainsKey(MethodMap.PathParamsContextKey) ?
+                    c.Items[MethodMap.PathParamsContextKey] as Dictionary<string, string> : null;
 
-                if (value == null && request.QueryString.ContainsKey(param.Name))
-                    value = request.QueryString[param.Name];
+                foreach (ParameterInfo param in parameters)
+                {
+                    string value = null;
 
-                // TODO also pull from cookies?
+                    if (pathParams != null && pathParams.ContainsKey(param.Name))
+                        value = pathParams[param.Name];
 
-                if (value != null)
-                    try
-                    {
-                        info.Arguments[param.Position] = coerce(value, param.ParameterType);
-                    }
-                    catch (Exception e)
-                    {
-                        throw new Exception(string.Format(
-                            "Could not convert '{0}' to the type required by {1} ({2}).",
-                            value, param.Name, param.ParameterType), e);
-                    }
-            }
+                    if (value == null && request.QueryString.ContainsKey(param.Name))
+                        value = request.QueryString[param.Name];
+
+                    // TODO also pull from cookies?
+
+                    if (value != null)
+                        try
+                        {
+                            i.Arguments[param.Position] = c.Coerce(value, param.ParameterType);
+                        }
+                        catch (Exception e)
+                        {
+                            throw new Exception(string.Format(
+                                "Could not convert '{0}' to the type required by {1} ({2}).",
+                                value, param.Name, param.ParameterType), e);
+                        }
+                }
+
+                return i;
+            });
         }
 
-        public IObservable<Unit> BindArgumentsFromBody(IKayakContext context, InvocationInfo info)
-        {
-            return null;
-        }
     }
 }

@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace Kayak.Framework
 {
-    class DefaultExceptionHandler : IInvocationExceptionHandler
+    class DefaultExceptionHandler : IExceptionHandler
     {
         public IObservable<Unit> HandleException(IKayakContext context, InvocationInfo info, Exception exception)
         {

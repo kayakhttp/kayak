@@ -14,13 +14,13 @@ namespace KayakExamples
         static void Main(string[] args)
         {
             var server = new KayakServer();
-            var framework = server.UseFramework();
+            var framework = server.ToContexts().UseFramework2(Assembly.GetExecutingAssembly().GetTypes());
 
             Console.WriteLine("Kayak listening on " + server.ListenEndPoint);
             Console.ReadLine();
 
             // unsubscribe from server (close the listening socket)
-            framework.Dispose();
+            //framework.Dispose();
 
             // any outstanding requests that may still be processing will be aborted.
             // currently no way to wait for pending requests. keep your own request

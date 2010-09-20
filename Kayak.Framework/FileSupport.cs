@@ -6,7 +6,7 @@ using System.IO;
 
 namespace Kayak.Framework
 {
-    class FileHandler : IInvocationResultHandler
+    class FileHandler : IResultHandler
     {
         public IObservable<Unit> HandleResult(IKayakContext context, InvocationInfo info, object result)
         {
@@ -26,11 +26,11 @@ namespace Kayak.Framework
         }
     }
 
-    public static partial class Extensions
-    {
-        public static void AddFileSupport(this KayakInvocationBehavior behavior)
-        {
-            behavior.ResultHandlers.Add(new FileHandler());
-        }
-    }
+    //public static partial class Extensions
+    //{
+    //    public static void AddFileSupport(this KayakInvocationBehavior behavior)
+    //    {
+    //        behavior.ResultHandlers.Add(new FileHandler());
+    //    }
+    //}
 }

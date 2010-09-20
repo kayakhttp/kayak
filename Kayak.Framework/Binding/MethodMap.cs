@@ -135,11 +135,11 @@ namespace Kayak.Framework
             return map;
         }
 
-        public static void MapTypes(this KayakInvocationBehavior behavior, Type[] types)
-        {
-            var map = types.CreateMethodMap();
-            behavior.Map = c => map.GetMethodForContext(c);
-        }
+        //public static void MapTypes(this KayakInvocationBehavior behavior, Type[] types)
+        //{
+        //    var map = types.CreateMethodMap();
+        //    behavior.Map = c => map.GetMethodForContext(c);
+        //}
     }
 
     class DefaultResponses : KayakService
@@ -154,6 +154,28 @@ namespace Kayak.Framework
         public void NotFound()
         {
             Context.Response.SetStatusToNotFound();
+        }
+    }
+
+    public static class MethodMapExtensions
+    {
+        public static IObservable<InvocationInfo> BindMethodAndTarget(this IObservable<InvocationInfo> bind, IKayakContext c, MethodMap map)
+        {
+            return bind.Select(i =>
+            {
+                var method = map.GetMethodForContext(c);
+                i.Method = method;
+                i.Target = Activator.CreateInstance(method.DeclaringType);
+
+                var service = i.Target as KayakService;
+
+                if (service != null)
+                    service.Context = c;
+
+                var parameterCount = i.Method.GetParameters().Length;
+                i.Arguments = new object[parameterCount];
+                return i;
+            });
         }
     }
 }
