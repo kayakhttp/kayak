@@ -110,38 +110,6 @@ namespace Kayak.Framework
         }
     }
 
-    public static partial class Extensions
-    {
-        public static MethodMap CreateMethodMap(this Type[] types)
-        {
-            var map = new MethodMap();
-
-            foreach (var method in types.SelectMany(t => t.GetMethods()))
-            {
-                var paths = PathAttribute.PathsForMethod(method);
-
-                if (paths.Length == 0) continue;
-
-                var verbs = VerbAttribute.VerbsForMethod(method);
-
-                if (verbs.Length == 0) 
-                    verbs = new string[] { "GET" };
-
-                foreach (var path in paths)
-                    foreach (var verb in verbs)
-                        map.MapMethod(path, verb, method);
-            }
-
-            return map;
-        }
-
-        //public static void MapTypes(this KayakInvocationBehavior behavior, Type[] types)
-        //{
-        //    var map = types.CreateMethodMap();
-        //    behavior.Map = c => map.GetMethodForContext(c);
-        //}
-    }
-
     class DefaultResponses : KayakService
     {
         public void InvalidMethod()
@@ -159,23 +127,49 @@ namespace Kayak.Framework
 
     public static class MethodMapExtensions
     {
-        public static IObservable<InvocationInfo> BindMethodAndTarget(this IObservable<InvocationInfo> bind, IKayakContext c, MethodMap map)
+        public static MethodMap CreateMethodMap(this IEnumerable<Type> types)
         {
-            return bind.Select(i =>
+            var map = new MethodMap();
+
+            foreach (var method in types.SelectMany(t => t.GetMethods()))
             {
-                var method = map.GetMethodForContext(c);
-                i.Method = method;
-                i.Target = Activator.CreateInstance(method.DeclaringType);
+                var paths = PathAttribute.PathsForMethod(method);
 
-                var service = i.Target as KayakService;
+                if (paths.Length == 0) continue;
 
-                if (service != null)
-                    service.Context = c;
+                var verbs = VerbAttribute.VerbsForMethod(method);
 
-                var parameterCount = i.Method.GetParameters().Length;
-                i.Arguments = new object[parameterCount];
-                return i;
-            });
+                if (verbs.Length == 0)
+                    verbs = new string[] { "GET" };
+
+                foreach (var path in paths)
+                    foreach (var verb in verbs)
+                        map.MapMethod(path, verb, method);
+            }
+
+            return map;
+        }
+
+        public static IObservable<IKayakContext> SelectMethodAndTarget(this IObservable<IKayakContext> contexts, MethodMap map)
+        {
+            return contexts.Do(c => c.SelectMethodAndTarget(map));
+        }
+
+        public static void SelectMethodAndTarget(this IKayakContext context, MethodMap map)
+        {
+            var i = new InvocationInfo();
+            var method = map.GetMethodForContext(context);
+            i.Method = method;
+            i.Target = Activator.CreateInstance(method.DeclaringType);
+
+            var service = i.Target as KayakService;
+
+            if (service != null)
+                service.Context = context;
+
+            var parameterCount = i.Method.GetParameters().Length;
+            i.Arguments = new object[parameterCount];
+            context.SetInvocationInfo(i);
         }
     }
 }

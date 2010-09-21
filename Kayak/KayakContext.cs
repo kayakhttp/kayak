@@ -26,6 +26,14 @@ namespace Kayak
             Response = response;
             Items = new Dictionary<object, object>();
         }
+
+        public static KayakContext CreateContext(ISocket socket)
+        {
+            var request = new KayakServerRequest(socket);
+            var response = new KayakServerResponse(socket);
+
+            return new KayakContext(socket, request, response);
+        }
     }
 
     public static class KayakContextExtensions
@@ -38,13 +46,7 @@ namespace Kayak
         /// <returns></returns>
         public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets)
         {
-            return sockets.Select(socket =>
-            {
-                var request = new KayakServerRequest(socket);
-                var response = new KayakServerResponse(socket);
-
-                return (IKayakContext)new KayakContext(socket, request, response);
-            });
+            return sockets.Select(s => (IKayakContext)KayakContext.CreateContext(s));
         }
     }
 }

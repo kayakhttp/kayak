@@ -28,14 +28,7 @@ namespace Kayak.Framework
         static Regex colonRegex = new Regex(@"(.* )([0-9]{1,2})([^:]*$)"); // last 2-digit number with no following colons
         static List<string> trueValues = new List<string>(new string[] { "true", "t", "yes", "y", "on", "1" });
 
-        // not too sure about this being public
-        public static T Coerce<T>(this string s)
-        {
-            return (T)Coerce(s, typeof(T));
-        }
-
-        // not too sure about this being public
-        public static object Coerce(this string s, Type t)
+        static object Coerce(string s, Type t)
         {
             if (s == null && t.IsValueType)
             {
@@ -49,7 +42,11 @@ namespace Kayak.Framework
             }
             else if (t == typeof(DateTime))
             {
-                return ParseDateTime(s);
+                DateTime dt;
+                if (DateTime.TryParse(s, out dt)) return dt;
+
+                string message = "Could coerce to DateTime: '{0}'.";
+                throw new FormatException(string.Format(message, s));
             }
             else
             {
@@ -63,27 +60,6 @@ namespace Kayak.Framework
                     throw new ArgumentException("Could not convert '" + s + "' to " + t + ".", e);
                 }
             }
-        }
-
-        /// <summary>
-        /// Equivalent to DateTime.Parse(), except it accomodates am/pm strings better.
-        /// </summary>
-        private static DateTime ParseDateTime(string date)
-        {
-            if (string.IsNullOrEmpty(date))
-                throw new Exception("Attemped to parse an empty date!");
-
-            // mono can't handle am/pm without some whitespace.
-            date = ampmRegex.Replace(date, " $1m"); // turn "a" or "am" into " am"
-
-            // mono also can't handle times without the colon!  lame!
-            date = colonRegex.Replace(date, "$1$2:00$3");
-
-            DateTime dt;
-            if (DateTime.TryParse(date, out dt)) return dt;
-
-            string message = "Could not parse the DateTime string '{0}'.";
-            throw new FormatException(string.Format(message, date));
         }
     }
 }

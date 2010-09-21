@@ -7,48 +7,19 @@ namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        /// <summary>
-        /// Carries out a method invocation within the given HTTP context using the given behavior. 
-        /// 
-        /// First, the behavior's `Bind` method is called to retrieve an observable which will provide 
-        /// an `InvocationInfo` specifying the method to be invoked, the target object on which the 
-        /// method should be invoked, and arguments to the method.
-        /// 
-        /// Next, the behavior's `Invoke` method is called with the context and an observable which 
-        /// yields the result of the invocation upon subscription.
-        /// </summary>
-        public static IObservable<object> AsInvocation(this IKayakContext context, IObservable<InvocationInfo> bind)
+        public static IObservable<IKayakContext> PerformInvocation(this IObservable<IKayakContext> contexts)
         {
-            if (context == null)
-                throw new ArgumentNullException("context");
-
-            if (bind == null)
-                throw new ArgumentNullException("bind");
-
-            return context.AsInvocationInternal(bind).AsCoroutine<object>();
+            return contexts.Do(c => c.PerformInvocation());
         }
 
-        static IEnumerable<object> AsInvocationInternal(this IKayakContext context, IObservable<InvocationInfo> bind)
+        public static void PerformInvocation(this IKayakContext context)
         {
-            yield return context.Request.Begin();
-
-            InvocationInfo info = null;
-
-            yield return bind.Do(i => info = i);
+            var info = context.GetInvocationInfo();
 
             if (info == null)
-                throw new Exception("Bind did not yield an instance of InvocationInfo.");
-            if (info.Method == null)
-                throw new Exception("Bind did not yield an valid instance of InvocationInfo. Method was null.");
-            if (info.Target == null)
-                throw new Exception("Bind did not yield an valid instance of InvocationInfo. Target was null.");
+                throw new Exception("Context has no InvocationInfo.");
 
-            context.SetInvocationInfo(info);
-
-            object result = info.Invoke();
-
-            if (info.Method.ReturnType != typeof(void))
-                yield return result;
+            info.Invoke(); 
         }
     }
 }

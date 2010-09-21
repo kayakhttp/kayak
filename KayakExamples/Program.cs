@@ -14,7 +14,20 @@ namespace KayakExamples
         static void Main(string[] args)
         {
             var server = new KayakServer();
-            var framework = server.ToContexts().UseFramework2(Assembly.GetExecutingAssembly().GetTypes());
+            var framework = server.ToContexts().UseFramework(Assembly.GetExecutingAssembly().GetTypes());
+
+            framework.Subscribe(context =>
+                {
+                    Console.WriteLine("[{0}] {1} {2} {3} : {4} {5} {6}", DateTime.Now,
+                        context.Request.Verb, context.Request.Path, context.Request.HttpVersion,
+                        context.Response.HttpVersion, context.Response.StatusCode, context.Response.ReasonPhrase);
+                },
+                e =>
+                {
+                    Console.WriteLine("Error during context.");
+                    Console.Out.WriteException(e);
+                },
+                () => { });
 
             Console.WriteLine("Kayak listening on " + server.ListenEndPoint);
             Console.ReadLine();

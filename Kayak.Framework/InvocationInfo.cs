@@ -14,21 +14,30 @@ namespace Kayak.Framework
         public object Target;
         public MethodInfo Method;
         public object[] Arguments;
+        public object Result;
+        public Exception Exception;
 
-        public object Invoke()
+        public void Invoke()
         {
-            return Method.Invoke(Target, Arguments);
+            if (Method == null)
+                throw new Exception("Context has invalid instance of InvocationInfo. Method was null.");
+            if (Target == null)
+                throw new Exception("Context has invalid instance of InvocationInfo. Target was null.");
+
+            try
+            {
+                Result = Method.Invoke(Target, Arguments);
+            }
+            catch (Exception e)
+            {
+                Exception = e;
+            }
         }
 
         public override string ToString()
         {
             if (Method == null) return base.ToString();
             return Method.DeclaringType.Namespace + "." + Method.DeclaringType.Name + "." + Method.Name;
-        }
-
-        public static IObservable<InvocationInfo> CreateObservable()
-        {
-            return (new InvocationInfo[] { new InvocationInfo() }).ToObservable();
         }
     }
 

@@ -40,10 +40,8 @@ namespace Kayak.Framework
         //    return contexts.Subscribe(c => c.PerformInvocation(behavior));
         //}
 
-        public static IDisposable UseFramework2(this IObservable<IKayakContext> contexts, Type[] types)
+        public static IObservable<IKayakContext> UseFramework(this IObservable<IKayakContext> contexts, Type[] types)
         {
-            var mm = types.CreateMethodMap();
-            
             //Func<IKayakContext, IObservable<InvocationInfo>, IObservable<InvocationInfo>> bindMethod = null;
             //Func<IKayakContext, IObservable<InvocationInfo>, IObservable<InvocationInfo>> bindTarget = null;
             //Func<IKayakContext, IObservable<InvocationInfo>, IObservable<InvocationInfo>> bindHeaderArgs = null;
@@ -60,49 +58,48 @@ namespace Kayak.Framework
             //        serializeJson(c, i);
             //    });
 
+
+            //return contexts.Subscribe(c =>
+            //    c.Request.Begin()
+            //    .BindMethodAndTarget(c, methodMap)
+            //    .BindHeaderArgs(c)
+            //    .BindJsonArgs(c, jsonMapper)
+            //    .PerformInvocation(c)
+            //    .SerializeToJson(c, jsonMapper)
+            //    .End(c));
+
+            var methodMap = types.CreateMethodMap();
+
             TypedJsonMapper jsonMapper = new TypedJsonMapper();
             jsonMapper.AddDefaultInputConversions();
             jsonMapper.AddDefaultOutputConversions();
 
-            return contexts.UseFramework(c => 
-                InvocationInfo.CreateObservable()
-                .BindMethodAndTarget(c, mm)
-                .BindHeaderArgs(c)
-                .BindJsonArgs(c, jsonMapper), (c, i) => i.SerializeToJson(c, jsonMapper).End(c));
-        }
-
-        public static IDisposable UseFramework(this IObservable<IKayakContext> contexts,
-            Func<IKayakContext, IObservable<InvocationInfo>> bind,
-            Action<IKayakContext, IObservable<object>> ret)
-        {
-            return contexts.Subscribe(c => ret(c, c.AsInvocation(bind(c))));
+            return contexts
+                .BeginRequest()
+                .SelectMethodAndTarget(methodMap)
+                .DeserializeArgsFromHeaders()
+                .DeserializeArgsFromJson(jsonMapper)
+                .PerformInvocation()
+                .ServeFile()
+                .SerializeToJson(jsonMapper)
+                .EndResponse();
         }
     }
 
     public static partial class Extensions
     {
-        public static void End<T>(this IObservable<T> o, IKayakContext context)
+        public static IObservable<IKayakContext> BeginRequest(this IObservable<IKayakContext> contexts)
         {
-            EndInternal(o, context).AsCoroutine<T>().Subscribe(t => 
-                {
-                    // do something with object resulting from context?
-                }, e =>
-                {
-                    Console.WriteLine("Error during context.");
-                    Console.Out.WriteException(e);
-                },
-                () =>
-                {
-                    //Console.WriteLine("[{0}] {1} {2} {3} : {4} {5} {6}", DateTime.Now,
-                    //    context.Request.Verb, context.Request.Path, context.Request.HttpVersion,
-                    //    context.Response.HttpVersion, context.Response.StatusCode, context.Response.ReasonPhrase);
-                });
+            return contexts.SelectMany(c => Observable.CreateWithDisposable<IKayakContext>(o =>
+                    c.Request.Begin().Subscribe(u => {}, e => o.OnError(e), () => { o.OnNext(c); o.OnCompleted(); })
+                ));
         }
 
-        static IEnumerable<object> EndInternal<T>(this IObservable<T> observable, IKayakContext context)
+        public static IObservable<IKayakContext> EndResponse(this IObservable<IKayakContext> contexts)
         {
-            yield return observable;
-            yield return context.Response.End();
+            return contexts.SelectMany(c => Observable.CreateWithDisposable<IKayakContext>(o =>
+                    c.Response.End().Subscribe(u => { }, e => o.OnError(e), () => { o.OnNext(c); o.OnCompleted(); })
+                ));
         }
     }
 }

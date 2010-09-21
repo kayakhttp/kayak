@@ -6,31 +6,26 @@ using System.IO;
 
 namespace Kayak.Framework
 {
-    class FileHandler : IResultHandler
+    public static partial class Extensions
     {
-        public IObservable<Unit> HandleResult(IKayakContext context, InvocationInfo info, object result)
+        public static IObservable<IKayakContext> ServeFile(this IObservable<IKayakContext> contexts)
         {
-            var file = result as FileInfo;
-
-            if (file == null) return null;
-
-            context.Response.Headers["Content-Length"] = file.Length.ToString();
-
-            // this is a pretty janky way to cast an observable...
-            return WriteFile(context, file).AsCoroutine<Unit>();
+            return contexts.SelectMany(c => Observable.CreateWithDisposable<IKayakContext>(o =>
+                    c.ServeFile().Subscribe(u => { }, e => o.OnError(e), () => { o.OnNext(c); o.OnCompleted(); })
+                ));
         }
 
-        IEnumerable<object> WriteFile(IKayakContext context, FileInfo file)
+        public static IObservable<Unit> ServeFile(this IKayakContext context)
         {
-            yield return context.Response.WriteFile(file.Name);
+            var info = context.GetInvocationInfo();
+
+            if (info.Result is FileInfo)
+            {
+                var file = info.Result as FileInfo;
+                context.Response.Headers["Content-Length"] = file.Length.ToString();
+                return context.Response.WriteFile(file.Name);
+            }
+            else return Observable.Empty<Unit>();
         }
     }
-
-    //public static partial class Extensions
-    //{
-    //    public static void AddFileSupport(this KayakInvocationBehavior behavior)
-    //    {
-    //        behavior.ResultHandlers.Add(new FileHandler());
-    //    }
-    //}
 }
