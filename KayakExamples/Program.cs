@@ -14,33 +14,23 @@ namespace KayakExamples
         static void Main(string[] args)
         {
             var server = new KayakServer();
-            var framework = server.ToContexts().UseFramework(Assembly.GetExecutingAssembly().GetTypes());
+            var connectable = new ConnectableObservable<ISocket>(server);
+            var framework = connectable.UseFramework(Assembly.GetExecutingAssembly().GetTypes());
 
-            framework.Subscribe(context =>
-                {
-                    Console.WriteLine("[{0}] {1} {2} {3} : {4} {5} {6}", DateTime.Now,
-                        context.Request.Verb, context.Request.Path, context.Request.HttpVersion,
-                        context.Response.HttpVersion, context.Response.StatusCode, context.Response.ReasonPhrase);
-                },
-                e =>
-                {
-                    Console.WriteLine("Error during context.");
-                    Console.Out.WriteException(e);
-                },
-                () => { });
+            var sx = connectable.Connect();
 
             Console.WriteLine("Kayak listening on " + server.ListenEndPoint);
             Console.ReadLine();
 
             // unsubscribe from server (close the listening socket)
-            //framework.Dispose();
+            sx.Dispose();
 
             // any outstanding requests that may still be processing will be aborted.
             // currently no way to wait for pending requests. keep your own request
             // count and wait for it to drop to zero if you want.
+            Console.ReadLine();
         }
     }
-
 
     public class MyService : KayakService
     {

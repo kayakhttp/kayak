@@ -35,18 +35,4 @@ namespace Kayak
             return new KayakContext(socket, request, response);
         }
     }
-
-    public static class KayakContextExtensions
-    {
-        /// <summary>
-        /// Transforms a sequence of `ISocket` into to a sequence of `KayakContext`. Call the `Begin` method
-        /// of a context's `Request` parameter to start processing the request.
-        /// </summary>
-        /// <param name="sockets"></param>
-        /// <returns></returns>
-        public static IObservable<IKayakContext> ToContexts(this IObservable<ISocket> sockets)
-        {
-            return sockets.Select(s => (IKayakContext)KayakContext.CreateContext(s));
-        }
-    }
 }

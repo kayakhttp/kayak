@@ -53,7 +53,7 @@ namespace Kayak
         {
             // would be nice some day to parse the request with a fancy state machine
             // for lower memory usage.
-
+            Trace.Write("Beginning request.");
             LinkedList<ArraySegment<byte>> headerBuffers = null;
             yield return socket.ReadHeaders().Do(h => headerBuffers = h);
             bodyDataReadWithHeaders = headerBuffers.Last.Value;
@@ -66,6 +66,7 @@ namespace Kayak
 
             this.requestLine = requestLine;
             Headers = headers;
+            Trace.Write("Request began.");
         }
 
         public IObservable<ArraySegment<byte>> Read()

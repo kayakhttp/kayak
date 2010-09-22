@@ -38,9 +38,9 @@ namespace Kayak
 
                 int bytesRead = 0;
 
-                Trace.Write("About to read header chunk.");
+                //Trace.Write("About to read header chunk.");
                 yield return socket.Read(buffer, bufferPosition, buffer.Length - bufferPosition).Do(n => bytesRead = n);
-                Trace.Write("Read {0} bytes.", bytesRead);
+                //Trace.Write("Read {0} bytes.", bytesRead);
 
                 if (bytesRead == 0)
                     break;

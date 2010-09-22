@@ -89,10 +89,11 @@ namespace Kayak
 
         void NextSocket(IAsyncResult ar)
         {
+            Socket socket = null;
             try
             {
-                var s = listener.EndAccept(ar);
-                observer.OnNext(new DotNetSocket(s));
+                socket = listener.EndAccept(ar);
+                Trace.Write("Accepted connection.");
             }
             catch (Exception e)
             {
@@ -102,6 +103,8 @@ namespace Kayak
             {
                 wh.Set();
             }
+
+            observer.OnNext(new DotNetSocket(socket));
         }
 
         void YieldException(Exception e)

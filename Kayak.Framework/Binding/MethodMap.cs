@@ -150,11 +150,6 @@ namespace Kayak.Framework
             return map;
         }
 
-        public static IObservable<IKayakContext> SelectMethodAndTarget(this IObservable<IKayakContext> contexts, MethodMap map)
-        {
-            return contexts.Do(c => c.SelectMethodAndTarget(map));
-        }
-
         public static void SelectMethodAndTarget(this IKayakContext context, MethodMap map)
         {
             var i = new InvocationInfo();

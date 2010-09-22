@@ -116,11 +116,13 @@ namespace Kayak
 
         IEnumerable<object> EndInternal()
         {
+            Trace.Write("Ending response" + (!statusLineAndHeadersSent ? ", sending headers." : "."));
             if (!statusLineAndHeadersSent)
                 yield return PrependWithWriteHeaders(Observable.Empty<Unit>());
 
             // always close connection, we only support HTTP/1.0
             socket.Dispose();
+            Trace.Write("Response ended.");
         }
     }
 }

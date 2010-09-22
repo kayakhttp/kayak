@@ -41,7 +41,14 @@ namespace Kayak
                 observer.OnCompleted();
             };
 
-            asyncResult = begin(callback, null);
+            try
+            {
+                asyncResult = begin(callback, null);
+            }
+            catch (Exception e)
+            {
+                observer.OnError(e);
+            }
 
             return Disposable.Empty;
         }

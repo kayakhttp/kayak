@@ -8,11 +8,6 @@ namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        public static IObservable<IKayakContext> DeserializeArgsFromHeaders(this IObservable<IKayakContext> bind)
-        {
-            return bind.Do(c => c.DeserializeArgsFromHeaders());
-        }
-
         public static void DeserializeArgsFromHeaders(this IKayakContext context)
         {
             var request = context.Request;

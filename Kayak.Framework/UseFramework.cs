@@ -10,96 +10,76 @@ namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        //public static IDisposable UseFramework(this IObservable<ISocket> sockets)
-        //{
-        //    return sockets.ToContexts().UseFramework(Assembly.GetCallingAssembly().GetTypes());
-        //}
-
-        //public static IDisposable UseFramework(this IObservable<IKayakContext> contexts)
-        //{
-        //    return contexts.UseFramework(Assembly.GetCallingAssembly().GetTypes());
-        //}
-
-        //public static IDisposable UseFramework(this IObservable<ISocket> sockets, Type[] types)
-        //{
-        //    return sockets.ToContexts().UseFramework(types);
-        //}
-
-        //public static IDisposable UseFramework(this IObservable<IKayakContext> contexts, Type[] types)
-        //{
-        //    return contexts.UseFramework(KayakInvocationBehavior.CreateDefaultBehavior(types));
-        //}
-
-        //public static IDisposable UseFramework(this IObservable<ISocket> sockets, IInvocationBehavior behavior)
-        //{
-        //    return sockets.ToContexts().UseFramework(behavior);
-        //}
-
-        //public static IDisposable UseFramework(this IObservable<IKayakContext> contexts, IInvocationBehavior behavior)
-        //{
-        //    return contexts.Subscribe(c => c.PerformInvocation(behavior));
-        //}
-
-        public static IObservable<IKayakContext> UseFramework(this IObservable<IKayakContext> contexts, Type[] types)
+        public static IDisposable UseFramework(this IObservable<ISocket> sockets, Type[] types)
         {
-            //Func<IKayakContext, IObservable<InvocationInfo>, IObservable<InvocationInfo>> bindMethod = null;
-            //Func<IKayakContext, IObservable<InvocationInfo>, IObservable<InvocationInfo>> bindTarget = null;
-            //Func<IKayakContext, IObservable<InvocationInfo>, IObservable<InvocationInfo>> bindHeaderArgs = null;
-            //Func<IKayakContext, IObservable<InvocationInfo>, IObservable<InvocationInfo>> bindJsonArgs = null;
-
-            //Action<IKayakContext, IObservable<object>> serializeJson = null;
-
-            //return contexts.UseFramework(c =>
-            //    {
-            //        return bindJsonArgs(c, bindHeaderArgs(c, bindTarget(c, bindMethod(c, CreateInvocationInfo()))));
-            //    },
-            //    (c, i) =>
-            //    {
-            //        serializeJson(c, i);
-            //    });
-
-
-            //return contexts.Subscribe(c =>
-            //    c.Request.Begin()
-            //    .BindMethodAndTarget(c, methodMap)
-            //    .BindHeaderArgs(c)
-            //    .BindJsonArgs(c, jsonMapper)
-            //    .PerformInvocation(c)
-            //    .SerializeToJson(c, jsonMapper)
-            //    .End(c));
-
             var methodMap = types.CreateMethodMap();
 
             TypedJsonMapper jsonMapper = new TypedJsonMapper();
             jsonMapper.AddDefaultInputConversions();
             jsonMapper.AddDefaultOutputConversions();
 
-            return contexts
-                .BeginRequest()
-                .SelectMethodAndTarget(methodMap)
-                .DeserializeArgsFromHeaders()
-                .DeserializeArgsFromJson(jsonMapper)
-                .PerformInvocation()
-                .ServeFile()
-                .SerializeToJson(jsonMapper)
-                .EndResponse();
+            return sockets.Subscribe(s =>
+                {
+                    var c = KayakContext.CreateContext(s);
+                    c.ProcessContext(methodMap, jsonMapper).Subscribe(cx =>
+                        {
+                        },
+                        e =>
+                        {
+                            Console.WriteLine("Error during context.");
+                            Console.Out.WriteException(e);
+                        },
+                        () =>
+                        {
+                            Console.WriteLine("[{0}] {1} {2} {3} : {4} {5} {6}", DateTime.Now,
+                            c.Request.Verb, c.Request.Path, c.Request.HttpVersion,
+                            c.Response.HttpVersion, c.Response.StatusCode, c.Response.ReasonPhrase);
+                        });
+                },
+                e =>
+                {
+                    Console.Out.WriteLine("Error from socket source.");
+                    Console.Out.WriteException(e);
+                },
+                () => { Console.Out.WriteLine("Socket source completed."); });
         }
-    }
 
-    public static partial class Extensions
-    {
-        public static IObservable<IKayakContext> BeginRequest(this IObservable<IKayakContext> contexts)
+        static IObservable<Unit> ProcessContext(this IKayakContext context, MethodMap methodMap, TypedJsonMapper jsonMapper)
         {
-            return contexts.SelectMany(c => Observable.CreateWithDisposable<IKayakContext>(o =>
-                    c.Request.Begin().Subscribe(u => {}, e => o.OnError(e), () => { o.OnNext(c); o.OnCompleted(); })
-                ));
+            return ProcessContextInternal(context, methodMap, jsonMapper).AsCoroutine<Unit>();
         }
 
-        public static IObservable<IKayakContext> EndResponse(this IObservable<IKayakContext> contexts)
+        static IEnumerable<object> ProcessContextInternal(this IKayakContext context, MethodMap methodmap, TypedJsonMapper jsonMapper)
         {
-            return contexts.SelectMany(c => Observable.CreateWithDisposable<IKayakContext>(o =>
-                    c.Response.End().Subscribe(u => { }, e => o.OnError(e), () => { o.OnNext(c); o.OnCompleted(); })
-                ));
+            yield return context.Request.Begin();
+
+            context.SelectMethodAndTarget(methodmap);
+            context.DeserializeArgsFromHeaders();
+
+            yield return context.DeserializeArgsFromJson(jsonMapper);
+
+            context.PerformInvocation();
+
+            var response = context.ServeFile() ?? context.SerializeResultToJson(jsonMapper);
+
+            if (response != null)
+                yield return response;
+
+            yield return context.EndResponse();
+        }
+
+        public static IObservable<IKayakContext> BeginRequest(this IKayakContext context)
+        {
+            return Observable.CreateWithDisposable<IKayakContext>(o =>
+                    context.Request.Begin().Subscribe(u => { }, e => o.OnError(e), () => { o.OnNext(context); o.OnCompleted(); })
+                );
+        }
+
+        public static IObservable<IKayakContext> EndResponse(this IKayakContext context)
+        {
+            return Observable.CreateWithDisposable<IKayakContext>(o =>
+                    context.Response.End().Subscribe(u => { }, e => o.OnError(e), () => { o.OnNext(context); o.OnCompleted(); })
+                );
         }
     }
 }

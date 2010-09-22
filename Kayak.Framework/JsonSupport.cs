@@ -24,13 +24,6 @@ namespace Kayak.Framework
                 (bool)Convert.ChangeType(context.Items[MinifiedOutputKey], typeof(bool));
         }
 
-        public static IObservable<IKayakContext> SerializeToJson(this IObservable<IKayakContext> contexts, TypedJsonMapper mapper)
-        {
-            return contexts.SelectMany(c => Observable.CreateWithDisposable<IKayakContext>(o =>
-                c.SerializeResultToJson(mapper).Subscribe(u => { }, e => o.OnError(e), () => { o.OnNext(c); o.OnCompleted(); })
-            ));
-        }
-
         public static IObservable<Unit> SerializeResultToJson(this IKayakContext context, TypedJsonMapper mapper)
         {
             var info = context.GetInvocationInfo();
@@ -48,7 +41,7 @@ namespace Kayak.Framework
 
                 return context.WriteJsonResponse(new { Error = exception.Message }, mapper);
             }
-            else return Observable.Empty<Unit>();
+            else return null;
         }
 
         static IObservable<Unit> WriteJsonResponse(this IKayakContext context, object o, TypedJsonMapper mapper)
@@ -69,13 +62,6 @@ namespace Kayak.Framework
 
             context.Response.Headers["Content-Length"] = bufferBytes.Length.ToString();
             return context.Response.Write(bufferBytes, 0, bufferBytes.Length);
-        }
-
-        public static IObservable<IKayakContext> DeserializeArgsFromJson(this IObservable<IKayakContext> contexts, TypedJsonMapper mapper)
-        {
-            return contexts.SelectMany(c => Observable.CreateWithDisposable<IKayakContext>(o =>
-                c.DeserializeArgsFromJson(mapper).Subscribe(u => {}, e => o.OnError(e), () => { o.OnNext(c); o.OnCompleted(); })
-            ));
         }
 
         public static IObservable<Unit> DeserializeArgsFromJson(this IKayakContext context, TypedJsonMapper mapper)
