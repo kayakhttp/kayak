@@ -15,7 +15,7 @@ namespace KayakExamples
         {
             var server = new KayakServer();
             var connectable = new ConnectableObservable<ISocket>(server);
-            var framework = connectable.UseFramework(Assembly.GetExecutingAssembly().GetTypes());
+            var framework = connectable.UseFramework();
 
             var sx = connectable.Connect();
 
@@ -35,6 +35,12 @@ namespace KayakExamples
     public class MyService : KayakService
     {
         [Path("/")]
+        public IEnumerable<object> Root()
+        {
+            yield return Response.Write("Hello.");
+        }
+
+        [Path("/hello")]
         public object SayHello(string name)
         {
             return new { greeting = "hello, " + name + ".", number = 5 };

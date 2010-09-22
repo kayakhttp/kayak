@@ -8,20 +8,75 @@ using LitJson;
 
 namespace Kayak.Framework
 {
-    public static partial class Extensions
+    public interface IKayakFrameworkBehavior
     {
-        public static IDisposable UseFramework(this IObservable<ISocket> sockets, Type[] types)
+        IObservable<Unit> Route(IKayakContext context);
+        IObservable<bool> Authenticate(IKayakContext context);
+        IObservable<Unit> Bind(IKayakContext context);
+        IObservable<Unit> Handle(IKayakContext context);
+    }
+
+    public class KayakFrameworkBehavior : IKayakFrameworkBehavior
+    {
+        public Func<IKayakContext, MethodInfo> RouteFunc { get; set; }
+        public TypedJsonMapper JsonMapper { get; set; }
+
+        public KayakFrameworkBehavior(Type[] types)
         {
             var methodMap = types.CreateMethodMap();
+            RouteFunc = c => methodMap.GetMethodForContext(c);
+            JsonMapper = new TypedJsonMapper();
+            JsonMapper.AddDefaultInputConversions();
+            JsonMapper.AddDefaultOutputConversions();
+        }
 
+        public virtual IObservable<Unit> Route(IKayakContext context)
+        {
+            context.GetInvocationInfo().Method = RouteFunc(context);
+            return null;
+        }
+
+        public virtual IObservable<bool> Authenticate(IKayakContext context)
+        {
+            return null;
+        }
+
+        public virtual IObservable<Unit> Bind(IKayakContext context)
+        {
+            context.DeserializeArgsFromHeaders();
+            return context.DeserializeArgsFromJson(JsonMapper);
+        }
+
+        public virtual IObservable<Unit> Handle(IKayakContext context)
+        {
+            return context.ServeFile() ?? context.InvokeCoroutine() ?? context.SerializeResultToJson(JsonMapper);
+        }
+    }
+
+    public static partial class Extensions
+    {
+        public static IDisposable UseFramework(this IObservable<ISocket> sockets)
+        {
             TypedJsonMapper jsonMapper = new TypedJsonMapper();
             jsonMapper.AddDefaultInputConversions();
             jsonMapper.AddDefaultOutputConversions();
 
-            return sockets.Subscribe(s =>
+            return sockets.UseFramework(Assembly.GetCallingAssembly().GetTypes());
+        }
+        public static IDisposable UseFramework(this IObservable<ISocket> sockets, Type[] types)
+        {
+            var mm = types.CreateMethodMap();
+
+            return sockets.Subscribe(SocketObserver(new KayakFrameworkBehavior(types)));
+        }
+
+        static IObserver<ISocket> SocketObserver(IKayakFrameworkBehavior behavior)
+        {
+            return Observer.Create<ISocket>(s =>
                 {
                     var c = KayakContext.CreateContext(s);
-                    c.ProcessContext(methodMap, jsonMapper).Subscribe(cx =>
+                    var process = c.ProcessContext2(behavior)
+                        .Subscribe(cx =>
                         {
                         },
                         e =>
@@ -49,11 +104,21 @@ namespace Kayak.Framework
             return ProcessContextInternal(context, methodMap, jsonMapper).AsCoroutine<Unit>();
         }
 
-        static IEnumerable<object> ProcessContextInternal(this IKayakContext context, MethodMap methodmap, TypedJsonMapper jsonMapper)
+        static IEnumerable<object> ProcessContextInternal(this IKayakContext context, MethodMap methodMap, TypedJsonMapper jsonMapper)
         {
             yield return context.Request.Begin();
 
-            context.SelectMethodAndTarget(methodmap);
+            var info = new InvocationInfo();
+            context.SetInvocationInfo(info);
+
+            var method = methodMap.GetMethodForContext(context);
+            info.Method = method;
+            info.Target = Activator.CreateInstance(method.DeclaringType);
+
+            var parameterCount = info.Method.GetParameters().Length;
+            info.Arguments = new object[parameterCount];
+
+
             context.DeserializeArgsFromHeaders();
 
             yield return context.DeserializeArgsFromJson(jsonMapper);
@@ -65,21 +130,45 @@ namespace Kayak.Framework
             if (response != null)
                 yield return response;
 
-            yield return context.EndResponse();
+            yield return context.Response.End();
         }
 
-        public static IObservable<IKayakContext> BeginRequest(this IKayakContext context)
+        static IObservable<Unit> ProcessContext2(this IKayakContext context, IKayakFrameworkBehavior behavior)
         {
-            return Observable.CreateWithDisposable<IKayakContext>(o =>
-                    context.Request.Begin().Subscribe(u => { }, e => o.OnError(e), () => { o.OnNext(context); o.OnCompleted(); })
-                );
+            return context.ProcessContextInternal2(behavior).AsCoroutine<Unit>();
         }
 
-        public static IObservable<IKayakContext> EndResponse(this IKayakContext context)
+        static IEnumerable<object> ProcessContextInternal2(this IKayakContext context, IKayakFrameworkBehavior behavior)
         {
-            return Observable.CreateWithDisposable<IKayakContext>(o =>
-                    context.Response.End().Subscribe(u => { }, e => o.OnError(e), () => { o.OnNext(context); o.OnCompleted(); })
-                );
+            yield return context.Request.Begin();
+
+            var info = new InvocationInfo();
+            context.SetInvocationInfo(info);
+
+            yield return behavior.Route(context);
+
+            info.Target = Activator.CreateInstance(info.Method.DeclaringType);
+
+            var parameterCount = info.Method.GetParameters().Length;
+            info.Arguments = new object[parameterCount];
+
+            var failed = false;
+            var auth = behavior.Authenticate(context);
+
+            if (auth != null)
+                yield return auth.Do(r => failed = r);
+
+            if (!failed)
+            {
+                yield return behavior.Bind(context);
+
+                context.PerformInvocation();
+
+                yield return behavior.Handle(context);
+            }
+
+
+            yield return context.Response.End();
         }
     }
 }

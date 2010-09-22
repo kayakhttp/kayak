@@ -149,22 +149,5 @@ namespace Kayak.Framework
 
             return map;
         }
-
-        public static void SelectMethodAndTarget(this IKayakContext context, MethodMap map)
-        {
-            var i = new InvocationInfo();
-            var method = map.GetMethodForContext(context);
-            i.Method = method;
-            i.Target = Activator.CreateInstance(method.DeclaringType);
-
-            var service = i.Target as KayakService;
-
-            if (service != null)
-                service.Context = context;
-
-            var parameterCount = i.Method.GetParameters().Length;
-            i.Arguments = new object[parameterCount];
-            context.SetInvocationInfo(i);
-        }
     }
 }

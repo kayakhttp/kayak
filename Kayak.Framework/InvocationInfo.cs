@@ -55,5 +55,20 @@ namespace Kayak.Framework
         {
             context.Items[InvocationInfoContextKey] = info;
         }
+
+        public static void PerformInvocation(this IKayakContext context)
+        {
+            var info = context.GetInvocationInfo();
+
+            if (info == null)
+                throw new Exception("Context has no InvocationInfo.");
+
+            var service = info.Target as KayakService;
+
+            if (service != null)
+                service.Context = context;
+
+            info.Invoke();
+        }
     }
 }

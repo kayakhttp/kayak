@@ -104,7 +104,8 @@ namespace Kayak
                 wh.Set();
             }
 
-            observer.OnNext(new DotNetSocket(socket));
+            if (socket != null)
+                observer.OnNext(new DotNetSocket(socket));
         }
 
         void YieldException(Exception e)
