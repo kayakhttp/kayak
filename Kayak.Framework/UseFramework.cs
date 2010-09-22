@@ -49,7 +49,14 @@ namespace Kayak.Framework
 
         public virtual IObservable<Unit> Handle(IKayakContext context)
         {
-            return context.ServeFile() ?? context.InvokeCoroutine() ?? context.SerializeResultToJson(JsonMapper);
+            return context.HandleWithCoroutine(HandleInvocation) ?? HandleInvocation(context);
+        }
+
+        public virtual IObservable<Unit> HandleInvocation(IKayakContext context)
+        {
+            if (context.GetInvocationInfo().Result == null) return null;
+
+            return context.ServeFile() ?? context.SerializeResultToJson(JsonMapper);
         }
     }
 
