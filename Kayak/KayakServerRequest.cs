@@ -99,6 +99,7 @@ namespace Kayak
 
             yield return socket.Read(buffer, 0, buffer.Length).Do(n => bytesRead = n);
             yield return new ArraySegment<byte>(buffer, 0, bytesRead);
+            Trace.Write("Request read " + bytesRead + " bytes");
         }
     }
 }

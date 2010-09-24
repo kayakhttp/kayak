@@ -133,7 +133,7 @@ namespace Kayak
             return headers;
         }
 
-        internal static byte[] ComposeHttpHeaders(this IKayakServerResponse response)
+        internal static byte[] WriteStatusAndHeaders(this IKayakServerResponse response)
         {
             var sb = new StringBuilder();
 

@@ -28,11 +28,13 @@ namespace KayakTests
                             ob.OnNext(0);
                             ob.OnCompleted();
                         }
-
-                        var chunk = cs.Current;
-                        Buffer.BlockCopy(chunk.Array, chunk.Offset, b, o, chunk.Count);
-                        ob.OnNext(chunk.Count);
-                        ob.OnCompleted();
+                        else
+                        {
+                            var chunk = cs.Current;
+                            Buffer.BlockCopy(chunk.Array, chunk.Offset, b, o, chunk.Count);
+                            ob.OnNext(chunk.Count);
+                            ob.OnCompleted();
+                        }
 
                         return () => { cs.Dispose(); };
                     });

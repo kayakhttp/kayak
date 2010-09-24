@@ -86,7 +86,7 @@ namespace Kayak
 
         IObservable<Unit> WriteHeaders()
         {
-            return WriteInternal(new ArraySegment<byte>(this.ComposeHttpHeaders())).AsCoroutine<Unit>();
+            return WriteInternal(new ArraySegment<byte>(this.WriteStatusAndHeaders())).AsCoroutine<Unit>();
         }
 
         IObservable<Unit> PrependWithWriteHeaders(IObservable<Unit> write)

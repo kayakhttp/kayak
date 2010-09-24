@@ -116,6 +116,16 @@ namespace Kayak
             return sb.ToString();
         }
 
+        public static string GetString(this ArraySegment<byte> b)
+        {
+            return b.GetString(Encoding.UTF8);
+        }
+
+        public static string GetString(this ArraySegment<byte> b, Encoding encoding)
+        {
+            return encoding.GetString(b.Array, b.Offset, b.Count);
+        }
+
         /// <summary>
         /// Returns the path component from the `RequestUri` property of the `IKayakServerRequest` (e.g., /some/path).
         /// </summary>
