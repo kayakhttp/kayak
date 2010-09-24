@@ -6,6 +6,7 @@ using NUnit.Core;
 using NUnit.Framework;
 using Moq;
 using Kayak;
+using System.Disposables;
 
 namespace KayakTests.Extensions
 {
@@ -19,11 +20,9 @@ namespace KayakTests.Extensions
             string rest = "asdfjkl;";
             byte[] buffer;
             List<ArraySegment<byte>> chunks;
-            Mock<ISocket> mockSocket;
 
-            bool gotException, gotCompleted, gotResult;
-            Exception exception;
-            IList<ArraySegment<byte>> result;
+            Mock<ISocket> mockSocket;
+            Mock<ISubject<LinkedList<ArraySegment<byte>>>> mockSubject;
 
             [SetUp]
             public void SetUp()
@@ -32,6 +31,8 @@ namespace KayakTests.Extensions
 
                 chunks = new List<ArraySegment<byte>>();
                 mockSocket = new Mock<ISocket>();
+                mockSubject = new Mock<ISubject<LinkedList<ArraySegment<byte>>>>();
+                mockSubject.Setup(s => s.OnError(It.IsAny<Exception>())).Callback<Exception>(e => Console.Out.WriteException(e));
 
                 var readCount = 0;
 
@@ -44,38 +45,55 @@ namespace KayakTests.Extensions
                             Buffer.BlockCopy(chunk.Array, chunk.Offset, b, o, chunk.Count);
                             ob.OnNext(chunk.Count);
                             ob.OnCompleted();
-                            return null;
+                            return () => { };
                         });
                     }).Verifiable();
-
-                gotException = gotCompleted = gotResult = false;
-                exception = null;
-                result = null;
             }
 
             void DoRead()
             {
-                mockSocket.Object.ReadHeaders().Subscribe(
-                    b => { gotResult = true; result = (IList<ArraySegment<byte>>)b; },
-                    e => { gotException = true; exception = e; Console.Out.WriteException(e); },
-                    () => { gotCompleted = true; });
+                mockSocket.Object.ReadHeaders().Subscribe(mockSubject.Object);
+                Console.WriteLine("After read headers subscribe.");
             }
 
             void AssertResult()
             {
-                Assert.AreEqual(headers, result.Take(result.Count - 1).GetString(), "Incorrect header result.");
+                //Assert.AreEqual(headers, result.Take(result.Count - 1).GetString(), "Incorrect header result.");
             }
 
             void AssertRest(int length)
             {
-                Assert.AreEqual(rest.Substring(0, length), result.Skip(result.Count - 1).GetString(), "Incorrect rest result.");
+                //Assert.AreEqual(rest.Substring(0, length), result.Skip(result.Count - 1).GetString(), "Incorrect rest result.");
             }
 
             void AssertObservableBehavior()
             {
-                Assert.IsFalse(gotException, "Unexpected exception.");
-                Assert.IsTrue(gotResult, "Didn't get result.");
-                Assert.IsTrue(gotCompleted, "Didn't get completed.");
+                //Assert.IsFalse(gotException, "Unexpected exception.");
+                //Assert.IsTrue(gotResult, "Didn't get result.");
+                //Assert.IsTrue(gotCompleted, "Didn't get completed.");
+            }
+
+            bool MatchesChunks(LinkedList<ArraySegment<byte>> result, string[] expectedChunks)
+            {
+                var i = 0;
+                foreach (var c in expectedChunks)
+                {
+                    var seg = result.ElementAt(i++);
+                    if (c != Encoding.UTF8.GetString(seg.Array, seg.Offset, seg.Count))
+                        return false;
+                }
+                return true;
+            }
+
+            void VerifySubject(string[] expectedChunks)
+            {
+                mockSubject.Verify(s => s.OnError(It.IsAny<Exception>()), Times.Never(), "Subject got exception.");
+                mockSubject.Verify(s => s.OnNext(
+                    It.Is<LinkedList<ArraySegment<byte>>>(l => MatchesChunks(l, expectedChunks))), 
+                    Times.Once(), 
+                    "Didn't get correct result.");
+
+                mockSubject.Verify(s => s.OnCompleted());
             }
 
             [Test]
@@ -85,11 +103,7 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                AssertObservableBehavior();
-                Assert.AreEqual(2, result.Count, "Unexpected result buffer count.");
-                AssertResult();
-                Assert.AreEqual(14, result[0].Count, "Unexpected header buffer length.");
-                AssertRest(0);
+                VerifySubject(new string[] { headers });
             }
 
             [Test]
@@ -99,11 +113,13 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                AssertObservableBehavior();
-                Assert.AreEqual(2, result.Count, "Unexpected result buffer count.");
-                AssertResult();
-                Assert.AreEqual(14, result[0].Count, "Unexpected header buffer length.");
-                AssertRest(2);
+                VerifySubject(new string[] { headers, rest.Substring(0, 2) });
+
+                //AssertObservableBehavior();
+                //Assert.AreEqual(2, result.Count, "Unexpected result buffer count.");
+                //AssertResult();
+                //Assert.AreEqual(14, result[0].Count, "Unexpected header buffer length.");
+                //AssertRest(2);
             }
 
             [Test]
@@ -114,12 +130,14 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                AssertObservableBehavior();
-                Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-                AssertResult();
-                Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
-                Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
-                AssertRest(0);
+                VerifySubject(new string[] { headers.Substring(0, 7), headers.Substring(7, 7) });
+
+                //AssertObservableBehavior();
+                //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
+                //AssertResult();
+                //Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
+                //Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
+                //AssertRest(0);
             }
 
             [Test]
@@ -130,12 +148,14 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                AssertObservableBehavior();
-                Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-                AssertResult();
-                Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
-                Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
-                AssertRest(2);
+                VerifySubject(new string[] { headers.Substring(0, 7), headers.Substring(7, 7), rest.Substring(0, 2) });
+
+                //AssertObservableBehavior();
+                //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
+                //AssertResult();
+                //Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
+                //Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
+                //AssertRest(2);
             }
 
             [Test]
@@ -146,12 +166,14 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                AssertObservableBehavior();
-                Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-                AssertResult();
-                Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
-                Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
-                AssertRest(0);
+                VerifySubject(new string[] { headers.Substring(0, 11), headers.Substring(11, 3) });
+
+                //AssertObservableBehavior();
+                //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
+                //AssertResult();
+                //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
+                //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
+                //AssertRest(0);
             }
 
             [Test]
@@ -162,12 +184,14 @@ namespace KayakTests.Extensions
 
                 DoRead();
 
-                AssertObservableBehavior();
-                Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-                AssertResult();
-                Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
-                Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
-                AssertRest(3);
+                VerifySubject(new string[] { headers.Substring(0, 11), headers.Substring(11, 3), rest.Substring(0, 3) });
+
+                //AssertObservableBehavior();
+                //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
+                //AssertResult();
+                //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
+                //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
+                //AssertRest(3);
             }
         }
 

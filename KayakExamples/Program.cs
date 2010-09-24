@@ -14,21 +14,16 @@ namespace KayakExamples
         static void Main(string[] args)
         {
             var server = new KayakServer();
-            var connectable = new ConnectableObservable<ISocket>(server);
-            var framework = connectable.UseFramework();
+            var behavior = new KayakFrameworkBehavior();
+            behavior.JsonMapper.SetOutputConversion<int>((i, w) => w.Write(i.ToString()));
 
-            var sx = connectable.Connect();
+            var framework = server.UseFramework();
 
             Console.WriteLine("Kayak listening on " + server.ListenEndPoint);
             Console.ReadLine();
 
             // unsubscribe from server (close the listening socket)
-            sx.Dispose();
-
-            // any outstanding requests that may still be processing will be aborted.
-            // currently no way to wait for pending requests. keep your own request
-            // count and wait for it to drop to zero if you want.
-            Console.ReadLine();
+            framework.Dispose();
         }
     }
 
@@ -81,6 +76,7 @@ namespace KayakExamples
         }
 
         [Verb("POST")]
+        [Verb("PUT")]
         [Path("/echo")]
         public IEnumerable<object> Echo()
         {

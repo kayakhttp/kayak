@@ -112,6 +112,8 @@ namespace Kayak.Framework
                 if (bytesRead == contentLength)
                     break;
             }
+
+            yield return result;
         }
     }
 }

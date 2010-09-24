@@ -112,16 +112,19 @@ namespace Kayak.Framework
 
     class DefaultResponses : KayakService
     {
-        public void InvalidMethod()
+        public IEnumerable<object> InvalidMethod()
         {
             Context.Response.StatusCode = 405;
             Context.Response.ReasonPhrase = "Invalid Method";
-            //context.Response.Write("Invalid method: " + context.Request.Verb);
+            Response.Headers["Content-Type"] = "text/html";
+            yield return Response.Write("<h1>Invalid method</h1><p>The requested resource does not support the method '" + Request.Verb + "'.");
         }
 
-        public void NotFound()
+        public IEnumerable<object> NotFound()
         {
             Context.Response.SetStatusToNotFound();
+            Response.Headers["Content-Type"] = "text/html";
+            yield return Response.Write("<h1>Not Found</h1><p>The requested resource was not found.");
         }
     }
 

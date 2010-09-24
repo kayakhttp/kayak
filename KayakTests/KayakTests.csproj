@@ -82,6 +82,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.CoreEx.dll</HintPath>
     </Reference>
+    <Reference Include="System.Data" />
     <Reference Include="System.Observable, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Observable.dll</HintPath>
@@ -94,9 +95,11 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Threading.dll</HintPath>
     </Reference>
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CoroutineTests.cs" />
+    <Compile Include="Extensions\HttpTests.cs" />
     <Compile Include="Extensions\RequestTests.cs" />
     <Compile Include="KayakContextResponseTests.cs" />
     <Compile Include="KayakContextRequestTests.cs" />

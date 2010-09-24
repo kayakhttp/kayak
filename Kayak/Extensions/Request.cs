@@ -37,14 +37,14 @@ namespace Kayak
 
                 int bytesRead = 0;
 
-                //Trace.Write("About to read header chunk.");
+                Trace.Write("About to read header chunk.");
                 yield return socket.Read(buffer, bufferPosition, buffer.Length - bufferPosition).Do(n => bytesRead = n);
-                //Trace.Write("Read {0} bytes.", bytesRead);
+                Trace.Write("Read {0} bytes.", bytesRead);
+
+                result.AddLast(new ArraySegment<byte>(buffer, bufferPosition, bytesRead));
 
                 if (bytesRead == 0)
                     break;
-
-                result.AddLast(new ArraySegment<byte>(buffer, bufferPosition, bytesRead));
 
                 bufferPosition += bytesRead;
                 totalBytesRead += bytesRead;
@@ -67,7 +67,9 @@ namespace Kayak
                     throw new Exception("Request headers data exceeds max header length.");
             }
 
+            Trace.Write("Yielding result.");
             yield return result;
+            Trace.Write("Yielded result.");
         }
 
         internal static int IndexOfAfterCRLFCRLF(this IEnumerable<ArraySegment<byte>> buffers)

@@ -37,6 +37,8 @@ namespace Kayak
                 int.TryParse(headers["Content-Length"], out contentLength);
             else if (headers.ContainsKey("Content-length"))
                 int.TryParse(headers["Content-length"], out contentLength);
+            else if (headers.ContainsKey("content-length"))
+                int.TryParse(headers["content-length"], out contentLength);
 
             return contentLength;
         }
@@ -56,6 +58,7 @@ namespace Kayak
             var name = new StringBuilder();
             var value = new StringBuilder();
             var hasValue = false;
+            var encounteredEqualsChar = false;
 
             for (int i = charIndex; i < charIndex + charCount; i++)
             {
@@ -63,6 +66,7 @@ namespace Kayak
                 switch (c)
                 {
                     case EqualsChar:
+                        encounteredEqualsChar = true;
                         hasValue = true;
                         break;
                     case AmpersandChar:
@@ -79,8 +83,9 @@ namespace Kayak
                 }
             }
 
-            // last pair
-            AddNameValuePair(result, name, value, hasValue);
+            if (encounteredEqualsChar)
+                // last pair
+                AddNameValuePair(result, name, value, hasValue);
 
             return result;
         }
