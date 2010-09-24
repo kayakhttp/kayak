@@ -27,10 +27,12 @@ namespace Kayak
     {
         public static void Write(string format, params object[] args)
         {
-            //System.Diagnostics.StackTrace stackTrace = new System.Diagnostics.StackTrace();
-            //System.Diagnostics.StackFrame stackFrame = stackTrace.GetFrame(1);
-            //System.Reflection.MethodBase methodBase = stackFrame.GetMethod();
-            //Console.WriteLine("[thread " + System.Threading.Thread.CurrentThread.ManagedThreadId + ", " + methodBase.DeclaringType.Name + "." + methodBase.Name + "] " + string.Format(format, args));
+#if TRACE
+            System.Diagnostics.StackTrace stackTrace = new System.Diagnostics.StackTrace();
+            System.Diagnostics.StackFrame stackFrame = stackTrace.GetFrame(1);
+            System.Reflection.MethodBase methodBase = stackFrame.GetMethod();
+            Console.WriteLine("[thread " + System.Threading.Thread.CurrentThread.ManagedThreadId + ", " + methodBase.DeclaringType.Name + "." + methodBase.Name + "] " + string.Format(format, args));
+#endif
         }
     }
 }

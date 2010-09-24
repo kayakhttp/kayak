@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq; 
+using System.Linq;
+using System.IO; 
 
 namespace Kayak
 {
@@ -46,27 +47,33 @@ namespace Kayak
 
         public IObservable<Unit> Begin()
         {
-            return BeginInternal().AsCoroutine<Unit>();
-        }
+            return Observable.CreateWithDisposable<Unit>(o =>
+            { 
+                // would be nice some day to parse the request with a fancy state machine
+                // for lower memory usage.
+                Trace.Write("Beginning request.");
+                return socket.ReadHeaders().Subscribe(headerBuffers =>
+                    {
+                        bodyDataReadWithHeaders = headerBuffers.Last.Value;
+                        headerBuffers.RemoveLast();
 
-        IEnumerable<object> BeginInternal()
-        {
-            // would be nice some day to parse the request with a fancy state machine
-            // for lower memory usage.
-            Trace.Write("Beginning request.");
-            LinkedList<ArraySegment<byte>> headerBuffers = null;
-            yield return socket.ReadHeaders().Do(h => headerBuffers = h);
-            bodyDataReadWithHeaders = headerBuffers.Last.Value;
-            headerBuffers.RemoveLast();
+                        var reader = new StringReader(headerBuffers.GetString());
 
-            HttpRequestLine requestLine;
-            IDictionary<string, string> headers;
+                        this.requestLine = reader.ReadRequestLine();
+                        Headers = reader.ReadHeaders();
 
-            headerBuffers.ParseHttpHeaders(out requestLine, out headers);
-
-            this.requestLine = requestLine;
-            Headers = headers;
-            Trace.Write("Request began.");
+                        reader.Dispose(); // necessary?
+                        Trace.Write("Request began.");
+                    },
+                    e =>
+                    {
+                        o.OnError(e);
+                    },
+                    () =>
+                    {
+                        o.OnCompleted();
+                    });
+            });
         }
 
         public IObservable<ArraySegment<byte>> Read()

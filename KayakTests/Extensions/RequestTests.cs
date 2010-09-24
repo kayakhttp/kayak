@@ -10,7 +10,6 @@ using System.Disposables;
 
 namespace KayakTests.Extensions
 {
-    [TestFixture]
     public class RequestTests
     {
         [TestFixture]
@@ -33,21 +32,8 @@ namespace KayakTests.Extensions
                 mockSocket = new Mock<ISocket>();
                 mockSubject = new Mock<ISubject<LinkedList<ArraySegment<byte>>>>();
                 mockSubject.Setup(s => s.OnError(It.IsAny<Exception>())).Callback<Exception>(e => Console.Out.WriteException(e));
-
-                var readCount = 0;
-
-                mockSocket
-                    .Setup(s => s.Read(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>()))
-                    .Returns<byte[], int, int>((byte[] b, int o, int c) =>
-                    {
-                        return Observable.Create<int>(ob => {
-                            var chunk = chunks[readCount++];
-                            Buffer.BlockCopy(chunk.Array, chunk.Offset, b, o, chunk.Count);
-                            ob.OnNext(chunk.Count);
-                            ob.OnCompleted();
-                            return () => { };
-                        });
-                    }).Verifiable();
+                
+                mockSocket = Mocks.MockSocketRead(chunks);
             }
 
             void DoRead()

@@ -3,6 +3,7 @@ using System.Text;
 using System.Web;
 using System;
 using System.IO;
+using System.Linq;
 
 namespace Kayak
 {
@@ -96,36 +97,31 @@ namespace Kayak
                 dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);
         }
 
-        internal static void ParseHttpHeaders(this IEnumerable<ArraySegment<byte>> buffers, out HttpRequestLine requestLine, out IDictionary<string, string> headers)
+        internal static HttpRequestLine ReadRequestLine(this TextReader reader)
         {
-            var reader = new StringReader(buffers.GetString());
-
             string statusLine = reader.ReadLine();
 
             if (string.IsNullOrEmpty(statusLine))
                 throw new Exception("Could not parse request status.");
 
-            int firstSpace = statusLine.IndexOf(' ');
-            int lastSpace = statusLine.LastIndexOf(' ');
+            var tokens = statusLine.Split(' ').Where(s => !string.IsNullOrEmpty(s)).ToArray();
 
-            if (firstSpace == -1 || lastSpace == -1)
-                throw new Exception("Could not parse request status.");
+            if (tokens.Length != 3 && tokens.Length != 2)
+                throw new Exception("Expected 2 or 3 tokens in request line.");
 
-            requestLine = new HttpRequestLine();
-            requestLine.Verb = statusLine.Substring(0, firstSpace);
+            var requestLine = new HttpRequestLine();
 
-            bool hasVersion = lastSpace != firstSpace;
+            return new HttpRequestLine()
+                {
+                    Verb = tokens[0],
+                    RequestUri = tokens[1],
+                    HttpVersion = tokens.Length == 3 ? tokens[2] : "HTTP/1.0"
+                };
+        }
 
-            if (hasVersion)
-                requestLine.HttpVersion = statusLine.Substring(lastSpace + 1);
-            else
-                requestLine.HttpVersion = "HTTP/1.0";
-
-            requestLine.RequestUri = hasVersion
-                ? statusLine.Substring(firstSpace + 1, lastSpace - firstSpace - 1)
-                : statusLine.Substring(firstSpace + 1);
-
-            headers = new Dictionary<string, string>();
+        internal static IDictionary<string, string> ReadHeaders(this TextReader reader)
+        {
+            var headers = new Dictionary<string, string>();
             string line = null;
 
             while (!string.IsNullOrEmpty(line = reader.ReadLine()))
@@ -133,6 +129,8 @@ namespace Kayak
                 int colon = line.IndexOf(':');
                 headers.Add(line.Substring(0, colon), line.Substring(colon + 1).Trim());
             }
+
+            return headers;
         }
 
         internal static byte[] ComposeHttpHeaders(this IKayakServerResponse response)
