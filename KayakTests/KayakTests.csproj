@@ -104,6 +104,7 @@
     <Compile Include="KayakContextResponseTests.cs" />
     <Compile Include="KayakContextRequestTests.cs" />
     <Compile Include="KayakServerRequestTests.cs" />
+    <Compile Include="KayakServerResponseTests.cs" />
     <Compile Include="KayakServerTests.cs" />
     <Compile Include="Mocks.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

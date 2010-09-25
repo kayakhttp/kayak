@@ -52,7 +52,7 @@ namespace Kayak.Framework
         {
             var request = context.Request;
 
-            MethodMatch match = GetBestMatch(request.Path.TrimEnd('/').Split('/'), request.Verb);
+            MethodMatch match = GetBestMatch(request.GetPath().TrimEnd('/').Split('/'), request.Verb);
 
             if (match == null) 
                 return typeof(DefaultResponses).GetMethod("NotFound");

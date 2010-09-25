@@ -4,6 +4,34 @@ using System.Net;
 
 namespace Kayak
 {
+    //public interface IKayakServerContext
+    //{
+    //    IDictionary<object, object> Items { get; }
+    //    IObservable<IKayakServerRequest> ReceiveRequest();
+    //    void SendResponse(IKayakServerResponse response);
+    //}
+
+    //public interface IKayakServerRequest
+    //{
+    //    HttpRequestLine RequestLine { get; }
+    //    Dictionary<string, string> Headers { get; }
+    //    IObservable<ArraySegment<byte>> GetBody();
+    //}
+
+    //public interface IKayakServerResponse
+    //{
+    //    HttpStatusLine StatusLine { get; }
+    //    Dictionary<string, string> Headers { get; }
+    //    IObservable<ArraySegment<byte>> GetBody();
+    //}
+
+    //public struct HttpStatusLine
+    //{
+    //    int StatusCode;
+    //    string StatusDescription;
+    //    string HttpVersion;
+    //}
+
     /// <summary>
     /// Represents a socket which supports asynchronous IO operations.
     /// </summary>
@@ -99,29 +127,6 @@ namespace Kayak
         /// Reads a chunk of request body data from the socket.
         /// </summary>
         IObservable<ArraySegment<byte>> Read();
-
-        #region Derived properties
-
-        /// <summary>
-        /// The path component of the request's `RequestUri` property (e.g., /some/path).
-        /// </summary>
-        /// <remarks>
-        /// Implementors may use the `GetPath()` extension method of `IKayakServerRequest` 
-        /// to implement this property.
-        /// </remarks>
-        string Path { get; }
-
-        /// <summary>
-        /// A dictionary representation of the query string component of the request's
-        /// `RequestUri` property.
-        /// </summary>
-        /// <remarks>
-        /// Implementors may use the `GetQueryString()` extension method of `IKayakServerRequest`
-        /// to implement this property.
-        /// </remarks>
-        IDictionary<string, string> QueryString { get; }
-
-        #endregion
     }
 
     /// <summary>

@@ -49,7 +49,7 @@ namespace Kayak.Framework
                         () =>
                         {
                             Console.WriteLine("[{0}] {1} {2} {3} : {4} {5} {6}", DateTime.Now,
-                            c.Request.Verb, c.Request.Path, c.Request.HttpVersion,
+                            c.Request.Verb, c.Request.GetPath(), c.Request.HttpVersion,
                             c.Response.HttpVersion, c.Response.StatusCode, c.Response.ReasonPhrase);
                         });
                 },
