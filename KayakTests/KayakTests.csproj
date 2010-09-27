@@ -111,6 +111,10 @@
     <Compile Include="SynchronousMemoryStream.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Kayak.Core\Kayak.Core.csproj">
+      <Project>{470EE8A2-2D24-4D62-88FD-6E78C0552A8F}</Project>
+      <Name>Kayak.Core</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Kayak.Oars\Kayak.Oars.csproj">
       <Project>{AEDCAE89-F0C1-41FA-820D-DF96D79BCB3C}</Project>
       <Name>Kayak.Oars</Name>

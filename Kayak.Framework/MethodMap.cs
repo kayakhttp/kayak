@@ -52,15 +52,21 @@ namespace Kayak.Framework
         {
             var request = context.Request;
 
-            MethodMatch match = GetBestMatch(request.GetPath().TrimEnd('/').Split('/'), request.Verb);
+            return GetMethod(context.Request.GetPath(), context.Request.Verb, context.Items);
+        }
 
-            if (match == null) 
+
+        public MethodInfo GetMethod(string path, string verb, IDictionary<object, object> context)
+        {
+            MethodMatch match = GetBestMatch(path.TrimEnd('/').Split('/'), verb);
+
+            if (match == null)
                 return typeof(DefaultResponses).GetMethod("NotFound");
 
             if (match.Method == null)
                 return typeof(DefaultResponses).GetMethod("InvalidMethod");
 
-            context.Items[PathParamsContextKey] = match.Params;
+            context[PathParamsContextKey] = match.Params;
 
             return match.Method;
         }
@@ -151,6 +157,12 @@ namespace Kayak.Framework
             }
 
             return map;
+        }
+
+        public static IDictionary<string, string> GetPathParameters(this IDictionary<object, object> context)
+        {
+            return context.ContainsKey(MethodMap.PathParamsContextKey) ?
+                context[MethodMap.PathParamsContextKey] as IDictionary<string, string> : null;
         }
     }
 }

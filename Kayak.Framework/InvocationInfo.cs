@@ -56,6 +56,17 @@ namespace Kayak.Framework
             context.Items[InvocationInfoContextKey] = info;
         }
 
+        public static InvocationInfo GetInvocationInfo(this IDictionary<object, object> context)
+        {
+            if (!context.ContainsKey(InvocationInfoContextKey)) return null;
+            return context[InvocationInfoContextKey] as InvocationInfo;
+        }
+
+        internal static void SetInvocationInfo(this IDictionary<object, object> context, InvocationInfo info)
+        {
+            context[InvocationInfoContextKey] = info;
+        }
+
         public static void PerformInvocation(this IKayakContext context)
         {
             var info = context.GetInvocationInfo();

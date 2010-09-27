@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.IO;
+using Kayak.Core;
 
 namespace Kayak.Framework
 {
@@ -17,6 +18,25 @@ namespace Kayak.Framework
             var file = info.Result as FileInfo;
             context.Response.Headers["Content-Length"] = file.Length.ToString();
             return context.Response.WriteFile(file.Name);
+        }
+
+        public static IHttpServerResponse ServeFile(this InvocationInfo info)
+        {
+            if (!(info.Result is FileInfo)) return null;
+
+            var file = info.Result as FileInfo;
+
+            var response = new BaseResponse();
+            response.StatusLine = new HttpStatusLine()
+            {
+                StatusCode = 200,
+                ReasonPhrase = "OK",
+                HttpVersion = "HTTP/1.0"
+            };
+
+            response.Headers["Content-Length"] = file.Length.ToString();
+            response.BodyFile = file.FullName;
+            return response;
         }
     }
 }

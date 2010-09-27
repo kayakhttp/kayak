@@ -8,33 +8,18 @@ namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        public static void DeserializeArgsFromHeaders(this IKayakContext context)
+        public static void BindNamedParameters(this InvocationInfo info, IDictionary<string, string> dict, Func<string, Type, object> coerce)
         {
-            var request = context.Request;
-            var i = context.GetInvocationInfo();
-            var parameters = i.Method.GetParameters().Where(p => !RequestBodyAttribute.IsDefinedOn(p));
-
-            var pathParams = context.Items.ContainsKey(MethodMap.PathParamsContextKey) ?
-                context.Items[MethodMap.PathParamsContextKey] as Dictionary<string, string> : null;
+            var parameters = info.Method.GetParameters().Where(p => !RequestBodyAttribute.IsDefinedOn(p));
 
             foreach (ParameterInfo param in parameters)
             {
                 string value = null;
 
-                if (pathParams != null && pathParams.ContainsKey(param.Name))
-                    value = pathParams[param.Name];
-
-                var qs = request.GetQueryString();
-
-                if (value == null && qs.ContainsKey(param.Name))
-                    value = qs[param.Name];
-
-                // TODO also pull from cookies?
-
                 if (value != null)
                     try
                     {
-                        i.Arguments[param.Position] = context.Coerce(value, param.ParameterType);
+                        info.Arguments[param.Position] = coerce(value, param.ParameterType);
                     }
                     catch (Exception e)
                     {

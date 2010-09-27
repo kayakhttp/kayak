@@ -5,6 +5,7 @@ using System.Text;
 using System.IO;
 using LitJson;
 using System.Reflection;
+using Kayak.Core;
 
 namespace Kayak.Framework
 {
@@ -14,22 +15,40 @@ namespace Kayak.Framework
 
         public static void SetJsonOutputMinified(this IKayakContext context, bool value)
         {
-            context.Items[MinifiedOutputKey] = value;
+            context.Items.SetJsonOutputMinified(value);
         }
 
         public static bool GetJsonOutputMinified(this IKayakContext context)
         {
+            return context.Items.GetJsonOutputMinified();
+        }
+        
+        public static void SetJsonOutputMinified(this IDictionary<object, object> context, bool value)
+        {
+            context[MinifiedOutputKey] = value;
+        }
+        
+        public static bool GetJsonOutputMinified(this IDictionary<object, object> context)
+        {
             return
-                context.Items.ContainsKey(MinifiedOutputKey) &&
-                (bool)Convert.ChangeType(context.Items[MinifiedOutputKey], typeof(bool));
+                context.ContainsKey(MinifiedOutputKey) &&
+                (bool)Convert.ChangeType(context[MinifiedOutputKey], typeof(bool));
         }
 
         public static IObservable<Unit> SerializeResultToJson(this IKayakContext context, TypedJsonMapper mapper)
         {
+            var response = context.Response;
+
             var info = context.GetInvocationInfo();
 
+            bool minified = context.GetJsonOutputMinified();
+
+            response.Headers["Content-Type"] = minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
+
+            object toSerializer= null;
+
             if (info.Result != null)
-                return context.WriteJsonResponse(info.Result, mapper);
+                toSerializer = info.Result;
             else if (info.Exception != null)
             {
                 var exception = info.Exception;
@@ -38,47 +57,86 @@ namespace Kayak.Framework
                     exception = exception.InnerException;
 
                 context.Response.SetStatusToInternalServerError();
+                toSerializer = new { Error = exception.Message };
+            }
 
-                return context.WriteJsonResponse(new { Error = exception.Message }, mapper);
+            if (toSerializer != null)
+            {
+                var json = GetJsonRepresentation(toSerializer, mapper, minified);
+                response.Headers.SetContentLength(json.Length);
+                return context.Response.Write(json);
             }
             else return null;
         }
 
-        static IObservable<Unit> WriteJsonResponse(this IKayakContext context, object o, TypedJsonMapper mapper)
+        public static IHttpServerResponse GetJsonResponse(this InvocationInfo info, IDictionary<object, object> context, TypedJsonMapper jsonMapper)
+        {
+            var response = new BufferedResponse();
+
+            bool minified = context.GetJsonOutputMinified();
+
+            response.Headers["Content-Type"] = minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
+
+            if (info.Result != null)
+            {
+                response.StatusLine = new HttpStatusLine()
+                {
+                    StatusCode = 200,
+                    ReasonPhrase = "OK",
+                    HttpVersion = "HTTP/1.0"
+                };
+                response.Add(GetJsonRepresentation(info.Result, jsonMapper, minified));
+                response.SetContentLength();
+            }
+            else if (info.Exception != null)
+            {
+                var exception = info.Exception;
+
+                if (exception is TargetInvocationException)
+                    exception = exception.InnerException;
+
+                response.StatusLine = new HttpStatusLine()
+                {
+                    StatusCode = 503,
+                    ReasonPhrase = "Internal Server Error",
+                    HttpVersion = "HTTP/1.0"
+                };
+                response.Add(GetJsonRepresentation(info.Result, jsonMapper, minified));
+                response.SetContentLength();
+            }
+
+            return response;
+        }
+
+        static byte[] GetJsonRepresentation(object o, TypedJsonMapper mapper, bool minified)
         {
             var buffer = new MemoryStream();
             var writer = new StreamWriter(buffer);
 
-            bool minified = context.GetJsonOutputMinified();
-
-            var response = context.Response;
-
-            response.Headers["Content-Type"] = minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
-
             mapper.Write(o, new JsonWriter(writer) { Validate = false, PrettyPrint = !minified });
             writer.Flush();
 
-            var bufferBytes = buffer.ToArray();
-
-            context.Response.Headers["Content-Length"] = bufferBytes.Length.ToString();
-            return context.Response.Write(bufferBytes, 0, bufferBytes.Length);
+            return buffer.ToArray();
         }
 
         public static IObservable<Unit> DeserializeArgsFromJson(this IKayakContext context, TypedJsonMapper mapper)
         {
-            return context.DeserializeArgsFromJsonInternal(mapper).AsCoroutine<Unit>();
+            return DeserializeArgsFromJsonInternal(context.GetInvocationInfo(), mapper, context.Request.Read, context.Request.Headers.GetContentLength()).AsCoroutine<Unit>();
         }
 
-        static IEnumerable<object> DeserializeArgsFromJsonInternal(this IKayakContext context, TypedJsonMapper mapper)
+        public static IObservable<Unit> DeserializeArgsFromJson(this InvocationInfo info, IHttpServerRequest request, TypedJsonMapper mapper)
         {
-            var info = context.GetInvocationInfo();
+            return info.DeserializeArgsFromJsonInternal(mapper, request.GetBodyChunk, request.Headers.GetContentLength()).AsCoroutine<Unit>();
+        }
 
+        internal static IEnumerable<object> DeserializeArgsFromJsonInternal(this InvocationInfo info, TypedJsonMapper mapper, Func<IObservable<ArraySegment<byte>>> read, int contentLength)
+        {
             var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p));
 
-            if (parameters.Count() != 0 && context.Request.Headers.GetContentLength() != 0)
+            if (parameters.Count() != 0 && contentLength != 0)
             {
                 IList<ArraySegment<byte>> requestBody = null;
-                yield return BufferRequestBody(context).AsCoroutine<IList<ArraySegment<byte>>>().Do(d => requestBody = d);
+                yield return BufferRequestBody(read, contentLength).AsCoroutine<IList<ArraySegment<byte>>>().Do(d => requestBody = d);
 
                 var reader = new JsonReader(new StringReader(requestBody.GetString()));
 
@@ -94,16 +152,15 @@ namespace Kayak.Framework
         }
 
         // wish i had an evented JSON parser.
-        static IEnumerable<object> BufferRequestBody(IKayakContext context)
+        static IEnumerable<object> BufferRequestBody(Func<IObservable<ArraySegment<byte>>> read, int contentLength)
         {
             var bytesRead = 0;
-            var contentLength = context.Request.Headers.GetContentLength();
             var result = new List<ArraySegment<byte>>();
 
             while (true)
             {
                 ArraySegment<byte> data = default(ArraySegment<byte>);
-                yield return context.Request.Read().Do(d => data = d);
+                yield return read().Do(d => data = d);
 
                 result.Add(data);
 

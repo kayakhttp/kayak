@@ -77,6 +77,10 @@
     <Compile Include="UseFramework.cs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Kayak.Core\Kayak.Core.csproj">
+      <Project>{470EE8A2-2D24-4D62-88FD-6E78C0552A8F}</Project>
+      <Name>Kayak.Core</Name>
+    </ProjectReference>
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
       <Name>Kayak</Name>

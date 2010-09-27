@@ -10,8 +10,18 @@ namespace Kayak.Framework
 
         public static object Coerce(this IKayakContext context, string str, Type type)
         {
+            return context.Items.Coerce(str, type);
+        }
+
+        public static void SetCoerce(this IKayakContext context, Func<string, Type, object> coerce)
+        {
+            context.Items.SetCoerce(coerce);
+        }
+
+        public static object Coerce(this IDictionary<object, object> context, string str, Type type)
+        {
             var coerce = (Func<string, Type, object>)
-                (context.Items.ContainsKey(CoerceContextKey) ? context.Items[CoerceContextKey] : null);
+                (context.ContainsKey(CoerceContextKey) ? context[CoerceContextKey] : null);
 
             if (coerce == null)
                 SetCoerce(context, coerce = Coerce);
@@ -19,9 +29,9 @@ namespace Kayak.Framework
             return coerce(str, type);
         }
 
-        public static void SetCoerce(this IKayakContext context, Func<string, Type, object> coerce)
+        public static void SetCoerce(this IDictionary<object, object> context, Func<string, Type, object> coerce)
         {
-            context.Items[CoerceContextKey] = coerce;
+            context[CoerceContextKey] = coerce;
         }
 
         static Regex ampmRegex = new Regex(@"([ap])m?", RegexOptions.IgnoreCase); // am,pm,a,p

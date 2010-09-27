@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.IO; 
+using System.IO;
+using Kayak.Core; 
 
 namespace Kayak
 {
@@ -102,4 +103,35 @@ namespace Kayak
             Trace.Write("Request read " + bytesRead + " bytes");
         }
     }
+
+    public class KayakHttpRequest : IHttpServerRequest
+    {
+        public HttpRequestLine RequestLine { get; private set; }
+        public IDictionary<string, string> Headers { get; private set; }
+
+        ISocket socket;
+        ArraySegment<byte> bodyDataReadWithHeaders;
+
+        public KayakHttpRequest(ISocket socket, HttpRequestLine requestLine, IDictionary<string, string> headers, ArraySegment<byte> bodyDataReadWithHeaders)
+        {
+            this.socket = socket;
+            RequestLine = requestLine;
+            Headers = headers;
+            this.bodyDataReadWithHeaders = bodyDataReadWithHeaders;
+        }
+
+        public IObservable<ArraySegment<byte>> GetBodyChunk()
+        {
+            if (bodyDataReadWithHeaders.Count > 0)
+            {
+                var result = bodyDataReadWithHeaders;
+                bodyDataReadWithHeaders = default(ArraySegment<byte>);
+                return new ArraySegment<byte>[] { result }.ToObservable();
+            }
+
+            var buffer = new byte[2048];
+            return socket.Read(buffer, 0, buffer.Length).Select(n => new ArraySegment<byte>(buffer, 0, n));
+        }
+    }
+
 }

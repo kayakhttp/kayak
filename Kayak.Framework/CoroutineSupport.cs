@@ -9,7 +9,7 @@ namespace Kayak.Framework
     {
         public static IObservable<Unit> HandleWithCoroutine(this IKayakContext context, Func<IKayakContext, IObservable<Unit>> handle)
         {
-            var coroutine = context.InvokeCoroutine();
+            var coroutine = context.GetCoroutine();
 
             if (coroutine == null)
                 return null;
@@ -39,7 +39,7 @@ namespace Kayak.Framework
                             o.OnCompleted();
                     }));
         }
-        public static IObservable<object> InvokeCoroutine(this IKayakContext context)
+        public static IObservable<object> GetCoroutine(this IKayakContext context)
         {
             var info = context.GetInvocationInfo();
 

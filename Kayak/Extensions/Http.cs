@@ -4,28 +4,10 @@ using System.Web;
 using System;
 using System.IO;
 using System.Linq;
+using Kayak.Core;
 
 namespace Kayak
 {
-    /// <summary>
-    /// Represents the first line of an HTTP request. Used when constructing a `KayakServerRequest`.
-    /// </summary>
-    internal struct HttpRequestLine
-    {
-        /// <summary>
-        /// The verb component of the request line (e.g., GET, POST, etc).
-        /// </summary>
-        public string Verb;
-        /// <summary>
-        /// The request URI component of the request line (e.g., /path/and?query=string).
-        /// </summary>
-        public string RequestUri;
-
-        /// <summary>
-        /// The HTTP version component of the request line (e.g., HTTP/1.0).
-        /// </summary>
-        public string HttpVersion;
-    }
 
     public static partial class Extensions
     {
@@ -42,6 +24,11 @@ namespace Kayak
                 int.TryParse(headers["content-length"], out contentLength);
 
             return contentLength;
+        }
+
+        public static void SetContentLength(this IDictionary<string, string> headers, int value)
+        {
+            headers["Content-Length"] = value.ToString();
         }
 
         const char EqualsChar = '=';
@@ -131,6 +118,28 @@ namespace Kayak
             }
 
             return headers;
+        }
+
+        internal static byte[] WriteStatusAndHeaders(this IHttpServerResponse response)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendFormat("{0} {1} {2}\r\n", response.StatusLine.HttpVersion, response.StatusLine.StatusCode, response.StatusLine.ReasonPhrase);
+
+            var headers = response.Headers;
+
+            if (!headers.ContainsKey("Server"))
+                headers["Server"] = "Kayak";
+
+            if (!headers.ContainsKey("Date"))
+                headers["Date"] = DateTime.UtcNow.ToString();
+
+            foreach (var pair in headers)
+                sb.AppendFormat("{0}: {1}\r\n", pair.Key, pair.Value);
+
+            sb.Append("\r\n");
+
+            return Encoding.UTF8.GetBytes(sb.ToString());
         }
 
         internal static byte[] WriteStatusAndHeaders(this IKayakServerResponse response)

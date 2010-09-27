@@ -4,34 +4,6 @@ using System.Net;
 
 namespace Kayak
 {
-    //public interface IKayakServerContext
-    //{
-    //    IDictionary<object, object> Items { get; }
-    //    IObservable<IKayakServerRequest> ReceiveRequest();
-    //    void SendResponse(IKayakServerResponse response);
-    //}
-
-    //public interface IKayakServerRequest
-    //{
-    //    HttpRequestLine RequestLine { get; }
-    //    Dictionary<string, string> Headers { get; }
-    //    IObservable<ArraySegment<byte>> GetBody();
-    //}
-
-    //public interface IKayakServerResponse
-    //{
-    //    HttpStatusLine StatusLine { get; }
-    //    Dictionary<string, string> Headers { get; }
-    //    IObservable<ArraySegment<byte>> GetBody();
-    //}
-
-    //public struct HttpStatusLine
-    //{
-    //    int StatusCode;
-    //    string StatusDescription;
-    //    string HttpVersion;
-    //}
-
     /// <summary>
     /// Represents a socket which supports asynchronous IO operations.
     /// </summary>

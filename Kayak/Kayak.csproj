@@ -117,6 +117,12 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Kayak.Core\Kayak.Core.csproj">
+      <Project>{470EE8A2-2D24-4D62-88FD-6E78C0552A8F}</Project>
+      <Name>Kayak.Core</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -3,16 +3,36 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Web;
+using System.IO;
+using Kayak.Core;
 
 namespace Kayak
 {
     public static partial class Extensions
     {
+        public static IObservable<IHttpServerRequest> BeginRequest(this ISocket socket)
+        {
+            return socket.ReadHeaders().Select(b => b.ParseRequest(socket));
+        }
+
         static int MaxHeaderLength = 1024 * 10;
         static int BufferSize = 1024 * 2;
 
+        public static IHttpServerRequest ParseRequest(this LinkedList<ArraySegment<byte>> headerBuffers, ISocket socket)
+        {
+            var bodyDataReadWithHeaders = headerBuffers.Last.Value;
+            headerBuffers.RemoveLast();
+
+            IHttpServerRequest request = null;
+
+            using (var reader = new StringReader(headerBuffers.GetString()))
+                request = new KayakHttpRequest(socket, reader.ReadRequestLine(), reader.ReadHeaders(), bodyDataReadWithHeaders);
+
+            return request;
+        }
+
         /// <summary>
-        /// Buffers HTTP headers from a socket. The last ArraySegment in the list is any 
+        /// Buffers HTTP headers from a socket. The last ArraySegment in the list is any
         /// data beyond headers which was read, which may be of zero length.
         /// </summary>
         internal static IObservable<LinkedList<ArraySegment<byte>>> ReadHeaders(this ISocket socket)
@@ -131,8 +151,18 @@ namespace Kayak
         /// </summary>
         public static string GetPath(this IKayakServerRequest request)
         {
-            int question = request.RequestUri.IndexOf('?');
-            return HttpUtility.UrlDecode(question >= 0 ? request.RequestUri.Substring(0, question) : request.RequestUri);
+            return GetPath(request.RequestUri);
+        }
+
+        public static string GetPath(this IHttpServerRequest request)
+        {
+            return GetPath(request.RequestLine.RequestUri);
+        }
+
+        static string GetPath(string uri)
+        {
+            int question = uri.IndexOf('?');
+            return HttpUtility.UrlDecode(question >= 0 ? uri.Substring(0, question) : uri);
         }
 
         /// <summary>
@@ -141,9 +171,19 @@ namespace Kayak
         /// </summary>
         public static IDictionary<string, string> GetQueryString(this IKayakServerRequest request)
         {
-            int question = request.RequestUri.IndexOf('?');
+            return GetQueryString(request.RequestUri);
+        }
+
+        public static IDictionary<string, string> GetQueryString(this IHttpServerRequest request)
+        {
+            return GetQueryString(request.RequestLine.RequestUri);
+        }
+
+        static IDictionary<string, string> GetQueryString(string uri)
+        {
+            int question = uri.IndexOf('?');
             return question >= 0 ?
-                request.RequestUri.ParseQueryString(question + 1, request.RequestUri.Length - question - 1) :
+                uri.ParseQueryString(question + 1, uri.Length - question - 1) :
                 new Dictionary<string, string>();
         }
     }
