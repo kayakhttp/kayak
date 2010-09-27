@@ -27,12 +27,6 @@ namespace Kayak.Framework
             var file = info.Result as FileInfo;
 
             var response = new BaseResponse();
-            response.StatusLine = new HttpStatusLine()
-            {
-                StatusCode = 200,
-                ReasonPhrase = "OK",
-                HttpVersion = "HTTP/1.0"
-            };
 
             response.Headers["Content-Length"] = file.Length.ToString();
             response.BodyFile = file.FullName;

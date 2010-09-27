@@ -7,55 +7,7 @@ namespace Kayak.Core
 {
     public interface IHttpResponder
     {
-        // this makes the division of responsibility between the server and the application very clear.
         IObservable<IHttpServerResponse> Respond(IHttpServerRequest request, IDictionary<object, object> context);
-
-        // the old interface encapsulates the request state better.
-        //
-        // but we could implement the old method with this. and it might
-        // iron out some of the wrinkles.
-        //
-        // then the server is it's own thing as well. kayak, oars, whatever.
-        // 
-        // and actually, yeah, this is easier for server implementor probably than the 
-        // whole socket/context thing. maybe?
-        // so it's like,
-
-        // kayak framework
-        // nack | kayak context api 
-        // simple implementation | oars
-        // 
-    }
-
-    public class ResponderChain : IHttpResponder
-    {
-        IEnumerable<IHttpResponder> responders;
-
-        public ResponderChain(IEnumerable<IHttpResponder> responders)
-        {
-            this.responders = responders;
-        }
-
-        public IObservable<IHttpServerResponse> Respond(IHttpServerRequest request, IDictionary<object, object> context)
-        {
-            foreach (var r in responders)
-            {
-                var result = r.Respond(request, context);
-
-                if (result != null)
-                    return result;
-            }
-
-            return null;
-        }
-    }
-
-    public static partial class Extensions
-    {
-        public static IHttpResponder Chain(this IEnumerable<IHttpResponder> responders)
-        {
-            return new ResponderChain(responders);
-        }
     }
 
     public interface IHttpServerRequest
@@ -67,7 +19,12 @@ namespace Kayak.Core
 
     public interface IHttpServerResponse
     {
-        HttpStatusLine StatusLine { get; }
+        //HttpStatusLine StatusLine { get; }
+
+        int StatusCode { get; }
+        string ReasonPhrase { get; }
+        string HttpVersion { get; }
+
         IDictionary<string, string> Headers { get; }
         string BodyFile { get; }
         IObservable<ArraySegment<byte>> GetBodyChunk();

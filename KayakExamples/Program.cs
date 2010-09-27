@@ -6,12 +6,19 @@ using Kayak;
 using Kayak.Framework;
 using System.IO;
 using System.Reflection;
+using LitJson;
+using Kayak.Core;
 
 namespace KayakExamples
 {
     class Program
     {
         static void Main(string[] args)
+        {
+            New();
+        }
+
+        static void Old()
         {
             var server = new KayakServer();
             var behavior = new KayakFrameworkBehavior();
@@ -24,6 +31,30 @@ namespace KayakExamples
 
             // unsubscribe from server (close the listening socket)
             framework.Dispose();
+        }
+
+        static void New()
+        {
+            var server = new KayakServer();
+            
+            var mm = new Type[] { typeof(MyService2) }.CreateMethodMap();
+            var jm = new TypedJsonMapper();
+            jm.AddDefaultInputConversions();
+            jm.AddDefaultOutputConversions();
+
+            server.RespondWith(new KayakFrameworkResponder2(mm, jm));
+        }
+
+    }
+
+    public class MyService2 : KayakService2
+    {
+        [Path("/")]
+        public object Root()
+        {
+            var response = new BufferedResponse();
+            response.Add("They speak English in What?");
+            return response;
         }
     }
 

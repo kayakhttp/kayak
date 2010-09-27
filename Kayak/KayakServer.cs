@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Disposables;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using Kayak.Core;
 
 namespace Kayak
 {
@@ -161,5 +164,66 @@ namespace Kayak
         }
 
         #endregion
+    }
+
+    public static partial class Extensions
+    {
+        public static IDisposable RespondWith(this KayakServer server, IHttpResponder responder)
+        {
+            return server.Subscribe(s =>
+                RespondWithInternal(s, responder).AsCoroutine<Unit>().Subscribe
+                (u => { },
+                e =>
+                {
+                    Console.WriteLine("Error during context.");
+                    Console.Out.WriteException(e);
+                },
+                () =>
+                {
+                }
+                ));
+        }
+
+        static IEnumerable<object> RespondWithInternal(this ISocket socket, IHttpResponder responder)
+        {
+            IHttpServerRequest request = null;
+            yield return socket.BeginRequest().Do(r => request = r);
+
+            // TODO stick the socket in the context
+            var context = new Dictionary<object, object>();
+
+            IHttpServerResponse response = null;
+            yield return responder.Respond(request, context).Do(r => response = r);
+
+            var headers = response.WriteStatusAndHeaders();
+            yield return socket.Write(headers, 0, headers.Length);
+
+            if (!string.IsNullOrEmpty(response.BodyFile))
+                yield return socket.WriteFile(response.BodyFile);
+            else
+            {
+                while (true)
+                {
+                    var chunk = default(ArraySegment<byte>);
+
+                    var getChunk = response.GetBodyChunk();
+
+                    if (getChunk == null)
+                        break;
+
+                    yield return getChunk.Do(c => chunk = c);
+
+                    if (chunk.Count == 0) break;
+
+                    int bytesWritten = 0;
+
+                    while (bytesWritten < chunk.Count)
+                        yield return socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten)
+                            .Do(n => bytesWritten += n);
+                }
+            }
+
+            socket.Dispose();
+        }
     }
 }

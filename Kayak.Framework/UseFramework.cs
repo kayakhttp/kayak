@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Reflection;
-using System.Disposables;
-using Kayak;
-using LitJson;
+using System.Text;
 using Kayak.Core;
+using LitJson;
 
 namespace Kayak.Framework
 {
@@ -126,7 +124,21 @@ namespace Kayak.Framework
         {
             var info = new InvocationInfo();
 
-            info.Method = methodMap.GetMethod(request.GetPath(), request.RequestLine.Verb, context);
+            bool notFound, invalidMethod;
+            info.Method = methodMap.GetMethod(request.GetPath(), request.RequestLine.Verb, context, out notFound, out invalidMethod);
+
+            if (notFound)
+            {
+                yield return DefaultResponses.NotFoundResponse();
+                yield break;
+            }
+
+            if (invalidMethod)
+            {
+                yield return DefaultResponses.InvalidMethodResponse(request.RequestLine.Verb);
+                yield break;
+            }
+
             info.Target = Activator.CreateInstance(info.Method.DeclaringType);
             info.Arguments = new object[info.Method.GetParameters().Length];
 
@@ -155,81 +167,63 @@ namespace Kayak.Framework
 
             if (info.Result is IHttpServerResponse)
                 yield return info.Result;
-
-
-        }
-    }
-
-
-    public interface IKayakFrameworkBehavior2
-    {
-        IObservable<IHttpServerResponse> Route(IHttpServerRequest request, IDictionary<object, object> context);
-        IObservable<IHttpServerResponse> Authenticate(IHttpServerRequest request, IDictionary<object, object> context);
-        IObservable<Unit> Bind(IHttpServerRequest request, IDictionary<object, object> context);
-        IObservable<IHttpServerResponse> GetResponse(IHttpServerRequest request, IDictionary<object, object> context);
-    }
-
-    public class KayakFrameworkResponder : IHttpResponder
-    {
-        IKayakFrameworkBehavior2 behavior;
-        public KayakFrameworkResponder(IKayakFrameworkBehavior2 behavior)
-        {
-            this.behavior = behavior;
-        }
-
-        public IObservable<IHttpServerResponse> Respond(IHttpServerRequest request, IDictionary<object, object> context)
-        {
-            return RespondInternal(request, context).AsCoroutine<IHttpServerResponse>();
-        }
-
-        IEnumerable<object> RespondInternal(IHttpServerRequest request, IDictionary<object, object> context)
-        {
-            var info = new InvocationInfo();
-            context.SetInvocationInfo(info);
-
-            IHttpServerResponse response = null;
-
-            yield return behavior.Route(request, context).Do(r => response = r);
-
-            var auth = behavior.Authenticate(request, context);
-
-            if (auth != null)
-                yield return auth.Do(r => response = r);
-
-            if (response == null)
+            else if (info.Result is IEnumerable<object>)
             {
-                info.Target = Activator.CreateInstance(info.Method.DeclaringType);
+                IHttpServerResponse response = null;
 
-                var parameterCount = info.Method.GetParameters().Length;
-                info.Arguments = new object[parameterCount];
+                var continuation = info.Result as IEnumerable<object>;
+                info.Result = null;
 
-                yield return behavior.Bind(request, context);
-
-                var service = info.Target as KayakService2;
-
-                if (service != null)
-                {
-                    service.Context = context;
-                    service.Request = request;
-                }
-
-                info.Invoke();
-
-                if (info.Result is IHttpServerResponse)
-                    response = info.Result as IHttpServerResponse;
+                yield return HandleCoroutine(continuation, info, request, context).Do(r => response = r);
+                yield return response;
+               
             }
+            else
+                yield return GetResponse(request, context);
+        }
 
-            if (response == null)
-                yield return behavior.GetResponse(request, context).Do(r => response = r);
+        IObservable<IHttpServerResponse> HandleCoroutine(IEnumerable<object> continuation, InvocationInfo info, IHttpServerRequest request, IDictionary<object, object> context)
+        {
+            return Observable.CreateWithDisposable<IHttpServerResponse>(o => continuation.AsCoroutine<object>().Subscribe(
+                      r => info.Result = r,
+                      e =>
+                      {
+                          var response = GetResponse(request, context);
 
-            yield return response;
+                          if (response != null)
+                              o.OnNext(response);
+                          else
+                              o.OnError(e);
+                      },
+                      () =>
+                      {
+                          o.OnNext(GetResponse(request, context));
+                          o.OnCompleted();
+                      }));
+        }
+
+        public virtual IHttpServerResponse GetResponse(IHttpServerRequest request, IDictionary<object, object> context)
+        {
+            var info = context.GetInvocationInfo();
+            bool minified = context.GetJsonOutputMinified();
+
+            return info.ServeFile() ?? info.GetJsonResponse(mapper, minified);
         }
     }
 
     public class BaseResponse : IHttpServerResponse
     {
-        public HttpStatusLine StatusLine { get; set; }
+        public int StatusCode { get; set; }
+        public string ReasonPhrase { get; set; }
+        public string HttpVersion { get; set; }
+
         Dictionary<string, string> headers;
+
+        public BaseResponse()
+        {
+            StatusCode = 200;
+            ReasonPhrase = "OK";
+        }
 
         public IDictionary<string, string> Headers
         {

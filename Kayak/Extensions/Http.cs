@@ -124,7 +124,7 @@ namespace Kayak
         {
             var sb = new StringBuilder();
 
-            sb.AppendFormat("{0} {1} {2}\r\n", response.StatusLine.HttpVersion, response.StatusLine.StatusCode, response.StatusLine.ReasonPhrase);
+            sb.AppendFormat("HTTP/1.0 {0} {1}\r\n", response.StatusCode, response.ReasonPhrase);
 
             var headers = response.Headers;
 

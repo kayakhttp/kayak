@@ -69,22 +69,14 @@ namespace Kayak.Framework
             else return null;
         }
 
-        public static IHttpServerResponse GetJsonResponse(this InvocationInfo info, IDictionary<object, object> context, TypedJsonMapper jsonMapper)
+        public static IHttpServerResponse GetJsonResponse(this InvocationInfo info, TypedJsonMapper jsonMapper, bool minified)
         {
             var response = new BufferedResponse();
-
-            bool minified = context.GetJsonOutputMinified();
 
             response.Headers["Content-Type"] = minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
 
             if (info.Result != null)
             {
-                response.StatusLine = new HttpStatusLine()
-                {
-                    StatusCode = 200,
-                    ReasonPhrase = "OK",
-                    HttpVersion = "HTTP/1.0"
-                };
                 response.Add(GetJsonRepresentation(info.Result, jsonMapper, minified));
                 response.SetContentLength();
             }
@@ -95,12 +87,8 @@ namespace Kayak.Framework
                 if (exception is TargetInvocationException)
                     exception = exception.InnerException;
 
-                response.StatusLine = new HttpStatusLine()
-                {
-                    StatusCode = 503,
-                    ReasonPhrase = "Internal Server Error",
-                    HttpVersion = "HTTP/1.0"
-                };
+                response.StatusCode = 503;
+                response.ReasonPhrase = "Internal Server Error";
                 response.Add(GetJsonRepresentation(info.Result, jsonMapper, minified));
                 response.SetContentLength();
             }

@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Reflection;
 using System;
+using Kayak.Core;
 
 namespace Kayak.Framework
 {
@@ -52,19 +53,36 @@ namespace Kayak.Framework
         {
             var request = context.Request;
 
-            return GetMethod(context.Request.GetPath(), context.Request.Verb, context.Items);
+            bool notFound, invalidMethod;
+            var method = GetMethod(context.Request.GetPath(), context.Request.Verb, context.Items, out notFound, out invalidMethod);
+
+            if (notFound)
+                return typeof(DefaultResponses).GetMethod("NotFound");
+
+            if (invalidMethod)
+                return typeof(DefaultResponses).GetMethod("InvalidMethod");
+
+            return method;
         }
 
-
-        public MethodInfo GetMethod(string path, string verb, IDictionary<object, object> context)
+        public MethodInfo GetMethod(string path, string verb, IDictionary<object, object> context, out bool notFound, out bool invalidMethod)
         {
+            notFound = false;
+            invalidMethod = false;
+
             MethodMatch match = GetBestMatch(path.TrimEnd('/').Split('/'), verb);
 
             if (match == null)
-                return typeof(DefaultResponses).GetMethod("NotFound");
+            {
+                notFound = true;
+                return null;
+            }
 
             if (match.Method == null)
-                return typeof(DefaultResponses).GetMethod("InvalidMethod");
+            {
+                invalidMethod = true;
+                return null;
+            }
 
             context[PathParamsContextKey] = match.Params;
 
@@ -132,6 +150,27 @@ namespace Kayak.Framework
             Response.Headers["Content-Type"] = "text/html";
             yield return Response.Write("<h1>Not Found</h1><p>The requested resource was not found.");
         }
+
+        public static IHttpServerResponse InvalidMethodResponse(string verb)
+        {
+            var response = new BufferedResponse();
+            response.StatusCode = 405;
+            response.ReasonPhrase = "Invalid Method";
+            response.Headers["Content-Type"] = "text/html";
+            response.Add("<h1>Invalid method</h1><p>The requested resource does not support the method '" + verb + "'.");
+            return response;
+        }
+
+        public static IHttpServerResponse NotFoundResponse()
+        {
+            var response = new BufferedResponse();
+            response.StatusCode = 404;
+            response.ReasonPhrase = "Not Found";
+            response.Headers["Content-Type"] = "text/html";
+            response.Add("<h1>Not Found</h1><p>The requested resource was not found.");
+            return response;
+        }
+
     }
 
     public static class MethodMapExtensions
