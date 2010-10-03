@@ -9,7 +9,7 @@ using Kayak.Core;
 namespace Kayak
 {
     /// <summary>
-    /// Represents the first line of an HTTP request. Used when constructing a `KayakServerRequest`.
+    /// Represents the first line of an HTTP request. Used when constructing a `KayakRequest`.
     /// </summary>
     public struct HttpRequestLine
     {
@@ -55,6 +55,30 @@ namespace Kayak
         public static void SetContentLength(this IDictionary<string, string> headers, int value)
         {
             headers["Content-Length"] = value.ToString();
+        }
+
+        public static string GetPath(this IHttpServerRequest request)
+        {
+            return GetPath(request.RequestUri);
+        }
+
+        public static string GetPath(string uri)
+        {
+            int question = uri.IndexOf('?');
+            return HttpUtility.UrlDecode(question >= 0 ? uri.Substring(0, question) : uri);
+        }
+
+        public static IDictionary<string, string> GetQueryString(this IHttpServerRequest request)
+        {
+            return GetQueryString(request.RequestUri);
+        }
+
+        public static IDictionary<string, string> GetQueryString(string uri)
+        {
+            int question = uri.IndexOf('?');
+            return question >= 0 ?
+                uri.ParseQueryString(question + 1, uri.Length - question - 1) :
+                new Dictionary<string, string>();
         }
 
         const char EqualsChar = '=';
@@ -110,7 +134,7 @@ namespace Kayak
                 dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);
         }
 
-        internal static HttpRequestLine ReadRequestLine(this TextReader reader)
+        public static HttpRequestLine ReadRequestLine(this TextReader reader)
         {
             string statusLine = reader.ReadLine();
 
@@ -132,7 +156,7 @@ namespace Kayak
                 };
         }
 
-        internal static IDictionary<string, string> ReadHeaders(this TextReader reader)
+        public static IDictionary<string, string> ReadHeaders(this TextReader reader)
         {
             var headers = new Dictionary<string, string>();
             string line = null;
@@ -146,33 +170,11 @@ namespace Kayak
             return headers;
         }
 
-        internal static byte[] WriteStatusAndHeaders(this IHttpServerResponse response)
+        public static byte[] WriteStatusLineAndHeaders(this IHttpServerResponse response)
         {
             var sb = new StringBuilder();
 
             sb.AppendFormat("HTTP/1.0 {0} {1}\r\n", response.StatusCode, response.ReasonPhrase);
-
-            var headers = response.Headers;
-
-            if (!headers.ContainsKey("Server"))
-                headers["Server"] = "Kayak";
-
-            if (!headers.ContainsKey("Date"))
-                headers["Date"] = DateTime.UtcNow.ToString();
-
-            foreach (var pair in headers)
-                sb.AppendFormat("{0}: {1}\r\n", pair.Key, pair.Value);
-
-            sb.Append("\r\n");
-
-            return Encoding.UTF8.GetBytes(sb.ToString());
-        }
-
-        internal static byte[] WriteStatusAndHeaders(this IKayakServerResponse response)
-        {
-            var sb = new StringBuilder();
-
-            sb.AppendFormat("{0} {1} {2}\r\n", response.HttpVersion, response.StatusCode, response.ReasonPhrase);
 
             var headers = response.Headers;
 

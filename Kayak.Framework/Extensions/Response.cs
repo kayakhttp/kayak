@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text;
 
-namespace Kayak
+namespace Kayak.Framework
 {
     public static partial class Extensions
     {
@@ -129,6 +129,28 @@ namespace Kayak
         public static IObservable<Unit> Write(this IKayakServerResponse response, ArraySegment<byte> buffer)
         {
             return response.Write(buffer.Array, buffer.Offset, buffer.Count);
+        }
+
+        internal static byte[] WriteStatusAndHeaders(this IKayakServerResponse response)
+        {
+            var sb = new StringBuilder();
+
+            sb.AppendFormat("{0} {1} {2}\r\n", response.HttpVersion, response.StatusCode, response.ReasonPhrase);
+
+            var headers = response.Headers;
+
+            if (!headers.ContainsKey("Server"))
+                headers["Server"] = "Kayak";
+
+            if (!headers.ContainsKey("Date"))
+                headers["Date"] = DateTime.UtcNow.ToString();
+
+            foreach (var pair in headers)
+                sb.AppendFormat("{0}: {1}\r\n", pair.Key, pair.Value);
+
+            sb.Append("\r\n");
+
+            return Encoding.UTF8.GetBytes(sb.ToString());
         }
     }
 }

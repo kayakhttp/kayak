@@ -18,14 +18,14 @@ namespace Kayak.Framework
 
     public static partial class Extensions
     {
-        public static IDisposable UseFramework(this IObservable<ISocket> sockets)
-        {
-            TypedJsonMapper jsonMapper = new TypedJsonMapper();
-            jsonMapper.AddDefaultInputConversions();
-            jsonMapper.AddDefaultOutputConversions();
+        //public static IDisposable UseFramework(this IObservable<ISocket> sockets)
+        //{
+        //    TypedJsonMapper jsonMapper = new TypedJsonMapper();
+        //    jsonMapper.AddDefaultInputConversions();
+        //    jsonMapper.AddDefaultOutputConversions();
 
-            return sockets.UseFramework(new KayakFrameworkBehavior(Assembly.GetCallingAssembly().GetTypes()));
-        }
+        //    return sockets.UseFramework(new KayakFrameworkBehavior(Assembly.GetCallingAssembly().GetTypes()));
+        //}
 
         public static IDisposable UseFramework(this IObservable<ISocket> sockets, IKayakFrameworkBehavior behavior)
         {

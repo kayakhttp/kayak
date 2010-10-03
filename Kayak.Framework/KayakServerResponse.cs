@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Kayak.Framework;
 
-namespace Kayak
+namespace Kayak.Framework
 {
     /// <summary>
     /// A simple implementation of `IKayakServerResponse`. Default status is "200 OK HTTP/1.0". An attempt

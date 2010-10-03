@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Kayak.Framework;
 
-namespace Kayak
+namespace Kayak.Framework
 {
     /// <summary>
     /// A simple implementation of `IKayakContext`. The `Socket`, `Request`, and `Response` objects

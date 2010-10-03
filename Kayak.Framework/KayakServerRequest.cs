@@ -4,7 +4,7 @@ using System.Linq;
 using System.IO;
 using Kayak.Core; 
 
-namespace Kayak
+namespace Kayak.Framework
 {
     /// <summary>
     /// A simple implementation of `IKayakServerRequest`.
@@ -53,7 +53,7 @@ namespace Kayak
                 // would be nice some day to parse the request with a fancy state machine
                 // for lower memory usage.
                 Trace.Write("Beginning request.");
-                return socket.ReadHeaders().Subscribe(headerBuffers =>
+                return socket.BufferHeaders().Subscribe(headerBuffers =>
                     {
                         bodyDataReadWithHeaders = headerBuffers.Last.Value;
                         headerBuffers.RemoveLast();
@@ -104,49 +104,5 @@ namespace Kayak
         }
     }
 
-    public class KayakHttpRequest : IHttpServerRequest
-    {
-        public string Verb { get; set; }
-        public string RequestUri { get; set; }
-        public string HttpVersion { get; set; }
-        public IDictionary<string, string> Headers { get; private set; }
-
-        ISocket socket;
-        ArraySegment<byte> bodyDataReadWithHeaders;
-
-        public KayakHttpRequest(ISocket socket, HttpRequestLine requestLine, IDictionary<string, string> headers, ArraySegment<byte> bodyDataReadWithHeaders)
-        {
-            this.socket = socket;
-            Verb = requestLine.Verb;
-            RequestUri = requestLine.RequestUri;
-            HttpVersion = requestLine.HttpVersion;
-            Headers = headers;
-            this.bodyDataReadWithHeaders = bodyDataReadWithHeaders;
-        }
-
-        public IObservable<int> GetBodyChunk(byte[] buffer, int offset, int count)
-        {
-            if (bodyDataReadWithHeaders.Count > 0)
-            {
-                var toRead = (int)Math.Min(count, bodyDataReadWithHeaders.Count);
-
-                Buffer.BlockCopy(bodyDataReadWithHeaders.Array, bodyDataReadWithHeaders.Offset, buffer, offset, toRead);
-
-                var remaining = bodyDataReadWithHeaders.Count - toRead;
-
-                if (remaining > 0)
-                    bodyDataReadWithHeaders = new ArraySegment<byte>(
-                        bodyDataReadWithHeaders.Array, 
-                        bodyDataReadWithHeaders.Offset + toRead, 
-                        remaining);
-                else
-                    bodyDataReadWithHeaders = default(ArraySegment<byte>);
-
-                return new int[] { toRead }.ToObservable();
-            }
-
-            return socket.Read(buffer, offset, count);
-        }
-    }
 
 }

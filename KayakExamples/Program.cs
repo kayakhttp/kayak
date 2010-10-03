@@ -18,20 +18,28 @@ namespace KayakExamples
             New();
         }
 
-        static void Old()
+        static void Simple()
         {
-            var server = new KayakServer();
-            var behavior = new KayakFrameworkBehavior();
-            behavior.JsonMapper.SetOutputConversion<int>((i, w) => w.Write(i.ToString()));
+            IObservable<ISocket> sockets = null;
+            IHttpResponder responder = null;
 
-            var framework = server.UseFramework();
-
-            Console.WriteLine("Kayak listening on " + server.ListenEndPoint);
-            Console.ReadLine();
-
-            // unsubscribe from server (close the listening socket)
-            framework.Dispose();
+            sockets.RespondWith(responder);
         }
+
+        //static void Old()
+        //{
+        //    var server = new KayakServer();
+        //    var behavior = new KayakFrameworkBehavior();
+        //    behavior.JsonMapper.SetOutputConversion<int>((i, w) => w.Write(i.ToString()));
+
+        //    var framework = server.UseFramework();
+
+        //    Console.WriteLine("Kayak listening on " + server.ListenEndPoint);
+        //    Console.ReadLine();
+
+        //    // unsubscribe from server (close the listening socket)
+        //    framework.Dispose();
+        //}
 
         static void New()
         {

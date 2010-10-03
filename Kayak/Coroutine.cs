@@ -140,7 +140,8 @@ namespace Kayak
                 }
                 else
                 {
-                    if (value is T)
+                    // TODO test (or amend) this behavior
+                    if (value is T /* || type.IsAssignableFrom(value.GetType()) */) // maybe?
                         observer.OnNext((T)value);
 
                     Continue();

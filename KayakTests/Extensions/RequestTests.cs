@@ -38,7 +38,7 @@ namespace KayakTests.Extensions
 
             void DoRead()
             {
-                mockSocket.Object.ReadHeaders().Subscribe(mockSubject.Object);
+                mockSocket.Object.BufferHeaders().Subscribe(mockSubject.Object);
                 Console.WriteLine("After read headers subscribe.");
             }
 

@@ -77,17 +77,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Coroutine.cs" />
+    <Compile Include="Extensions\Buffers.cs" />
     <Compile Include="Extensions\Http.cs" />
     <Compile Include="Extensions\IO.cs" />
-    <Compile Include="Extensions\Request.cs" />
-    <Compile Include="Extensions\Response.cs" />
+    <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
     <Compile Include="Interfaces.cs" />
-    <Compile Include="KayakContext.cs" />
+    <Compile Include="KayakRequest.cs" />
     <Compile Include="KayakServer.cs" />
-    <Compile Include="KayakServerRequest.cs" />
-    <Compile Include="KayakServerResponse.cs" />
-    <Compile Include="Observables.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

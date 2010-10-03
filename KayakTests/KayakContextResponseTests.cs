@@ -11,127 +11,127 @@ namespace KayakTests
 {
     // these amount to integration tests and should be re-enabled later.
     //[TestFixture]
-    public class KayakContextResponseTests
-    {
-        string requestString;
+    //public class KayakContextResponseTests
+    //{
+    //    string requestString;
 
-        int statusCode;
-        string reasonPhrase;
-        IDictionary<string, string> headers;
-        string body;
+    //    int statusCode;
+    //    string reasonPhrase;
+    //    IDictionary<string, string> headers;
+    //    string body;
 
-        Mock<ISocket> mockSocket;
+    //    Mock<ISocket> mockSocket;
 
-        SynchronousMemoryStream stream;
-        KayakContext context;
+    //    SynchronousMemoryStream stream;
+    //    KayakContext context;
 
-        bool contextCompleted;
-        Exception contextException;
+    //    bool contextCompleted;
+    //    Exception contextException;
 
-        [SetUp]
-        public void SetUp()
-        {
-            stream = new SynchronousMemoryStream();
-            requestString = "GET / HTTP/1.0\r\n\r\n";
-            stream.Write(Encoding.ASCII.GetBytes(requestString), 0, requestString.Length);
-            stream.Position = 0;
-            mockSocket = new Mock<ISocket>();
-            //mockSocket.Setup(s => s.GetStream()).Returns(stream).Verifiable();
-            //context = new KayakContext(mockSocket.Object);
-            //context.Subscribe(n => { }, e => contextException = e, () => contextCompleted = true);
+    //    [SetUp]
+    //    public void SetUp()
+    //    {
+    //        stream = new SynchronousMemoryStream();
+    //        requestString = "GET / HTTP/1.0\r\n\r\n";
+    //        stream.Write(Encoding.ASCII.GetBytes(requestString), 0, requestString.Length);
+    //        stream.Position = 0;
+    //        mockSocket = new Mock<ISocket>();
+    //        //mockSocket.Setup(s => s.GetStream()).Returns(stream).Verifiable();
+    //        //context = new KayakContext(mockSocket.Object);
+    //        //context.Subscribe(n => { }, e => contextException = e, () => contextCompleted = true);
 
-            headers = new Dictionary<string, string>();
-            headers["Server"] = "Kayak";
-            headers["Date"] = DateTime.UtcNow.ToString();
+    //        headers = new Dictionary<string, string>();
+    //        headers["Server"] = "Kayak";
+    //        headers["Date"] = DateTime.UtcNow.ToString();
 
-            body = null;
-        }
+    //        body = null;
+    //    }
 
-        void SetUpContext()
-        {
-            context.Response.StatusCode = statusCode;
-            context.Response.ReasonPhrase = reasonPhrase;
+    //    void SetUpContext()
+    //    {
+    //        context.Response.StatusCode = statusCode;
+    //        context.Response.ReasonPhrase = reasonPhrase;
 
-            if (headers != null)
-                context.Response.Headers = headers;
-        }
+    //        if (headers != null)
+    //            context.Response.Headers = headers;
+    //    }
 
-        void AssertResponse()
-        {
-            Assert.IsNull(contextException, "Exception was not null.");
-            Assert.IsTrue(contextCompleted, "Context did not complete.");
+    //    void AssertResponse()
+    //    {
+    //        Assert.IsNull(contextException, "Exception was not null.");
+    //        Assert.IsTrue(contextCompleted, "Context did not complete.");
 
-            var expected = string.Format("{0}{1} {2} {3}\r\n", requestString, context.Response.HttpVersion, statusCode, reasonPhrase);
+    //        var expected = string.Format("{0}{1} {2} {3}\r\n", requestString, context.Response.HttpVersion, statusCode, reasonPhrase);
 
-            if (headers != null)
-                foreach (var pair in headers)
-                    expected += string.Format("{0}: {1}\r\n", pair.Key, pair.Value);
+    //        if (headers != null)
+    //            foreach (var pair in headers)
+    //                expected += string.Format("{0}: {1}\r\n", pair.Key, pair.Value);
 
-            expected += "\r\n";
+    //        expected += "\r\n";
 
-            if (body != null)
-                expected += body;
+    //        if (body != null)
+    //            expected += body;
 
-            var received = Encoding.UTF8.GetString(stream.ToArray());
-            Assert.AreEqual(expected, received, "Unexpected response.");
-        }
+    //        var received = Encoding.UTF8.GetString(stream.ToArray());
+    //        Assert.AreEqual(expected, received, "Unexpected response.");
+    //    }
 
-        [Test]
-        public void ResponseDefaultStatusLine()
-        {
-            statusCode = 200;
-            reasonPhrase = "OK";
+    //    [Test]
+    //    public void ResponseDefaultStatusLine()
+    //    {
+    //        statusCode = 200;
+    //        reasonPhrase = "OK";
 
-            context.Response.End();
+    //        context.Response.End();
 
-            AssertResponse();
-        }
-        [Test]
-        public void ResponseStatusLine()
-        {
-            statusCode = 503;
-            reasonPhrase = "Server Blowout";
+    //        AssertResponse();
+    //    }
+    //    [Test]
+    //    public void ResponseStatusLine()
+    //    {
+    //        statusCode = 503;
+    //        reasonPhrase = "Server Blowout";
 
-            SetUpContext();
+    //        SetUpContext();
 
-            //context.End();
+    //        //context.End();
 
-            AssertResponse();
-        }
+    //        AssertResponse();
+    //    }
 
-        [Test]
-        public void ResponseWithHeaders()
-        {
-            statusCode = 302;
-            reasonPhrase = "Found";
-            headers = new Dictionary<string, string>();
-            headers["Location"] = "http://yo.momma/";
-            headers["Server"] = "Yo Daddy";
+    //    [Test]
+    //    public void ResponseWithHeaders()
+    //    {
+    //        statusCode = 302;
+    //        reasonPhrase = "Found";
+    //        headers = new Dictionary<string, string>();
+    //        headers["Location"] = "http://yo.momma/";
+    //        headers["Server"] = "Yo Daddy";
 
-            SetUpContext();
+    //        SetUpContext();
 
-            //context.End();
+    //        //context.End();
 
-            AssertResponse();
-        }
+    //        AssertResponse();
+    //    }
 
-        [Test]
-        public void ResponseWithBody()
-        {
-            statusCode = 404;
-            reasonPhrase = "Not Found";
+    //    [Test]
+    //    public void ResponseWithBody()
+    //    {
+    //        statusCode = 404;
+    //        reasonPhrase = "Not Found";
 
-            body = "Buggeroff.";
+    //        body = "Buggeroff.";
 
-            SetUpContext();
+    //        SetUpContext();
 
-            //var bodyStream = context.Response.Body;
+    //        //var bodyStream = context.Response.Body;
 
-            //bodyStream.Write(Encoding.UTF8.GetBytes(body), 0, body.Length);
+    //        //bodyStream.Write(Encoding.UTF8.GetBytes(body), 0, body.Length);
 
-            //context.End();
+    //        //context.End();
 
-            AssertResponse();
-        }
-    }
+    //        AssertResponse();
+    //    }
+    //}
 }

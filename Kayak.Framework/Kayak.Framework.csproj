@@ -42,6 +42,7 @@
       <HintPath>..\lib\rx3.5\System.CoreEx.dll</HintPath>
     </Reference>
     <Reference Include="System.Data" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Observable, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Observable.dll</HintPath>
@@ -50,17 +51,24 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Reactive.dll</HintPath>
     </Reference>
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BindingAttributes.cs" />
     <Compile Include="Coerce.cs" />
     <Compile Include="CoroutineSupport.cs" />
+    <Compile Include="Extensions\Request.cs" />
+    <Compile Include="Extensions\Response.cs" />
     <Compile Include="FileSupport.cs" />
     <Compile Include="HeaderBinder.cs" />
+    <Compile Include="Interfaces.cs" />
     <Compile Include="InvocationInfo.cs" />
     <Compile Include="JsonSupport.cs" />
+    <Compile Include="KayakContext.cs" />
     <Compile Include="KayakFrameworkBehavior.cs" />
+    <Compile Include="KayakServerRequest.cs" />
+    <Compile Include="KayakServerResponse.cs" />
     <Compile Include="KayakService.cs" />
     <Compile Include="LitJson\IJsonWrapper.cs" />
     <Compile Include="LitJson\JsonData.cs" />

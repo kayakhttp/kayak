@@ -7,6 +7,7 @@ Kayak.csproj.user
 Kayak.Framework.csproj.user
 KayakTests.csproj.user
 KayakFrameworkTests.csproj.user
+Kayak.Core.csproj.user
 KayakDocs.csproj.user
 Kayak.pidb
 KayakTests.pidb

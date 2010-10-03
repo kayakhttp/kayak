@@ -23,7 +23,7 @@ namespace Kayak
     }
 
     // janky!
-    static class Trace
+    internal static class Trace
     {
         public static void Write(string format, params object[] args)
         {
