@@ -8,6 +8,32 @@ using Kayak.Core;
 
 namespace Kayak
 {
+    /// <summary>
+    /// Represents the first line of an HTTP request. Used when constructing a `KayakServerRequest`.
+    /// </summary>
+    public struct HttpRequestLine
+    {
+        /// <summary>
+        /// The verb component of the request line (e.g., GET, POST, etc).
+        /// </summary>
+        public string Verb;
+        /// <summary>
+        /// The request URI component of the request line (e.g., /path/and?query=string).
+        /// </summary>
+        public string RequestUri;
+
+        /// <summary>
+        /// The HTTP version component of the request line (e.g., HTTP/1.0).
+        /// </summary>
+        public string HttpVersion;
+    }
+
+    public struct HttpStatusLine
+    {
+        public int StatusCode;
+        public string ReasonPhrase;
+        public string HttpVersion;
+    }
 
     public static partial class Extensions
     {

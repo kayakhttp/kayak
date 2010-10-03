@@ -125,7 +125,7 @@ namespace Kayak.Framework
             var info = new InvocationInfo();
 
             bool notFound, invalidMethod;
-            info.Method = methodMap.GetMethod(request.GetPath(), request.RequestLine.Verb, context, out notFound, out invalidMethod);
+            info.Method = methodMap.GetMethod(request.GetPath(), request.Verb, context, out notFound, out invalidMethod);
 
             if (notFound)
             {
@@ -135,7 +135,7 @@ namespace Kayak.Framework
 
             if (invalidMethod)
             {
-                yield return DefaultResponses.InvalidMethodResponse(request.RequestLine.Verb);
+                yield return DefaultResponses.InvalidMethodResponse(request.Verb);
                 yield break;
             }
 
@@ -188,12 +188,7 @@ namespace Kayak.Framework
                       r => info.Result = r,
                       e =>
                       {
-                          var response = GetResponse(request, context);
-
-                          if (response != null)
-                              o.OnNext(response);
-                          else
-                              o.OnError(e);
+                          o.OnNext(GetResponse(request, context));
                       },
                       () =>
                       {

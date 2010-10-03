@@ -18,4 +18,19 @@ namespace Kayak.Framework
         public IDictionary<object, object> Context { get; internal set; }
         public IHttpServerRequest Request { get; internal set; }
     }
+
+    public class BasicResponse : BaseResponse
+    {
+        Func<IObservable<ArraySegment<byte>>> body;
+
+        public BasicResponse(Func<IObservable<ArraySegment<byte>>> body)
+        {
+            this.body = body;
+        }
+
+        public override IObservable<ArraySegment<byte>> GetBodyChunk()
+        {
+            return body();
+        }
+    }
 }

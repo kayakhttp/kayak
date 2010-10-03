@@ -16,6 +16,9 @@ namespace Kayak.Framework
             {
                 string value = null;
 
+                if (dict.ContainsKey(param.Name))
+                    value = dict[param.Name];
+
                 if (value != null)
                     try
                     {

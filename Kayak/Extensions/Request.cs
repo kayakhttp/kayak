@@ -156,7 +156,7 @@ namespace Kayak
 
         public static string GetPath(this IHttpServerRequest request)
         {
-            return GetPath(request.RequestLine.RequestUri);
+            return GetPath(request.RequestUri);
         }
 
         static string GetPath(string uri)
@@ -176,7 +176,7 @@ namespace Kayak
 
         public static IDictionary<string, string> GetQueryString(this IHttpServerRequest request)
         {
-            return GetQueryString(request.RequestLine.RequestUri);
+            return GetQueryString(request.RequestUri);
         }
 
         static IDictionary<string, string> GetQueryString(string uri)

@@ -56,6 +56,97 @@ namespace KayakExamples
             response.Add("They speak English in What?");
             return response;
         }
+
+        [Path("/hello")]
+        public object SayHello(string name)
+        {
+            return new { greeting = "hello, " + name + "." };
+        }
+
+        static object foo;
+
+        [Verb("POST")]
+        [Verb("PUT")]
+        [Path("/foo")]
+        public void PutFoo([RequestBody] object t)
+        {
+            foo = t;
+        }
+
+        [Path("/foo")]
+        public object GetFoo()
+        {
+            return foo;
+        }
+
+        [Path("/error")]
+        public void Error()
+        {
+            throw new Exception("Uh oh.");
+        }
+
+        [Path("/files/{name}")]
+        public FileInfo GetFile(string name)
+        {
+            return new FileInfo(name);
+        }
+
+        [Verb("POST")]
+        [Verb("PUT")]
+        [Path("/echo")]
+        public IHttpServerResponse Echo()
+        {
+            int contentLength = -1;
+
+            if (Request.Headers.ContainsKey("Content-Length"))
+                contentLength = int.Parse(Request.Headers["Content-Length"]);
+
+            var totalBytesRead = 0;
+            var buffer = new byte[2048];
+
+            var response = new BasicResponse(() =>
+            {
+                if (totalBytesRead == contentLength)
+                {
+                    Console.WriteLine("Done echoing!");
+                    return null;
+                }
+                return Observable.CreateWithDisposable<ArraySegment<byte>>(o =>
+                {
+                    var bytesRead = 0;
+                    return Request.GetBodyChunk(buffer, 0, buffer.Length).Subscribe(n =>
+                        {
+                            bytesRead = n;
+                            totalBytesRead += bytesRead;
+                        },
+                        e => o.OnError(e),
+                        () =>
+                        {
+                            Console.WriteLine("Providing " + bytesRead + " bytes.");
+                            o.OnNext(new ArraySegment<byte>(buffer, 0, bytesRead));
+                            o.OnCompleted();
+                        });
+                });
+            });
+
+            if (contentLength != -1)
+                response.Headers["Content-Length"] = contentLength.ToString();
+
+            return response;
+        }
+
+        [Path("/yield")]
+        public IEnumerable<object> Yield()
+        {
+            object phue = null;
+            yield return GetPhue().Do(p => phue = p);
+            yield return phue;
+        }
+
+        public IObservable<object> GetPhue()
+        {
+            return new object[] { new { bar = "phue" } }.ToObservable();
+        }
     }
 
     public class MyService : KayakService

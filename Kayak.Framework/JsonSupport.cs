@@ -89,7 +89,7 @@ namespace Kayak.Framework
 
                 response.StatusCode = 503;
                 response.ReasonPhrase = "Internal Server Error";
-                response.Add(GetJsonRepresentation(info.Result, jsonMapper, minified));
+                response.Add(GetJsonRepresentation(new { error = exception.Message }, jsonMapper, minified));
                 response.SetContentLength();
             }
 
@@ -109,22 +109,29 @@ namespace Kayak.Framework
 
         public static IObservable<Unit> DeserializeArgsFromJson(this IKayakContext context, TypedJsonMapper mapper)
         {
-            return DeserializeArgsFromJsonInternal(context.GetInvocationInfo(), mapper, context.Request.Read, context.Request.Headers.GetContentLength()).AsCoroutine<Unit>();
+            Func<int, IObservable<LinkedList<ArraySegment<byte>>>> bufferRequestBody = i => BufferRequestBody(() => context.Request.Read(), i).AsCoroutine<LinkedList<ArraySegment<byte>>>();
+            return DeserializeArgsFromJsonInternal(context.GetInvocationInfo(), mapper, bufferRequestBody, context.Request.Headers.GetContentLength()).AsCoroutine<Unit>();
         }
 
         public static IObservable<Unit> DeserializeArgsFromJson(this InvocationInfo info, IHttpServerRequest request, TypedJsonMapper mapper)
         {
-            return info.DeserializeArgsFromJsonInternal(mapper, request.GetBodyChunk, request.Headers.GetContentLength()).AsCoroutine<Unit>();
+            Func<int, IObservable<LinkedList<ArraySegment<byte>>>> bufferRequestBody =
+                i => BufferRequestBody(request, i).AsCoroutine<LinkedList<ArraySegment<byte>>>();
+            return info.DeserializeArgsFromJsonInternal(mapper, bufferRequestBody, request.Headers.GetContentLength()).AsCoroutine<Unit>();
         }
 
-        internal static IEnumerable<object> DeserializeArgsFromJsonInternal(this InvocationInfo info, TypedJsonMapper mapper, Func<IObservable<ArraySegment<byte>>> read, int contentLength)
+        //internal static IEnumerable<object> DeserializeArgsFromJsonInternal(this InvocationInfo info, 
+        //    TypedJsonMapper mapper, Func<IObservable<ArraySegment<byte>>> read, int contentLength)
+        
+        internal static IEnumerable<object> DeserializeArgsFromJsonInternal(this InvocationInfo info, 
+            TypedJsonMapper mapper, Func<int, IObservable<LinkedList<ArraySegment<byte>>>> bufferRequestBody, int contentLength)
         {
             var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p));
 
             if (parameters.Count() != 0 && contentLength != 0)
             {
-                IList<ArraySegment<byte>> requestBody = null;
-                yield return BufferRequestBody(read, contentLength).AsCoroutine<IList<ArraySegment<byte>>>().Do(d => requestBody = d);
+                LinkedList<ArraySegment<byte>> requestBody = null;
+                yield return bufferRequestBody(contentLength).Do(d => requestBody = d);
 
                 var reader = new JsonReader(new StringReader(requestBody.GetString()));
 
@@ -143,18 +150,39 @@ namespace Kayak.Framework
         static IEnumerable<object> BufferRequestBody(Func<IObservable<ArraySegment<byte>>> read, int contentLength)
         {
             var bytesRead = 0;
-            var result = new List<ArraySegment<byte>>();
+            var result = new LinkedList<ArraySegment<byte>>();
 
             while (true)
             {
                 ArraySegment<byte> data = default(ArraySegment<byte>);
                 yield return read().Do(d => data = d);
 
-                result.Add(data);
+                result.AddLast(data);
 
                 bytesRead += data.Count;
 
                 if (bytesRead == contentLength)
+                    break;
+            }
+
+            yield return result;
+        }
+
+        static IEnumerable<object> BufferRequestBody(IHttpServerRequest request, int contentLength)
+        {
+            var totalBytesRead = 0;
+            var result = new LinkedList<ArraySegment<byte>>();
+
+            while (true)
+            {
+                var buffer = new byte[2048];
+                var bytesRead = 0;
+                yield return request.GetBodyChunk(buffer, 0, buffer.Length).Do(n => bytesRead = n);
+
+                result.AddLast(new ArraySegment<byte>(buffer, 0, bytesRead));
+                totalBytesRead += bytesRead;
+
+                if (totalBytesRead == contentLength)
                     break;
             }
 
