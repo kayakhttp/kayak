@@ -7,7 +7,7 @@ namespace Kayak.Core
 {
     public interface IHttpResponder
     {
-        IObservable<IHttpServerResponse> Respond(IHttpServerRequest request, IDictionary<object, object> context);
+        object Respond(IHttpServerRequest request, IDictionary<object, object> context);
     }
 
     public interface IHttpServerRequest
@@ -16,8 +16,7 @@ namespace Kayak.Core
         string RequestUri { get; }
         string HttpVersion { get; }
         IDictionary<string, string> Headers { get; }
-
-        IObservable<int> GetBodyChunk(byte[] buffer, int offset, int count);
+        IEnumerable<Func<byte[], int, int, IObservable<int>>> GetBody();
     }
 
     public interface IHttpServerResponse
@@ -26,8 +25,7 @@ namespace Kayak.Core
         string ReasonPhrase { get; }
         string HttpVersion { get; }
         IDictionary<string, string> Headers { get; }
-
         string BodyFile { get; }
-        IObservable<ArraySegment<byte>> GetBodyChunk();
+        IEnumerable<IObservable<ArraySegment<byte>>> GetBody();
     }
 }

@@ -47,24 +47,36 @@ namespace Kayak
             // TODO stick the socket, request, and response in the context
             var context = new Dictionary<object, object>();
 
+            var responseObj = responder.Respond(request, context);
+
+            var observable = responseObj.AsObservable();
+
+            if (observable != null)
+                yield return observable.Do(o => responseObj = o);
+
             IHttpServerResponse response = null;
-            yield return responder.Respond(request, context).Do(r => response = r);
+
+            if (responseObj is IHttpServerResponse)
+                response = responseObj as IHttpServerResponse;
+            else if (responseObj is object[])
+                response = (responseObj as object[]).ToResponse();
 
             var headers = response.WriteStatusLineAndHeaders();
+
             yield return socket.Write(headers, 0, headers.Length);
 
             if (!string.IsNullOrEmpty(response.BodyFile))
                 yield return socket.WriteFile(response.BodyFile);
             else
             {
-                while (true)
+                var getBody = response.GetBody();
+
+                foreach (var getChunk in getBody)
                 {
                     var chunk = default(ArraySegment<byte>);
 
-                    var getChunk = response.GetBodyChunk();
-
                     if (getChunk == null)
-                        break;
+                        continue;
 
                     yield return getChunk.Do(c => chunk = c);
 
@@ -78,6 +90,7 @@ namespace Kayak
                 }
             }
 
+            Trace.Write("Closed connection.");
             socket.Dispose();
 
             yield return context;

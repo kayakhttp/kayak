@@ -16,30 +16,47 @@ namespace KayakExamples
         static void Main(string[] args)
         {
             New();
+            //Simple();
         }
 
         static void Simple()
         {
-            IObservable<ISocket> sockets = null;
-            IHttpResponder responder = null;
+            IObservable<ISocket> sockets = new KayakServer();
+            IHttpResponder responder = new SampleResponder();
 
             sockets.RespondWith(responder);
         }
 
-        //static void Old()
-        //{
-        //    var server = new KayakServer();
-        //    var behavior = new KayakFrameworkBehavior();
-        //    behavior.JsonMapper.SetOutputConversion<int>((i, w) => w.Write(i.ToString()));
+        class SampleResponder : IHttpResponder
+        {
+            #region IHttpResponder Members
 
-        //    var framework = server.UseFramework();
+            public object Respond(IHttpServerRequest request, IDictionary<object, object> context)
+            {
+                return new object[] { 
+                    200, 
+                    new Dictionary<string, string>()
+                    {
+                        { "Content-Type", "text/plain" }
+                    }, 
+                    //"Hello world." 
+                    MyService2.EchoGenerator(request)
+                };
+                /*
+                return Observable.Create<IHttpServerResponse>(o =>
+                {
+                    o.OnNext(new BufferedResponse("asdf"));
+                    o.OnCompleted();
+                    return () => { };
+                });
+                */
+                //return new IHttpServerResponse[] { new BufferedResponse("Simple hello.") }.ToObservable();
+            }
 
-        //    Console.WriteLine("Kayak listening on " + server.ListenEndPoint);
-        //    Console.ReadLine();
+            #endregion
+        }
 
-        //    // unsubscribe from server (close the listening socket)
-        //    framework.Dispose();
-        //}
+
 
         static void New()
         {
@@ -102,45 +119,40 @@ namespace KayakExamples
         [Verb("POST")]
         [Verb("PUT")]
         [Path("/echo")]
-        public IHttpServerResponse Echo()
+        public object Echo()
         {
             int contentLength = -1;
 
             if (Request.Headers.ContainsKey("Content-Length"))
                 contentLength = int.Parse(Request.Headers["Content-Length"]);
 
-            var totalBytesRead = 0;
+            return new object[] {
+                200,
+                new Dictionary<string, string>()
+                {
+                    { "Content-Length", contentLength.ToString() }
+                },
+                EchoGenerator(Request)
+            };
+        }
+
+        public static IEnumerable<IObservable<ArraySegment<byte>>> EchoGenerator(IHttpServerRequest request)
+        {
             var buffer = new byte[2048];
 
-            var response = new BasicResponse(() =>
+            foreach (var getChunk in request.GetBody())
             {
-                if (totalBytesRead == contentLength)
-                {
-                    Console.WriteLine("Done echoing!");
-                    return null;
-                }
-                return Observable.CreateWithDisposable<ArraySegment<byte>>(o =>
-                {
-                    var bytesRead = 0;
-                    return Request.GetBodyChunk(buffer, 0, buffer.Length).Subscribe(n =>
-                        {
-                            bytesRead = n;
-                            totalBytesRead += bytesRead;
-                        },
-                        e => o.OnError(e),
-                        () =>
-                        {
-                            Console.WriteLine("Providing " + bytesRead + " bytes.");
-                            o.OnNext(new ArraySegment<byte>(buffer, 0, bytesRead));
-                            o.OnCompleted();
-                        });
-                });
-            });
-
-            if (contentLength != -1)
-                response.Headers["Content-Length"] = contentLength.ToString();
-
-            return response;
+                var bytesRead = 0;
+                yield return Observable.CreateWithDisposable<ArraySegment<byte>>(o =>
+                    {
+                        return getChunk(buffer, 0, buffer.Length).Subscribe(n => bytesRead = n, e => o.OnError(e),
+                            () =>
+                            {
+                                o.OnNext(new ArraySegment<byte>(buffer, 0, bytesRead));
+                                o.OnCompleted();
+                            });
+                    });
+            }
         }
 
         [Path("/yield")]

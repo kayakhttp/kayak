@@ -33,10 +33,31 @@ namespace Kayak
         public int StatusCode;
         public string ReasonPhrase;
         public string HttpVersion;
+
+        static Dictionary<int, string> phrases;
+
+        public static string PhraseForCode(int code)
+        {
+            if (phrases == null)
+                phrases = new Dictionary<int, string>()
+                {
+                    { 200, "OK" },
+                    { 404, "Not Found" },
+                    { 304, "Not Modified" },
+                    { 503, "Internal Server Error" },
+                    // TODO ...etc
+                };
+
+            return phrases.ContainsKey(code) ? phrases[code] : null;
+        }
     }
 
     public static partial class Extensions
     {
+        /// <summary>
+        /// Returns the value of the Content-Length header, or -1 if there is no Content-Length header or its value 
+        /// can't be parsed.
+        /// </summary>
         public static int GetContentLength(this IDictionary<string, string> headers)
         {
             int contentLength = -1;

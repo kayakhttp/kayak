@@ -26,28 +26,43 @@ namespace Kayak
             this.bodyDataReadWithHeaders = bodyDataReadWithHeaders;
         }
 
-        public IObservable<int> GetBodyChunk(byte[] buffer, int offset, int count)
+        public IEnumerable<Func<byte[], int, int,IObservable<int>>> GetBody()
         {
+            var contentLength = Headers.GetContentLength();
+            var totalBytesRead = 0;
+
             if (bodyDataReadWithHeaders.Count > 0)
             {
-                var toRead = (int)Math.Min(count, bodyDataReadWithHeaders.Count);
+                yield return (buffer, offset, count) =>
+                    {
+                        var toRead = (int)Math.Min(count, bodyDataReadWithHeaders.Count);
 
-                Buffer.BlockCopy(bodyDataReadWithHeaders.Array, bodyDataReadWithHeaders.Offset, buffer, offset, toRead);
+                        Buffer.BlockCopy(bodyDataReadWithHeaders.Array, bodyDataReadWithHeaders.Offset, buffer, offset, toRead);
 
-                var remaining = bodyDataReadWithHeaders.Count - toRead;
+                        var remaining = bodyDataReadWithHeaders.Count - toRead;
 
-                if (remaining > 0)
-                    bodyDataReadWithHeaders = new ArraySegment<byte>(
-                        bodyDataReadWithHeaders.Array,
-                        bodyDataReadWithHeaders.Offset + toRead,
-                        remaining);
-                else
-                    bodyDataReadWithHeaders = default(ArraySegment<byte>);
+                        if (remaining > 0)
+                            bodyDataReadWithHeaders = new ArraySegment<byte>(
+                                bodyDataReadWithHeaders.Array,
+                                bodyDataReadWithHeaders.Offset + toRead,
+                                remaining);
+                        else
+                            bodyDataReadWithHeaders = default(ArraySegment<byte>);
 
-                return new int[] { toRead }.ToObservable();
+                        totalBytesRead += toRead;
+                        return new int[] { toRead }.ToObservable();
+                    };
             }
 
-            return socket.Read(buffer, offset, count);
+            if (contentLength == -1 || totalBytesRead < contentLength)
+            {
+                var bytesRead = 0;
+                do
+                {
+                    yield return (buffer, offset, count) => socket.Read(buffer, offset, count).Do(n => bytesRead = n);
+                    totalBytesRead += bytesRead;
+                } while (bytesRead != 0 && (contentLength == -1 || totalBytesRead < contentLength));
+            }
         }
     }
 }

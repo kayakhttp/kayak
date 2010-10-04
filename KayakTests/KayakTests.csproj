@@ -101,6 +101,7 @@
     <Compile Include="CoroutineTests.cs" />
     <Compile Include="Extensions\HttpTests.cs" />
     <Compile Include="Extensions\RequestTests.cs" />
+    <Compile Include="Extensions\ResponseTests.cs" />
     <Compile Include="KayakContextResponseTests.cs" />
     <Compile Include="KayakContextRequestTests.cs" />
     <Compile Include="KayakServerRequestTests.cs" />

@@ -115,7 +115,7 @@ namespace Kayak.Framework
             this.mapper = mapper;
         }
 
-        public IObservable<IHttpServerResponse> Respond(IHttpServerRequest request, IDictionary<object, object> context)
+        public object Respond(IHttpServerRequest request, IDictionary<object, object> context)
         {
             return RespondInternal(request, context).AsCoroutine<IHttpServerResponse>();
         }
@@ -167,7 +167,11 @@ namespace Kayak.Framework
 
             if (info.Result is IHttpServerResponse)
                 yield return info.Result;
-            else if (info.Result is IEnumerable<object>)
+            else if (info.Result is object[])
+            {
+                yield return (info.Result as object[]).ToResponse();
+            }
+            else if (info.Method.ReturnType == typeof(IEnumerable<object>))
             {
                 IHttpServerResponse response = null;
 
@@ -176,7 +180,7 @@ namespace Kayak.Framework
 
                 yield return HandleCoroutine(continuation, info, request, context).Do(r => response = r);
                 yield return response;
-               
+
             }
             else
                 yield return GetResponse(request, context);
@@ -227,7 +231,7 @@ namespace Kayak.Framework
 
         public string BodyFile { get; set; }
 
-        public virtual IObservable<ArraySegment<byte>> GetBodyChunk()
+        public virtual IEnumerable<IObservable<ArraySegment<byte>>> GetBody()
         {
             return null;
         }
@@ -236,6 +240,13 @@ namespace Kayak.Framework
     public class BufferedResponse : BaseResponse
     {
         LinkedList<ArraySegment<byte>> buffers;
+
+        public BufferedResponse() { }
+
+        public BufferedResponse(string body)
+        {
+            Add(body);
+        }
 
         public void SetContentLength()
         {
@@ -263,18 +274,16 @@ namespace Kayak.Framework
             Add(new ArraySegment<byte>(Encoding.UTF8.GetBytes(s)));
         }
 
-        public override IObservable<ArraySegment<byte>> GetBodyChunk()
+        public override IEnumerable<IObservable<ArraySegment<byte>>> GetBody()
         {
             if (buffers == null)
-                return null;
+                yield break;
 
-            var b = buffers.First;
-            buffers.RemoveFirst();
+            foreach (var b in buffers)
+                yield return new ArraySegment<byte>[] { b }.ToObservable();
 
             if (buffers.Count == 0)
                 buffers = null;
-
-            return new ArraySegment<byte>[] { b.Value }.ToObservable();
         }
     }
 }
