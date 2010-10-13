@@ -8,24 +8,13 @@ namespace Kayak
 {
     public class KayakResponse : IHttpServerResponse
     {
-        HttpStatusLine statusLine;
+        string statusLine;
         IDictionary<string,string> headers;
-        string bodyFile;
-        IEnumerable<IObservable<ArraySegment<byte>>> getBody;
+        IEnumerable<object> getBody;
 
-        public int StatusCode
+        public string Status
         {
-            get { return statusLine.StatusCode; }
-        }
-
-        public string ReasonPhrase
-        {
-            get { return statusLine.ReasonPhrase; }
-        }
-
-        public string HttpVersion
-        {
-            get { return "HTTP/1.0"; }
+            get { return statusLine; }
         }
 
         public IDictionary<string, string> Headers
@@ -33,31 +22,18 @@ namespace Kayak
             get { return headers; }
         }
 
-        public virtual string BodyFile
-        {
-            get { return bodyFile; }
-        }
-
-        public IEnumerable<IObservable<ArraySegment<byte>>> GetBody()
+        public IEnumerable<object> GetBody()
         {
             return getBody;
         }
 
-        public KayakResponse(HttpStatusLine statusLine, IDictionary<string, string> headers) 
-            : this(statusLine, headers, null, null) { }
+        public KayakResponse(HttpStatusLine statusLine, IDictionary<string, string> headers, IEnumerable<object> getBody)
+            : this(statusLine.StatusCode + " " + statusLine.ReasonPhrase, headers, getBody) { }
 
-        public KayakResponse(HttpStatusLine statusLine, IDictionary<string, string> headers, string bodyFile)
-            : this(statusLine, headers, bodyFile, null) { }
-
-        public KayakResponse(HttpStatusLine statusLine, IDictionary<string, string> headers,
-            IEnumerable<IObservable<ArraySegment<byte>>> getBody)
-            : this(statusLine, headers, null, getBody) { }
-
-        KayakResponse(HttpStatusLine statusLine, IDictionary<string, string> headers, string bodyFile, IEnumerable<IObservable<ArraySegment<byte>>> getBody)
+        public KayakResponse(string statusLine, IDictionary<string, string> headers, IEnumerable<object> getBody)
         {
             this.statusLine = statusLine;
             this.headers = headers;
-            this.bodyFile = bodyFile;
             this.getBody = getBody;
         }
     }

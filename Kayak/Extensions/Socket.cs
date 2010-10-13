@@ -33,10 +33,10 @@ namespace Kayak
 
         public static IObservable<Dictionary<object, object>> RespondWith(this ISocket socket, IHttpResponder responder)
         {
-            return socket.RespondWithInternal(responder).AsCoroutine<Dictionary<object, object>>();
+            return socket.RespondWithInternal(responder, null).AsCoroutine<Dictionary<object, object>>();
         }
 
-        static IEnumerable<object> RespondWithInternal(this ISocket socket, IHttpResponder responder)
+        static IEnumerable<object> RespondWithInternal(this ISocket socket, IHttpResponder responder, Func<Exception, IHttpServerResponse> getExceptionResponse)
         {
             LinkedList<ArraySegment<byte>> headerBuffers = null;
 
@@ -44,10 +44,16 @@ namespace Kayak
 
             IHttpServerRequest request = socket.CreateRequest(headerBuffers);
 
-            // TODO stick the socket, request, and response in the context
-            var context = new Dictionary<object, object>();
+            object responseObj = null;
 
-            var responseObj = responder.Respond(request, context);
+            try
+            {
+                responseObj = responder.Respond(request);
+            }
+            catch (Exception e)
+            {
+                responseObj = getExceptionResponse(e);
+            }
 
             var observable = responseObj.AsObservable();
 
@@ -61,39 +67,116 @@ namespace Kayak
             else if (responseObj is object[])
                 response = (responseObj as object[]).ToResponse();
 
-            var headers = response.WriteStatusLineAndHeaders();
+            IEnumerator<object> bodyEnumerator = null;
 
-            yield return socket.Write(headers, 0, headers.Length);
+            // enumerate first chunk of body. if success, write to socket.
+            // if fail, provide exception response
+            // enumerate second chunk. if sucess, write. if fail, write something helpful and close the connection.
 
-            if (!string.IsNullOrEmpty(response.BodyFile))
-                yield return socket.WriteFile(response.BodyFile);
-            else
+            try
             {
-                var getBody = response.GetBody();
+                bodyEnumerator = response.GetBody().GetEnumerator();
+            }
+            catch (Exception e)
+            {
+                response = getExceptionResponse(e);
+                bodyEnumerator = response.GetBody().GetEnumerator();
+            }
 
-                foreach (var getChunk in getBody)
+            var exceptionWhileEnumerating = false;
+            var headersWritten = false;
+
+            while (true)
+            {
+                var continues = false;
+                try
+                {
+                    continues = bodyEnumerator.MoveNext();
+                }
+                catch (Exception e)
+                {
+                    if (exceptionWhileEnumerating) throw;
+
+                    if (headersWritten /* && can spit out something helpful cos content type is text/* or something */)
+                    {
+                        // TODO capture exception, flag to write something helpful on next pass.
+                        throw;
+                    }
+
+                    response = getExceptionResponse(e);
+                    bodyEnumerator = response.GetBody().GetEnumerator();
+                    exceptionWhileEnumerating = true;
+                    continue;
+                }
+
+                if (!continues) break;
+
+                var item = bodyEnumerator.Current;
+
+                if (item == null) continue;
+
+                var observableItem = item.AsObservable();
+
+                object obj = item;
+
+                if (observableItem != null)
+                    yield return observableItem.Do(i => obj = i);
+
+                if (obj is FileInfo)
+                {
+                    var fileInfo = obj as FileInfo;
+
+                    if (!fileInfo.Exists) continue;
+
+                    if (!headersWritten)
+                    {
+                        yield return socket.WriteHeaders(response);
+                        headersWritten = true;
+                    }
+
+                    yield return socket.WriteFile(fileInfo.Name);
+                }
+                else
                 {
                     var chunk = default(ArraySegment<byte>);
 
-                    if (getChunk == null)
-                        continue;
+                    if (obj is ArraySegment<byte>)
+                        chunk = (ArraySegment<byte>)obj;
+                    else if (obj is string)
+                        chunk = new ArraySegment<byte>(Encoding.UTF8.GetBytes(obj as string));
 
-                    yield return getChunk.Do(c => chunk = c);
+                    if (!headersWritten)
+                    {
+                        yield return socket.WriteHeaders(response);
+                        headersWritten = true;
+                    }
 
-                    if (chunk.Count == 0) break;
-
-                    int bytesWritten = 0;
-
-                    while (bytesWritten < chunk.Count)
-                        yield return socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten)
-                            .Do(n => bytesWritten += n);
+                    yield return socket.WriteAll(chunk);
                 }
             }
 
             Trace.Write("Closed connection.");
             socket.Dispose();
+        }
 
-            yield return context;
+        public static IObservable<Unit> WriteHeaders(this ISocket socket, IHttpServerResponse response)
+        {
+            return socket.WriteAll(new ArraySegment<byte>(response.WriteStatusLineAndHeaders()));
+        }
+
+        public static IObservable<Unit> WriteAll(this ISocket socket, ArraySegment<byte> chunk)
+        {
+            return socket.WriteAllInternal(chunk).AsCoroutine<Unit>();
+        }
+        static IEnumerable<object> WriteAllInternal(this ISocket socket, ArraySegment<byte> chunk)
+        {
+            int bytesWritten = 0;
+
+            while (bytesWritten < chunk.Count)
+            {
+                yield return socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten)
+                    .Do(n => bytesWritten += n);
+            }
         }
 
         static int MaxHeaderLength = 1024 * 10;
@@ -189,9 +272,11 @@ namespace Kayak
 
             IHttpServerRequest request = null;
 
+            var context = new Dictionary<object, object>();
+
             var headersString = headerBuffers.GetString();
             using (var reader = new StringReader(headersString))
-                request = new KayakRequest(socket, reader.ReadRequestLine(), reader.ReadHeaders(), bodyDataReadWithHeaders);
+                request = new KayakRequest(socket, reader.ReadRequestLine(), reader.ReadHeaders(), context, bodyDataReadWithHeaders);
 
             return request;
         }

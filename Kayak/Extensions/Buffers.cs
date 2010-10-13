@@ -10,7 +10,6 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-
         public static string GetString(this IEnumerable<ArraySegment<byte>> buffers)
         {
             return buffers.GetString(Encoding.UTF8);

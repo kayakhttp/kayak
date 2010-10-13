@@ -14,15 +14,27 @@ namespace Kayak
             if (responseArray.Length != 2 && responseArray.Length != 3)
                 throw new ArgumentException("response array is not of valid length.");
 
-            if (!(responseArray[0] is int))
-                throw new ArgumentException("response status is not int");
+            if (!(responseArray[0] is string))
+                throw new ArgumentException("response status is not string");
 
-            var statusCode = (int)responseArray[0];
+            var status = responseArray[0] as string;
+
+            var spaceSplit = status.Split(new char[] { ' ' }, 2);
+
+            if (spaceSplit.Length != 2)
+                throw new ArgumentException("status must contain a space.");
+
+            int statusCode = 0;
+
+            if (!int.TryParse(spaceSplit[0], out statusCode))
+                throw new ArgumentException("first token in status is not an integer");
+
+            var reasonPhrase = spaceSplit[1];
 
             var statusLine = new HttpStatusLine
             {
                 StatusCode = statusCode,
-                ReasonPhrase = HttpStatusLine.PhraseForCode(statusCode),
+                ReasonPhrase = reasonPhrase,
                 HttpVersion = "HTTP/1.0"
             };
 
@@ -30,31 +42,20 @@ namespace Kayak
                 throw new ArgumentException("response headers is not IDictionary<string, string>");
 
             var headers = responseArray[1] as IDictionary<string, string>;
-            
 
-            if (responseArray.Length == 2)
-                return new KayakResponse(statusLine, headers);
+            IEnumerable<object> body = null;
 
-            var body = responseArray[2];
+            if (responseArray.Length == 3)
+            {
+                var bodyObj = responseArray[2];
 
-            if (body is FileInfo)
-                return new KayakResponse(statusLine, headers, (body as FileInfo).Name);
+                if (!(bodyObj is IEnumerable<object>))
+                    throw new ArgumentException("Third object in response array is not IEnumerable<object>.");
 
-            var generator = body as IEnumerable<IObservable<ArraySegment<byte>>>;
-            
-            if (generator == null) 
-                generator = AsGenerator(body);
-
-            if (generator != null)
-                return new KayakResponse(statusLine, headers, generator);
-
-            throw new ArgumentException("Third object in response array could not be interpreted as a response body generator.");
-        }
-
-        public static IEnumerable<IObservable<ArraySegment<byte>>> AsGenerator(object obj)
-        {
-            if (obj is string)
-                yield return new ArraySegment<byte>[] { new ArraySegment<byte>(Encoding.UTF8.GetBytes(obj as string)) }.ToObservable();
+                body = bodyObj as IEnumerable<object>;
+            }
+                
+            return new KayakResponse(statusLine, headers, body);
         }
         
     }

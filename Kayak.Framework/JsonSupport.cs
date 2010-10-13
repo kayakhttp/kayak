@@ -87,8 +87,7 @@ namespace Kayak.Framework
                 if (exception is TargetInvocationException)
                     exception = exception.InnerException;
 
-                response.StatusCode = 503;
-                response.ReasonPhrase = "Internal Server Error";
+                response.Status = "503 Internal Server Error";
                 response.Add(GetJsonRepresentation(new { error = exception.Message }, jsonMapper, minified));
                 response.SetContentLength();
             }
@@ -178,7 +177,7 @@ namespace Kayak.Framework
             var body = request.GetBody();
 
             foreach (var getChunk in body)
-                yield return getChunk(buffer, 0, buffer.Length).Do(n => bytesRead = n);
+                yield return getChunk(new ArraySegment<byte>(buffer, 0, buffer.Length)).Do(n => bytesRead = n);
 
             result.AddLast(new ArraySegment<byte>(buffer, 0, bytesRead));
             totalBytesRead += bytesRead;

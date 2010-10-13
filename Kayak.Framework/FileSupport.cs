@@ -29,7 +29,7 @@ namespace Kayak.Framework
             var response = new BaseResponse();
 
             response.Headers["Content-Length"] = file.Length.ToString();
-            response.BodyFile = file.FullName;
+            response.SetBody(new object[] { file });
             return response;
         }
     }

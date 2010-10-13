@@ -31,7 +31,7 @@ namespace KayakExamples
         {
             #region IHttpResponder Members
 
-            public object Respond(IHttpServerRequest request, IDictionary<object, object> context)
+            public object Respond(IHttpServerRequest request)
             {
                 return new object[] { 
                     200, 
@@ -127,7 +127,7 @@ namespace KayakExamples
                 contentLength = int.Parse(Request.Headers["Content-Length"]);
 
             return new object[] {
-                200,
+                "200 OK",
                 new Dictionary<string, string>()
                 {
                     { "Content-Length", contentLength.ToString() }
@@ -136,7 +136,7 @@ namespace KayakExamples
             };
         }
 
-        public static IEnumerable<IObservable<ArraySegment<byte>>> EchoGenerator(IHttpServerRequest request)
+        public static IEnumerable<object> EchoGenerator(IHttpServerRequest request)
         {
             var buffer = new byte[2048];
 
@@ -145,7 +145,7 @@ namespace KayakExamples
                 var bytesRead = 0;
                 yield return Observable.CreateWithDisposable<ArraySegment<byte>>(o =>
                     {
-                        return getChunk(buffer, 0, buffer.Length).Subscribe(n => bytesRead = n, e => o.OnError(e),
+                        return getChunk(new ArraySegment<byte>(buffer, 0, buffer.Length)).Subscribe(n => bytesRead = n, e => o.OnError(e),
                             () =>
                             {
                                 o.OnNext(new ArraySegment<byte>(buffer, 0, bytesRead));

@@ -154,8 +154,7 @@ namespace Kayak.Framework
         public static IHttpServerResponse InvalidMethodResponse(string verb)
         {
             var response = new BufferedResponse();
-            response.StatusCode = 405;
-            response.ReasonPhrase = "Invalid Method";
+            response.Status = "405 Invalid Method";
             response.Headers["Content-Type"] = "text/html";
             response.Add("<h1>Invalid method</h1><p>The requested resource does not support the method '" + verb + "'.");
             return response;
@@ -164,8 +163,7 @@ namespace Kayak.Framework
         public static IHttpServerResponse NotFoundResponse()
         {
             var response = new BufferedResponse();
-            response.StatusCode = 404;
-            response.ReasonPhrase = "Not Found";
+            response.Status = "404 Not Found";
             response.Headers["Content-Type"] = "text/html";
             response.Add("<h1>Not Found</h1><p>The requested resource was not found.");
             return response;

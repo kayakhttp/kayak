@@ -115,14 +115,16 @@ namespace Kayak.Framework
             this.mapper = mapper;
         }
 
-        public object Respond(IHttpServerRequest request, IDictionary<object, object> context)
+        public object Respond(IHttpServerRequest request)
         {
-            return RespondInternal(request, context).AsCoroutine<IHttpServerResponse>();
+            return RespondInternal(request).AsCoroutine<IHttpServerResponse>();
         }
 
-        public IEnumerable<object> RespondInternal(IHttpServerRequest request, IDictionary<object, object> context)
+        public IEnumerable<object> RespondInternal(IHttpServerRequest request)
         {
             var info = new InvocationInfo();
+
+            var context = request.Context;
 
             bool notFound, invalidMethod;
             info.Method = methodMap.GetMethod(request.GetPath(), request.Verb, context, out notFound, out invalidMethod);
@@ -212,16 +214,13 @@ namespace Kayak.Framework
 
     public class BaseResponse : IHttpServerResponse
     {
-        public int StatusCode { get; set; }
-        public string ReasonPhrase { get; set; }
-        public string HttpVersion { get; set; }
-
+        public string Status { get; set; }
         Dictionary<string, string> headers;
+        IEnumerable<object> body;
 
         public BaseResponse()
         {
-            StatusCode = 200;
-            ReasonPhrase = "OK";
+            Status = "200 OK";
         }
 
         public IDictionary<string, string> Headers
@@ -229,11 +228,14 @@ namespace Kayak.Framework
             get { return headers ?? (headers = new Dictionary<string, string>()); }
         }
 
-        public string BodyFile { get; set; }
-
-        public virtual IEnumerable<IObservable<ArraySegment<byte>>> GetBody()
+        public virtual IEnumerable<object> GetBody()
         {
-            return null;
+            return body;
+        }
+
+        public void SetBody(IEnumerable<object> body)
+        {
+            this.body = body;
         }
     }
 
@@ -274,7 +276,7 @@ namespace Kayak.Framework
             Add(new ArraySegment<byte>(Encoding.UTF8.GetBytes(s)));
         }
 
-        public override IEnumerable<IObservable<ArraySegment<byte>>> GetBody()
+        public override IEnumerable<object> GetBody()
         {
             if (buffers == null)
                 yield break;

@@ -195,7 +195,7 @@ namespace Kayak
         {
             var sb = new StringBuilder();
 
-            sb.AppendFormat("HTTP/1.0 {0} {1}\r\n", response.StatusCode, response.ReasonPhrase);
+            sb.AppendFormat("HTTP/1.0 {0}\r\n", response.Status);
 
             var headers = response.Headers;
 
