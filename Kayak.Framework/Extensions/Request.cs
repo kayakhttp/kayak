@@ -1,27 +1,27 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
+using System.IO;
+using Kayak.Core;
 
 namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        /// <summary>
-        /// Returns a dictionary representation of the query string component from the `RequestUri`
-        /// property of the `IKayakServerRequest`.
-        /// </summary>
-        //public static IDictionary<string, string> GetQueryString(this IKayakServerRequest request)
-        //{
-        //    return Kayak.Extensions.GetQueryString(request.RequestUri);
-        //}
+        public static IHttpServerResponse ServeFile(this IHttpServerRequest request)
+        {
+            var info = request.Context.GetInvocationInfo();
 
-        /// <summary>
-        /// Returns the path component from the `RequestUri` property of the `IKayakServerRequest` (e.g., /some/path).
-        /// </summary>
-        //public static string GetPath(this IKayakServerRequest request)
-        //{
-        //    return Kayak.Extensions.GetPath(request.RequestUri);
-        //}
+            if (!(info.Result is FileInfo)) return null;
+
+            var file = info.Result as FileInfo;
+
+            var response = new BaseResponse();
+
+            // TODO support 304, Range: header, etc.
+
+            var headers = new Dictionary<string, string>();
+            headers["Content-Length"] = file.Length.ToString();
+
+            return new KayakResponse("200 OK", headers, file);
+        }
     }
 }

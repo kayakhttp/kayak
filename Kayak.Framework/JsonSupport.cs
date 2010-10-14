@@ -1,11 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
-using LitJson;
+using System.Linq;
 using System.Reflection;
 using Kayak.Core;
+using LitJson;
 
 namespace Kayak.Framework
 {
@@ -25,7 +24,7 @@ namespace Kayak.Framework
                 (bool)Convert.ChangeType(context[MinifiedOutputKey], typeof(bool));
         }
 
-        public static IHttpServerResponse GetJsonResponse(this InvocationInfo info, TypedJsonMapper jsonMapper, bool minified)
+        public static IHttpServerResponse GetJsonResponse(this InvocationInfo info, JsonMapper2 jsonMapper, bool minified)
         {
             var response = new BufferedResponse();
 
@@ -51,7 +50,7 @@ namespace Kayak.Framework
             return response;
         }
 
-        static byte[] GetJsonRepresentation(object o, TypedJsonMapper mapper, bool minified)
+        static byte[] GetJsonRepresentation(object o, JsonMapper2 mapper, bool minified)
         {
             var buffer = new MemoryStream();
             var writer = new StreamWriter(buffer);
@@ -62,7 +61,7 @@ namespace Kayak.Framework
             return buffer.ToArray();
         }
 
-        public static IObservable<Unit> DeserializeArgsFromJson(this InvocationInfo info, IHttpServerRequest request, TypedJsonMapper mapper)
+        public static IObservable<Unit> DeserializeArgsFromJson(this InvocationInfo info, IHttpServerRequest request, JsonMapper2 mapper)
         {
             Func<int, IObservable<LinkedList<ArraySegment<byte>>>> bufferRequestBody =
                 i => BufferRequestBody(request).AsCoroutine<LinkedList<ArraySegment<byte>>>();
@@ -70,7 +69,7 @@ namespace Kayak.Framework
         }
 
         internal static IEnumerable<object> DeserializeArgsFromJsonInternal(this InvocationInfo info, 
-            TypedJsonMapper mapper, Func<int, IObservable<LinkedList<ArraySegment<byte>>>> bufferRequestBody, int contentLength)
+            JsonMapper2 mapper, Func<int, IObservable<LinkedList<ArraySegment<byte>>>> bufferRequestBody, int contentLength)
         {
             var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p));
 

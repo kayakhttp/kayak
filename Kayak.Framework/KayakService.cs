@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 using Kayak.Core;
 
 namespace Kayak.Framework
 {
-    public abstract class KayakService2
+    public abstract class KayakService
     {
         public IDictionary<object, object> Context { get; internal set; }
         public IHttpServerRequest Request { get; internal set; }

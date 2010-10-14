@@ -1,19 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Text;
 using Kayak.Core;
 using LitJson;
 
 namespace Kayak.Framework
 {
-    public class KayakFrameworkResponder2 : IHttpResponder
+    public class KayakFrameworkResponder : IHttpResponder
     {
         MethodMap methodMap;
-        TypedJsonMapper mapper;
+        JsonMapper2 mapper;
 
-        public KayakFrameworkResponder2(MethodMap methodMap, TypedJsonMapper mapper)
+        public KayakFrameworkResponder(MethodMap methodMap, JsonMapper2 mapper)
         {
             this.methodMap = methodMap;
             this.mapper = mapper;
@@ -55,13 +53,13 @@ namespace Kayak.Framework
             var pathParams = context.GetPathParameters();
             var queryString = request.GetQueryString();
 
-            target.Concat(pathParams, queryString);
+            ConcatDicts(target, pathParams, queryString);
 
             info.BindNamedParameters(target, context.Coerce);
 
             yield return info.DeserializeArgsFromJson(request, mapper);
 
-            var service = info.Target as KayakService2;
+            var service = info.Target as KayakService;
 
             if (service != null)
             {
@@ -92,6 +90,13 @@ namespace Kayak.Framework
                 yield return GetResponse(request);
         }
 
+        void ConcatDicts<K, V>(IDictionary<K, V> target, params IDictionary<K, V>[] srcs)
+        {
+            foreach (var dict in srcs.Where(s => s != null))
+                foreach (var pair in dict)
+                    target[pair.Key] = dict[pair.Key];
+        }
+
         IObservable<IHttpServerResponse> HandleCoroutine(IEnumerable<object> continuation, InvocationInfo info, IHttpServerRequest request, IDictionary<object, object> context)
         {
             return Observable.CreateWithDisposable<IHttpServerResponse>(o => continuation.AsCoroutine<object>().Subscribe(
@@ -113,7 +118,7 @@ namespace Kayak.Framework
             var info = context.GetInvocationInfo();
             bool minified = context.GetJsonOutputMinified();
 
-            return info.ServeFile() ?? info.GetJsonResponse(mapper, minified);
+            return request.ServeFile() ?? info.GetJsonResponse(mapper, minified);
         }
     }
 }

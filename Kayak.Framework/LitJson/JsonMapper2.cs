@@ -28,7 +28,7 @@ namespace LitJson
 
     public static class TypedJsonMapperDefaultConversions
     {
-        public static void AddDefaultInputConversions(this TypedJsonMapper mapper)
+        public static void AddDefaultInputConversions(this JsonMapper2 mapper)
         {
             mapper.SetInputConversion<string, double>(s => double.Parse(s));
             mapper.SetInputConversion<string, float>(s => float.Parse(s));
@@ -38,7 +38,7 @@ namespace LitJson
             mapper.SetInputConversion<string, Uri>(s => new Uri(s));
         }
 
-        public static void AddDefaultOutputConversions(this TypedJsonMapper mapper)
+        public static void AddDefaultOutputConversions(this JsonMapper2 mapper)
         {
             mapper.SetOutputConversion<bool>((o, w) => w.Write(o));
             mapper.SetOutputConversion<decimal>((o, w) => w.Write(o));
@@ -52,12 +52,12 @@ namespace LitJson
         }
     }
 
-    public class TypedJsonMapper
+    public class JsonMapper2
     {
         Dictionary<Type, Dictionary<Type, Func<object, object>>> inputConversions;
         Dictionary<Type, Action<object, JsonWriter>> outputConversions;
 
-        public TypedJsonMapper()
+        public JsonMapper2()
         {
             inputConversions = new Dictionary<Type, Dictionary<Type, Func<object, object>>>();
             outputConversions = new Dictionary<Type, Action<object, JsonWriter>>();
