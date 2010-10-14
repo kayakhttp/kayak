@@ -11,17 +11,17 @@ namespace Kayak.Framework
         /// Returns a dictionary representation of the query string component from the `RequestUri`
         /// property of the `IKayakServerRequest`.
         /// </summary>
-        public static IDictionary<string, string> GetQueryString(this IKayakServerRequest request)
-        {
-            return Kayak.Extensions.GetQueryString(request.RequestUri);
-        }
+        //public static IDictionary<string, string> GetQueryString(this IKayakServerRequest request)
+        //{
+        //    return Kayak.Extensions.GetQueryString(request.RequestUri);
+        //}
 
         /// <summary>
         /// Returns the path component from the `RequestUri` property of the `IKayakServerRequest` (e.g., /some/path).
         /// </summary>
-        public static string GetPath(this IKayakServerRequest request)
-        {
-            return Kayak.Extensions.GetPath(request.RequestUri);
-        }
+        //public static string GetPath(this IKayakServerRequest request)
+        //{
+        //    return Kayak.Extensions.GetPath(request.RequestUri);
+        //}
     }
 }

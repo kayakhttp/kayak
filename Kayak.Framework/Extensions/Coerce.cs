@@ -8,16 +8,6 @@ namespace Kayak.Framework
     {
         static string CoerceContextKey = "CoerceFunction";
 
-        public static object Coerce(this IKayakContext context, string str, Type type)
-        {
-            return context.Items.Coerce(str, type);
-        }
-
-        public static void SetCoerce(this IKayakContext context, Func<string, Type, object> coerce)
-        {
-            context.Items.SetCoerce(coerce);
-        }
-
         public static object Coerce(this IDictionary<object, object> context, string str, Type type)
         {
             var coerce = (Func<string, Type, object>)

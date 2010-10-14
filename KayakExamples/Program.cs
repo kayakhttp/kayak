@@ -169,89 +169,89 @@ namespace KayakExamples
         }
     }
 
-    public class MyService : KayakService
-    {
-        [Path("/")]
-        public IEnumerable<object> Root()
-        {
-            yield return Response.Write("Hello.");
-        }
+    //public class MyService : KayakService
+    //{
+    //    [Path("/")]
+    //    public IEnumerable<object> Root()
+    //    {
+    //        yield return Response.Write("Hello.");
+    //    }
 
-        [Path("/hello")]
-        public object SayHello(string name)
-        {
-            return new { greeting = "hello, " + name + ".", number = 5 };
-        }
+    //    [Path("/hello")]
+    //    public object SayHello(string name)
+    //    {
+    //        return new { greeting = "hello, " + name + ".", number = 5 };
+    //    }
 
-        static object foo;
+    //    static object foo;
 
-        [Verb("POST")]
-        [Verb("PUT")]
-        [Path("/foo")]
-        public void PutFoo([RequestBody] object t)
-        {
-            foo = t;
-        }
+    //    [Verb("POST")]
+    //    [Verb("PUT")]
+    //    [Path("/foo")]
+    //    public void PutFoo([RequestBody] object t)
+    //    {
+    //        foo = t;
+    //    }
 
-        [Path("/foo")]
-        public object GetFoo()
-        {
-            return foo;
-        }
+    //    [Path("/foo")]
+    //    public object GetFoo()
+    //    {
+    //        return foo;
+    //    }
 
-        [Path("/error")]
-        public void Error()
-        {
-            throw new Exception("Uh oh.");
-        }
+    //    [Path("/error")]
+    //    public void Error()
+    //    {
+    //        throw new Exception("Uh oh.");
+    //    }
 
-        [Path("/path/{p}")]
-        public IEnumerable<object> PathParam(string p)
-        {
-            yield return Response.Write(new ArraySegment<byte>(Encoding.UTF8.GetBytes("The value of p is '" + p + "'.")));
-        }
+    //    [Path("/path/{p}")]
+    //    public IEnumerable<object> PathParam(string p)
+    //    {
+    //        yield return Response.Write(new ArraySegment<byte>(Encoding.UTF8.GetBytes("The value of p is '" + p + "'.")));
+    //    }
 
-        [Path("/files/{name}")]
-        public FileInfo GetFile(string name)
-        {
-            return new FileInfo(name);
-        }
+    //    [Path("/files/{name}")]
+    //    public FileInfo GetFile(string name)
+    //    {
+    //        return new FileInfo(name);
+    //    }
 
-        [Verb("POST")]
-        [Verb("PUT")]
-        [Path("/echo")]
-        public IEnumerable<object> Echo()
-        {
-            int contentLength = -1;
+    //    [Verb("POST")]
+    //    [Verb("PUT")]
+    //    [Path("/echo")]
+    //    public IEnumerable<object> Echo()
+    //    {
+    //        int contentLength = -1;
             
-            if (Request.Headers.ContainsKey("Content-Length"))
-                contentLength = int.Parse(Request.Headers["Content-Length"]);
+    //        if (Request.Headers.ContainsKey("Content-Length"))
+    //            contentLength = int.Parse(Request.Headers["Content-Length"]);
 
-            if (contentLength != -1)
-                Response.Headers["Content-Length"] = contentLength.ToString();
+    //        if (contentLength != -1)
+    //            Response.Headers["Content-Length"] = contentLength.ToString();
 
-            int bytesRead = 0;
+    //        int bytesRead = 0;
 
-            while (bytesRead < contentLength)
-            {
-                var data = default(ArraySegment<byte>);
-                yield return Request.Read().Do(d => data = d);
-                yield return Response.Write(data);
-                bytesRead += data.Count;
-            }
-        }
+    //        while (bytesRead < contentLength)
+    //        {
+    //            var data = default(ArraySegment<byte>);
+    //            yield return Request.Read().Do(d => data = d);
+    //            yield return Response.Write(data);
+    //            bytesRead += data.Count;
+    //        }
+    //    }
 
-        [Path("/yield")]
-        public IEnumerable<object> Yield()
-        {
-            object phue = null;
-            yield return GetPhue().Do(p => phue = p);
-            yield return phue;
-        }
+    //    [Path("/yield")]
+    //    public IEnumerable<object> Yield()
+    //    {
+    //        object phue = null;
+    //        yield return GetPhue().Do(p => phue = p);
+    //        yield return phue;
+    //    }
 
-        public IObservable<object> GetPhue()
-        {
-            return new object[] { new { bar = "phue" } }.ToObservable();
-        }
-    }
+    //    public IObservable<object> GetPhue()
+    //    {
+    //        return new object[] { new { bar = "phue" } }.ToObservable();
+    //    }
+    //}
 }

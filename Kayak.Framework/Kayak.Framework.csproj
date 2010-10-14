@@ -56,19 +56,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BindingAttributes.cs" />
-    <Compile Include="Coerce.cs" />
-    <Compile Include="CoroutineSupport.cs" />
+    <Compile Include="Extensions\Coerce.cs" />
     <Compile Include="Extensions\Request.cs" />
     <Compile Include="Extensions\Response.cs" />
     <Compile Include="FileSupport.cs" />
     <Compile Include="HeaderBinder.cs" />
-    <Compile Include="Interfaces.cs" />
     <Compile Include="InvocationInfo.cs" />
     <Compile Include="JsonSupport.cs" />
-    <Compile Include="KayakContext.cs" />
     <Compile Include="KayakFrameworkBehavior.cs" />
-    <Compile Include="KayakServerRequest.cs" />
-    <Compile Include="KayakServerResponse.cs" />
     <Compile Include="KayakService.cs" />
     <Compile Include="LitJson\IJsonWrapper.cs" />
     <Compile Include="LitJson\JsonData.cs" />

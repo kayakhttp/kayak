@@ -155,7 +155,7 @@ namespace Kayak
                 dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);
         }
 
-        public static HttpRequestLine ReadRequestLine(this TextReader reader)
+        internal static HttpRequestLine ReadRequestLine(this TextReader reader)
         {
             string statusLine = reader.ReadLine();
 

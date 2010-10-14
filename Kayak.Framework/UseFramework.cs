@@ -8,102 +8,6 @@ using LitJson;
 
 namespace Kayak.Framework
 {
-    public interface IKayakFrameworkBehavior
-    {
-        IObservable<Unit> Route(IKayakContext context);
-        IObservable<bool> Authenticate(IKayakContext context);
-        IObservable<Unit> Bind(IKayakContext context);
-        IObservable<Unit> Handle(IKayakContext context);
-    }
-
-    public static partial class Extensions
-    {
-        //public static IDisposable UseFramework(this IObservable<ISocket> sockets)
-        //{
-        //    TypedJsonMapper jsonMapper = new TypedJsonMapper();
-        //    jsonMapper.AddDefaultInputConversions();
-        //    jsonMapper.AddDefaultOutputConversions();
-
-        //    return sockets.UseFramework(new KayakFrameworkBehavior(Assembly.GetCallingAssembly().GetTypes()));
-        //}
-
-        public static IDisposable UseFramework(this IObservable<ISocket> sockets, IKayakFrameworkBehavior behavior)
-        {
-            return sockets.Subscribe(SocketObserver(behavior));
-        }
-
-        static IObserver<ISocket> SocketObserver(IKayakFrameworkBehavior behavior)
-        {
-            return Observer.Create<ISocket>(s =>
-                {
-                    var c = KayakContext.CreateContext(s);
-                    var process = c.ProcessContext(behavior)
-                        .Subscribe(cx =>
-                        {
-                        },
-                        e =>
-                        {
-                            Console.WriteLine("Error during context.");
-                            Console.Out.WriteException(e);
-                        },
-                        () =>
-                        {
-                            Console.WriteLine("[{0}] {1} {2} {3} : {4} {5} {6}", DateTime.Now,
-                            c.Request.Verb, c.Request.GetPath(), c.Request.HttpVersion,
-                            c.Response.HttpVersion, c.Response.StatusCode, c.Response.ReasonPhrase);
-                        });
-                },
-                e =>
-                {
-                    Console.Out.WriteLine("Error from socket source.");
-                    Console.Out.WriteException(e);
-                },
-                () => { Console.Out.WriteLine("Socket source completed."); });
-        }
-
-        static IObservable<Unit> ProcessContext(this IKayakContext context, IKayakFrameworkBehavior behavior)
-        {
-            return context.ProcessContextInternal(behavior).AsCoroutine<Unit>();
-        }
-
-        static IEnumerable<object> ProcessContextInternal(this IKayakContext context, IKayakFrameworkBehavior behavior)
-        {
-            yield return context.Request.Begin();
-
-            var info = new InvocationInfo();
-            context.SetInvocationInfo(info);
-
-            yield return behavior.Route(context);
-
-            var failed = false;
-            var auth = behavior.Authenticate(context);
-
-            if (auth != null)
-                yield return auth.Do(r => failed = r);
-
-            if (!failed)
-            {
-                info.Target = Activator.CreateInstance(info.Method.DeclaringType);
-
-                var parameterCount = info.Method.GetParameters().Length;
-                info.Arguments = new object[parameterCount];
-
-                yield return behavior.Bind(context);
-
-                context.PerformInvocation();
-
-                yield return behavior.Handle(context);
-            }
-
-            yield return context.Response.End();
-        }
-
-        public static IHttpResponder CreateFramework(MethodMap methodMap, TypedJsonMapper mapper)
-        {
-            return new KayakFrameworkResponder2(methodMap, mapper);
-        }
-    }
-
     public class KayakFrameworkResponder2 : IHttpResponder
     {
         MethodMap methodMap;
@@ -185,7 +89,7 @@ namespace Kayak.Framework
 
             }
             else
-                yield return GetResponse(request, context);
+                yield return GetResponse(request);
         }
 
         IObservable<IHttpServerResponse> HandleCoroutine(IEnumerable<object> continuation, InvocationInfo info, IHttpServerRequest request, IDictionary<object, object> context)
@@ -194,98 +98,22 @@ namespace Kayak.Framework
                       r => info.Result = r,
                       e =>
                       {
-                          o.OnNext(GetResponse(request, context));
+                          o.OnNext(GetResponse(request));
                       },
                       () =>
                       {
-                          o.OnNext(GetResponse(request, context));
+                          o.OnNext(GetResponse(request));
                           o.OnCompleted();
                       }));
         }
 
-        public virtual IHttpServerResponse GetResponse(IHttpServerRequest request, IDictionary<object, object> context)
+        public virtual IHttpServerResponse GetResponse(IHttpServerRequest request)
         {
+            var context = request.Context;
             var info = context.GetInvocationInfo();
             bool minified = context.GetJsonOutputMinified();
 
             return info.ServeFile() ?? info.GetJsonResponse(mapper, minified);
-        }
-    }
-
-    public class BaseResponse : IHttpServerResponse
-    {
-        public string Status { get; set; }
-        Dictionary<string, string> headers;
-        IEnumerable<object> body;
-
-        public BaseResponse()
-        {
-            Status = "200 OK";
-        }
-
-        public IDictionary<string, string> Headers
-        {
-            get { return headers ?? (headers = new Dictionary<string, string>()); }
-        }
-
-        public virtual IEnumerable<object> GetBody()
-        {
-            return body;
-        }
-
-        public void SetBody(IEnumerable<object> body)
-        {
-            this.body = body;
-        }
-    }
-
-    public class BufferedResponse : BaseResponse
-    {
-        LinkedList<ArraySegment<byte>> buffers;
-
-        public BufferedResponse() { }
-
-        public BufferedResponse(string body)
-        {
-            Add(body);
-        }
-
-        public void SetContentLength()
-        {
-            var cl = 0;
-            foreach (var b in buffers)
-                cl += b.Count;
-            if (cl > 0)
-                Headers.SetContentLength(cl);
-        }
-        public void Add(ArraySegment<byte> buffer)
-        {
-            if (buffers == null)
-                buffers = new LinkedList<ArraySegment<byte>>();
-
-            buffers.AddLast(buffer);
-        }
-
-        public void Add(byte[] buffer)
-        {
-            Add(new ArraySegment<byte>(buffer));
-        }
-
-        public void Add(string s)
-        {
-            Add(new ArraySegment<byte>(Encoding.UTF8.GetBytes(s)));
-        }
-
-        public override IEnumerable<object> GetBody()
-        {
-            if (buffers == null)
-                yield break;
-
-            foreach (var b in buffers)
-                yield return new ArraySegment<byte>[] { b }.ToObservable();
-
-            if (buffers.Count == 0)
-                buffers = null;
         }
     }
 }

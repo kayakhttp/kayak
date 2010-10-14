@@ -45,17 +45,6 @@ namespace Kayak.Framework
     {
         static object InvocationInfoContextKey = new object();
 
-        public static InvocationInfo GetInvocationInfo(this IKayakContext context)
-        {
-            if (!context.Items.ContainsKey(InvocationInfoContextKey)) return null;
-            return context.Items[InvocationInfoContextKey] as InvocationInfo;
-        }
-
-        internal static void SetInvocationInfo(this IKayakContext context, InvocationInfo info)
-        {
-            context.Items[InvocationInfoContextKey] = info;
-        }
-
         public static InvocationInfo GetInvocationInfo(this IDictionary<object, object> context)
         {
             if (!context.ContainsKey(InvocationInfoContextKey)) return null;
@@ -65,21 +54,6 @@ namespace Kayak.Framework
         internal static void SetInvocationInfo(this IDictionary<object, object> context, InvocationInfo info)
         {
             context[InvocationInfoContextKey] = info;
-        }
-
-        public static void PerformInvocation(this IKayakContext context)
-        {
-            var info = context.GetInvocationInfo();
-
-            if (info == null)
-                throw new Exception("Context has no InvocationInfo.");
-
-            var service = info.Target as KayakService;
-
-            if (service != null)
-                service.Context = context;
-
-            info.Invoke();
         }
     }
 }

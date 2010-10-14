@@ -32,6 +32,5 @@ namespace Kayak.Framework
                     }
             }
         }
-
     }
 }

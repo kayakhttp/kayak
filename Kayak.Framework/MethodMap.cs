@@ -49,21 +49,21 @@ namespace Kayak.Framework
             }
         }
 
-        public MethodInfo GetMethodForContext(IKayakContext context)
-        {
-            var request = context.Request;
+        //public MethodInfo GetMethodForContext(IKayakContext context)
+        //{
+        //    var request = context.Request;
 
-            bool notFound, invalidMethod;
-            var method = GetMethod(context.Request.GetPath(), context.Request.Verb, context.Items, out notFound, out invalidMethod);
+        //    bool notFound, invalidMethod;
+        //    var method = GetMethod(context.Request.GetPath(), context.Request.Verb, context.Items, out notFound, out invalidMethod);
 
-            if (notFound)
-                return typeof(DefaultResponses).GetMethod("NotFound");
+        //    if (notFound)
+        //        return typeof(DefaultResponses).GetMethod("NotFound");
 
-            if (invalidMethod)
-                return typeof(DefaultResponses).GetMethod("InvalidMethod");
+        //    if (invalidMethod)
+        //        return typeof(DefaultResponses).GetMethod("InvalidMethod");
 
-            return method;
-        }
+        //    return method;
+        //}
 
         public MethodInfo GetMethod(string path, string verb, IDictionary<object, object> context, out bool notFound, out bool invalidMethod)
         {
@@ -134,23 +134,8 @@ namespace Kayak.Framework
         }
     }
 
-    class DefaultResponses : KayakService
+    class DefaultResponses
     {
-        public IEnumerable<object> InvalidMethod()
-        {
-            Context.Response.StatusCode = 405;
-            Context.Response.ReasonPhrase = "Invalid Method";
-            Response.Headers["Content-Type"] = "text/html";
-            yield return Response.Write("<h1>Invalid method</h1><p>The requested resource does not support the method '" + Request.Verb + "'.");
-        }
-
-        public IEnumerable<object> NotFound()
-        {
-            Context.Response.SetStatusToNotFound();
-            Response.Headers["Content-Type"] = "text/html";
-            yield return Response.Write("<h1>Not Found</h1><p>The requested resource was not found.");
-        }
-
         public static IHttpServerResponse InvalidMethodResponse(string verb)
         {
             var response = new BufferedResponse();

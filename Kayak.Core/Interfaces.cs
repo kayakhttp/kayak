@@ -8,6 +8,7 @@ namespace Kayak.Core
     public interface IHttpResponder
     {
         // may return IHttpServerResponse or IObservable<IHttpServerResponse>
+        // (observables must yield single value and complete or yield exception.)
         object Respond(IHttpServerRequest request);
     }
 
@@ -22,10 +23,8 @@ namespace Kayak.Core
         // application must call the function with a destination buffer for each read. the returned observable
         // yields a single integer indicating the number of bytes read and completes, or yields a single exception.
         // observable may yield 0 bytes, this does not signify the end of the stream (stream ends when enumerable
-        // ends).
+        // ends). this is useful for middlewares which must do buffering.
         IEnumerable<Func<ArraySegment<byte>, IObservable<int>>> GetBody();
-
-
     }
 
     public interface IHttpServerResponse
