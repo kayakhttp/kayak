@@ -2,18 +2,17 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using Kayak;
+using Moq;
 using NUnit.Core;
 using NUnit.Framework;
-using Moq;
-using Kayak;
-using System.Disposables;
 
 namespace KayakTests.Extensions
 {
-    public class RequestTests
+    public class SocketTests
     {
         [TestFixture]
-        public class ReadHeadersTests
+        public class BufferHeadersTests
         {
             string headers = "1234567890\r\n\r\n";
             string rest = "asdfjkl;";
@@ -40,46 +39,6 @@ namespace KayakTests.Extensions
             {
                 mockSocket.Object.BufferHeaders().Subscribe(mockSubject.Object);
                 Console.WriteLine("After read headers subscribe.");
-            }
-
-            void AssertResult()
-            {
-                //Assert.AreEqual(headers, result.Take(result.Count - 1).GetString(), "Incorrect header result.");
-            }
-
-            void AssertRest(int length)
-            {
-                //Assert.AreEqual(rest.Substring(0, length), result.Skip(result.Count - 1).GetString(), "Incorrect rest result.");
-            }
-
-            void AssertObservableBehavior()
-            {
-                //Assert.IsFalse(gotException, "Unexpected exception.");
-                //Assert.IsTrue(gotResult, "Didn't get result.");
-                //Assert.IsTrue(gotCompleted, "Didn't get completed.");
-            }
-
-            bool MatchesChunks(LinkedList<ArraySegment<byte>> result, string[] expectedChunks)
-            {
-                var i = 0;
-                foreach (var c in expectedChunks)
-                {
-                    var seg = result.ElementAt(i++);
-                    if (c != Encoding.UTF8.GetString(seg.Array, seg.Offset, seg.Count))
-                        return false;
-                }
-                return true;
-            }
-
-            void VerifySubject(string[] expectedChunks)
-            {
-                mockSubject.Verify(s => s.OnError(It.IsAny<Exception>()), Times.Never(), "Subject got exception.");
-                mockSubject.Verify(s => s.OnNext(
-                    It.Is<LinkedList<ArraySegment<byte>>>(l => MatchesChunks(l, expectedChunks))), 
-                    Times.Once(), 
-                    "Didn't get correct result.");
-
-                mockSubject.Verify(s => s.OnCompleted());
             }
 
             [Test]
@@ -178,6 +137,29 @@ namespace KayakTests.Extensions
                 //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
                 //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
                 //AssertRest(3);
+            }
+
+            bool MatchesChunks(LinkedList<ArraySegment<byte>> result, string[] expectedChunks)
+            {
+                var i = 0;
+                foreach (var c in expectedChunks)
+                {
+                    var seg = result.ElementAt(i++);
+                    if (c != Encoding.UTF8.GetString(seg.Array, seg.Offset, seg.Count))
+                        return false;
+                }
+                return true;
+            }
+
+            void VerifySubject(string[] expectedChunks)
+            {
+                mockSubject.Verify(s => s.OnError(It.IsAny<Exception>()), Times.Never(), "Subject got exception.");
+                mockSubject.Verify(s => s.OnNext(
+                    It.Is<LinkedList<ArraySegment<byte>>>(l => MatchesChunks(l, expectedChunks))),
+                    Times.Once(),
+                    "Didn't get correct result.");
+
+                mockSubject.Verify(s => s.OnCompleted());
             }
         }
 

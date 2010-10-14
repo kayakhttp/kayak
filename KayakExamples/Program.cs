@@ -13,10 +13,18 @@ namespace KayakExamples
 {
     class Program
     {
+        static Func<Exception, IHttpServerResponse> getExceptionResponse;
+
         static void Main(string[] args)
         {
             New();
             //Simple();
+
+            getExceptionResponse = e => {
+                var sw = new StringWriter();
+                sw.WriteException(e);
+                return new KayakResponse("503 Internal Server Error", new Dictionary<string, string>(), sw);
+            };
         }
 
         static void Simple()
@@ -24,7 +32,7 @@ namespace KayakExamples
             IObservable<ISocket> sockets = new KayakServer();
             IHttpResponder responder = new SampleResponder();
 
-            sockets.RespondWith(responder);
+            sockets.RespondWith(responder, getExceptionResponse);
         }
 
         class SampleResponder : IHttpResponder
@@ -34,47 +42,33 @@ namespace KayakExamples
             public object Respond(IHttpServerRequest request)
             {
                 return new object[] { 
-                    200, 
+                    "200 OK", 
                     new Dictionary<string, string>()
                     {
                         { "Content-Type", "text/plain" }
                     }, 
                     // "Hello world."
-                    MyService2.EchoGenerator(request)
+                    ExampleService.EchoGenerator(request)
                 };
-
-                /*
-                return Observable.Create<IHttpServerResponse>(o =>
-                {
-                    o.OnNext(new BufferedResponse("asdf"));
-                    o.OnCompleted();
-                    return () => { };
-                });
-                */
-
-                //return new IHttpServerResponse[] { new BufferedResponse("Simple hello.") }.ToObservable();
             }
 
             #endregion
         }
 
-
-
         static void New()
         {
             var server = new KayakServer();
             
-            var mm = new Type[] { typeof(MyService2) }.CreateMethodMap();
+            var mm = new Type[] { typeof(ExampleService) }.CreateMethodMap();
             var jm = new JsonMapper2();
             jm.AddDefaultInputConversions();
             jm.AddDefaultOutputConversions();
 
-            server.RespondWith(new KayakFrameworkResponder(mm, jm));
+            server.RespondWith(new KayakFrameworkResponder(mm, jm), getExceptionResponse);
         }
-
     }
 
-    public class MyService2 : KayakService
+    public class ExampleService : KayakService
     {
         [Path("/")]
         public object Root()

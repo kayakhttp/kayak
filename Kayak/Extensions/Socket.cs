@@ -8,27 +8,6 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IObservable<Unit> WriteStatusLineAndHeaders(this ISocket socket, IHttpServerResponse response)
-        {
-            return socket.WriteAll(new ArraySegment<byte>(response.WriteStatusLineAndHeaders()));
-        }
-
-        public static IObservable<Unit> WriteAll(this ISocket socket, ArraySegment<byte> chunk)
-        {
-            return socket.WriteAllInternal(chunk).AsCoroutine<Unit>();
-        }
-
-        static IEnumerable<object> WriteAllInternal(this ISocket socket, ArraySegment<byte> chunk)
-        {
-            int bytesWritten = 0;
-
-            while (bytesWritten < chunk.Count)
-            {
-                yield return socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten)
-                    .Do(n => bytesWritten += n);
-            }
-        }
-
         static int MaxHeaderLength = 1024 * 10;
         static int BufferSize = 1024 * 2;
 
@@ -115,20 +94,30 @@ namespace Kayak
             return -1;
         }
 
-        public static IHttpServerRequest CreateRequest(this ISocket socket, LinkedList<ArraySegment<byte>> headerBuffers)
+        public static IObservable<Unit> WriteStatusLineAndHeaders(this ISocket socket, IHttpServerResponse response)
         {
-            var bodyDataReadWithHeaders = headerBuffers.Last.Value;
-            headerBuffers.RemoveLast();
+            return socket.WriteAll(new ArraySegment<byte>(response.WriteStatusLineAndHeaders()));
+        }
 
-            IHttpServerRequest request = null;
+        public static IObservable<Unit> WriteAll(this ISocket socket, ArraySegment<byte> chunk)
+        {
+            return socket.WriteAllInternal(chunk).AsCoroutine<Unit>();
+        }
 
-            var context = new Dictionary<object, object>();
+        static IEnumerable<object> WriteAllInternal(this ISocket socket, ArraySegment<byte> chunk)
+        {
+            int bytesWritten = 0;
 
-            var headersString = headerBuffers.GetString();
-            using (var reader = new StringReader(headersString))
-                request = new KayakRequest(socket, reader.ReadRequestLine(), reader.ReadHeaders(), context, bodyDataReadWithHeaders);
+            while (bytesWritten < chunk.Count)
+            {
+                yield return socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten)
+                    .Do(n => bytesWritten += n);
+            }
+        }
 
-            return request;
+        public static IObservable<IHttpServerRequest> BeginRequest(this ISocket socket)
+        {
+            return socket.BufferHeaders().Select(h => KayakRequest.CreateRequest(socket, h));
         }
     }
 }

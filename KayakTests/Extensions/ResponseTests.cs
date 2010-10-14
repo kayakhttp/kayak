@@ -8,13 +8,16 @@ using NUnit.Framework;
 
 namespace KayakTests.Extensions
 {
-    [TestFixture]
     public class ResponseTests
     {
-        [Test]
-        public void ResponseObject()
+        [TestFixture]
+        public class ToResponseTests
         {
-            var response = new object[] { 
+            [Test]
+            [ExpectedException(typeof(ArgumentException), ExpectedMessage = "response status is not string")]
+            public void ResponseObject()
+            {
+                var response = new object[] { 
                     200, 
                     new Dictionary<string, string>()
                     {
@@ -23,7 +26,8 @@ namespace KayakTests.Extensions
                     "Hello world." 
                 };
 
-            response.ToResponse();
+                response.ToResponse();
+            }
         }
     }
 }

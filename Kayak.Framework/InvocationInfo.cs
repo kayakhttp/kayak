@@ -39,7 +39,7 @@ namespace Kayak.Framework
         }
     }
 
-    public static partial class Extensions
+    public static partial class InvocationInfoExtensions
     {
         static object InvocationInfoContextKey = new object();
 

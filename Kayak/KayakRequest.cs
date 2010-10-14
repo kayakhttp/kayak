@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Kayak.Core;
+using System.IO;
 
 namespace Kayak
 {
@@ -16,6 +17,23 @@ namespace Kayak
 
         ISocket socket;
         ArraySegment<byte> bodyDataReadWithHeaders;
+
+        public static IHttpServerRequest CreateRequest(ISocket socket, LinkedList<ArraySegment<byte>> headerBuffers)
+        {
+            var bodyDataReadWithHeaders = headerBuffers.Last.Value;
+            headerBuffers.RemoveLast();
+
+            IHttpServerRequest request = null;
+
+            var context = new Dictionary<object, object>();
+
+            var headersString = headerBuffers.GetString();
+            using (var reader = new StringReader(headersString))
+                request = new KayakRequest(socket, reader.ReadRequestLine(), reader.ReadHeaders(), context, bodyDataReadWithHeaders);
+
+            return request;
+        }
+
 
         public KayakRequest(ISocket socket, HttpRequestLine requestLine, IDictionary<string, string> headers, IDictionary<object, object> context, ArraySegment<byte> bodyDataReadWithHeaders)
         {

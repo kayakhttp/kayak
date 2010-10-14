@@ -30,12 +30,7 @@ namespace Kayak.Framework
 
             response.Headers["Content-Type"] = minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
 
-            if (info.Result != null)
-            {
-                response.Add(GetJsonRepresentation(info.Result, jsonMapper, minified));
-                response.SetContentLength();
-            }
-            else if (info.Exception != null)
+            if (info.Exception != null)
             {
                 var exception = info.Exception;
 
@@ -44,6 +39,11 @@ namespace Kayak.Framework
 
                 response.Status = "503 Internal Server Error";
                 response.Add(GetJsonRepresentation(new { error = exception.Message }, jsonMapper, minified));
+                response.SetContentLength();
+            } 
+            else
+            {
+                response.Add(GetJsonRepresentation(info.Result, jsonMapper, minified));
                 response.SetContentLength();
             }
 

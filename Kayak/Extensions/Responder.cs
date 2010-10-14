@@ -9,17 +9,17 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IDisposable RespondWith(this IObservable<ISocket> sockets, IHttpResponder responder)
+        public static IDisposable RespondWith(this IObservable<ISocket> sockets, IHttpResponder responder, Func<Exception, IHttpServerResponse> getExceptionResponse)
         {
-            return sockets.Subscribe(s => responder.RespondWith(s).Subscribe(CreateContextObserver()));
+            return sockets.Subscribe(s => responder.RespondTo(s, getExceptionResponse).Subscribe(CreateContextObserver()));
         }
 
-        public static IObserver<Dictionary<object, object>> CreateContextObserver()
+        public static IObserver<Unit> CreateContextObserver()
         {
-            return Observer.Create<Dictionary<object, object>>(
+            return Observer.Create<Unit>(
                 c =>
                 {
-                    // TODO pull request and response out of context and log
+                    // TODO pull request and response out of context and log?
                 },
                 e =>
                 {
@@ -31,18 +31,16 @@ namespace Kayak
                 });
         }
 
-        public static IObservable<Dictionary<object, object>> RespondWith(this IHttpResponder responder, ISocket socket)
+        public static IObservable<Unit> RespondTo(this IHttpResponder responder, ISocket socket, Func<Exception, IHttpServerResponse> getExceptionResponse)
         {
-            return responder.RespondWithInternal(socket, null).AsCoroutine<Dictionary<object, object>>();
+            return responder.RespondToInternal(socket, getExceptionResponse).AsCoroutine<Unit>();
         }
 
-        static IEnumerable<object> RespondWithInternal(this IHttpResponder responder, ISocket socket, Func<Exception, IHttpServerResponse> getExceptionResponse)
+        static IEnumerable<object> RespondToInternal(this IHttpResponder responder, ISocket socket, Func<Exception, IHttpServerResponse> getExceptionResponse)
         {
-            LinkedList<ArraySegment<byte>> headerBuffers = null;
+            IHttpServerRequest request = null;
 
-            yield return socket.BufferHeaders().Do(h => headerBuffers = h);
-
-            IHttpServerRequest request = socket.CreateRequest(headerBuffers);
+            yield return socket.BeginRequest().Do(r => request = r);
 
             object responseObj = null;
 
