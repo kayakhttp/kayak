@@ -84,7 +84,7 @@
     <Compile Include="Extensions\Response.cs" />
     <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
-    <Compile Include="Interfaces.cs" />
+    <Compile Include="ISocket.cs" />
     <Compile Include="KayakRequest.cs" />
     <Compile Include="KayakResponse.cs" />
     <Compile Include="KayakServer.cs" />
