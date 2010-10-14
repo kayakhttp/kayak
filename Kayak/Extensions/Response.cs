@@ -29,15 +29,6 @@ namespace Kayak
             if (!int.TryParse(spaceSplit[0], out statusCode))
                 throw new ArgumentException("first token in status is not an integer");
 
-            var reasonPhrase = spaceSplit[1];
-
-            var statusLine = new HttpStatusLine
-            {
-                StatusCode = statusCode,
-                ReasonPhrase = reasonPhrase,
-                HttpVersion = "HTTP/1.0"
-            };
-
             if (!(responseArray[1] is IDictionary<string, string>))
                 throw new ArgumentException("response headers is not IDictionary<string, string>");
 
@@ -55,7 +46,7 @@ namespace Kayak
                 body = bodyObj as IEnumerable<object>;
             }
                 
-            return new KayakResponse(statusLine, headers, body);
+            return new KayakResponse(status, headers, body);
         }
         
     }

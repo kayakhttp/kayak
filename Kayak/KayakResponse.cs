@@ -24,9 +24,6 @@ namespace Kayak
             return getBody;
         }
 
-        public KayakResponse(HttpStatusLine statusLine, IDictionary<string, string> headers, IEnumerable<object> getBody)
-            : this(statusLine.StatusCode + " " + statusLine.ReasonPhrase, headers, getBody) { }
-
         public KayakResponse(string statusLine, IDictionary<string, string> headers, params object[] body)
             : this(statusLine, headers, (IEnumerable<object>)body) { }
 
