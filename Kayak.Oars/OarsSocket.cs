@@ -65,7 +65,7 @@ namespace Kayak.Oars
             throw new NotImplementedException();
         }
 
-        public IObservable<int> WriteFile(string file)
+        public IObservable<Unit> WriteFile(string file)
         {
             throw new NotImplementedException();
         }

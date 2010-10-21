@@ -78,15 +78,17 @@
   <ItemGroup>
     <Compile Include="Coroutine.cs" />
     <Compile Include="Extensions\Buffers.cs" />
-    <Compile Include="Extensions\Http.cs" />
     <Compile Include="Extensions\IO.cs" />
     <Compile Include="Extensions\Responder.cs" />
-    <Compile Include="Extensions\Response.cs" />
     <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
+    <Compile Include="Http\Extensions\Parsing.cs" />
+    <Compile Include="Http\Extensions\ToResponse.cs" />
+    <Compile Include="Http\HttpSupport.cs" />
+    <Compile Include="Http\KayakRequest.cs" />
+    <Compile Include="Http\KayakResponse.cs" />
+    <Compile Include="Http\SafeEnumerator.cs" />
     <Compile Include="ISocket.cs" />
-    <Compile Include="KayakRequest.cs" />
-    <Compile Include="KayakResponse.cs" />
     <Compile Include="KayakServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

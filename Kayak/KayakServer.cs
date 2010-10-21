@@ -153,7 +153,7 @@ namespace Kayak
             return socket.SendAsync(buffer, offset, count);
         }
 
-        public IObservable<int> WriteFile(string file)
+        public IObservable<Unit> WriteFile(string file)
         {
             return socket.SendFileAsync(file);
         }

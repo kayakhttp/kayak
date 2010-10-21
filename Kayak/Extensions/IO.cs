@@ -13,11 +13,11 @@ namespace Kayak
                 iasr => { return s.EndSend(iasr); });
         }
 
-        internal static IObservable<int> SendFileAsync(this Socket s, string file)
+        internal static IObservable<Unit> SendFileAsync(this Socket s, string file)
         {
-            return new AsyncOperation<int>(
+            return new AsyncOperation<Unit>(
                 (c, st) => s.BeginSendFile(file, c, st),
-                iasr => { s.EndSendFile(iasr); return 0; });
+                iasr => { s.EndSendFile(iasr); return new Unit(); });
         }
 
         internal static IObservable<int> ReceiveAsync(this Socket s, byte[] buffer, int offset, int count)

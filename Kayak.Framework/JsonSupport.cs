@@ -63,20 +63,19 @@ namespace Kayak.Framework
 
         public static IObservable<Unit> DeserializeArgsFromJson(this InvocationInfo info, IHttpServerRequest request, JsonMapper2 mapper)
         {
-            Func<int, IObservable<LinkedList<ArraySegment<byte>>>> bufferRequestBody =
-                i => BufferRequestBody(request).AsCoroutine<LinkedList<ArraySegment<byte>>>();
-            return info.DeserializeArgsFromJsonInternal(mapper, bufferRequestBody, request.Headers.GetContentLength()).AsCoroutine<Unit>();
+            return info.DeserializeArgsFromJsonInternal(mapper, request).AsCoroutine<Unit>();
         }
 
         internal static IEnumerable<object> DeserializeArgsFromJsonInternal(this InvocationInfo info, 
-            JsonMapper2 mapper, Func<int, IObservable<LinkedList<ArraySegment<byte>>>> bufferRequestBody, int contentLength)
+            JsonMapper2 mapper, IHttpServerRequest request)
         {
+            var contentLength = request.Headers.GetContentLength();
             var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p));
 
             if (parameters.Count() != 0 && contentLength != 0)
             {
                 LinkedList<ArraySegment<byte>> requestBody = null;
-                yield return bufferRequestBody(contentLength).Do(d => requestBody = d);
+                yield return BufferRequestBody(request).AsCoroutine<LinkedList<ArraySegment<byte>>>().Do(d => requestBody = d);
 
                 var reader = new JsonReader(new StringReader(requestBody.GetString()));
 
@@ -92,27 +91,6 @@ namespace Kayak.Framework
         }
 
         // wish i had an evented JSON parser.
-        static IEnumerable<object> BufferRequestBody(Func<IObservable<ArraySegment<byte>>> read, int contentLength)
-        {
-            var bytesRead = 0;
-            var result = new LinkedList<ArraySegment<byte>>();
-
-            while (true)
-            {
-                ArraySegment<byte> data = default(ArraySegment<byte>);
-                yield return read().Do(d => data = d);
-
-                result.AddLast(data);
-
-                bytesRead += data.Count;
-
-                if (bytesRead == contentLength)
-                    break;
-            }
-
-            yield return result;
-        }
-
         static IEnumerable<object> BufferRequestBody(IHttpServerRequest request)
         {
             var result = new LinkedList<ArraySegment<byte>>();
@@ -123,10 +101,12 @@ namespace Kayak.Framework
             var body = request.GetBody();
 
             foreach (var getChunk in body)
+            {
                 yield return getChunk(new ArraySegment<byte>(buffer, 0, buffer.Length)).Do(n => bytesRead = n);
+                result.AddLast(new ArraySegment<byte>(buffer, 0, bytesRead));
+                totalBytesRead += bytesRead;
+            }
 
-            result.AddLast(new ArraySegment<byte>(buffer, 0, bytesRead));
-            totalBytesRead += bytesRead;
             yield return result;
         }
     }

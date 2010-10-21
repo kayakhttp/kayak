@@ -6,14 +6,17 @@ using Kayak;
 using Moq;
 using NUnit.Core;
 using NUnit.Framework;
+using Kayak.Http;
 
 namespace KayakTests.Extensions
 {
-    public class SocketTests
+    public class HttpSupportTests
     {
         [TestFixture]
         public class BufferHeadersTests
         {
+            HttpSupport http;
+
             string headers = "1234567890\r\n\r\n";
             string rest = "asdfjkl;";
             byte[] buffer;
@@ -33,11 +36,13 @@ namespace KayakTests.Extensions
                 mockSubject.Setup(s => s.OnError(It.IsAny<Exception>())).Callback<Exception>(e => Console.Out.WriteException(e));
                 
                 mockSocket = Mocks.MockSocketRead(chunks);
+
+                http = new HttpSupport();
             }
 
             void DoRead()
             {
-                mockSocket.Object.BufferHeaders().Subscribe(mockSubject.Object);
+                http.BufferHeaders(mockSocket.Object).Subscribe(mockSubject.Object);
                 Console.WriteLine("After read headers subscribe.");
             }
 
@@ -168,12 +173,14 @@ namespace KayakTests.Extensions
         {
             byte[] buffer;
             List<ArraySegment<byte>> buffers;
+            HttpSupport http;
 
             [SetUp]
             public void SetUp()
             {
                 buffer = Encoding.ASCII.GetBytes("1234567890\r\n\r\nasdfjkl;");
                 buffers = new List<ArraySegment<byte>>();
+                http = new HttpSupport();
             }
 
             [Test]
@@ -181,7 +188,7 @@ namespace KayakTests.Extensions
             {
                 buffers.Add(new ArraySegment<byte>(buffer, 0, 14));
 
-                Assert.AreEqual(14, buffers.IndexOfAfterCRLFCRLF());
+                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
             }
 
             [Test]
@@ -190,7 +197,7 @@ namespace KayakTests.Extensions
                 buffers.Add(new ArraySegment<byte>(buffer, 0, 4));
                 buffers.Add(new ArraySegment<byte>(buffer, 4, 10));
 
-                Assert.AreEqual(14, buffers.IndexOfAfterCRLFCRLF());
+                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
             }
 
             [Test]
@@ -200,7 +207,7 @@ namespace KayakTests.Extensions
                 buffers.Add(new ArraySegment<byte>(buffer, 5, 5));
                 buffers.Add(new ArraySegment<byte>(buffer, 10, 5));
 
-                Assert.AreEqual(14, buffers.IndexOfAfterCRLFCRLF());
+                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
             }
 
             [Test]
@@ -209,7 +216,7 @@ namespace KayakTests.Extensions
                 buffers.Add(new ArraySegment<byte>(buffer, 0, 11));
                 buffers.Add(new ArraySegment<byte>(buffer, 11, 5));
 
-                Assert.AreEqual(14, buffers.IndexOfAfterCRLFCRLF());
+                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
             }
 
             [Test]
@@ -219,7 +226,7 @@ namespace KayakTests.Extensions
                 buffers.Add(new ArraySegment<byte>(buffer, 11, 1));
                 buffers.Add(new ArraySegment<byte>(buffer, 12, 3));
 
-                Assert.AreEqual(14, buffers.IndexOfAfterCRLFCRLF());
+                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
             }
 
             [Test]
@@ -227,7 +234,7 @@ namespace KayakTests.Extensions
             {
                 buffers.Add(new ArraySegment<byte>(buffer, 0, 5));
 
-                Assert.AreEqual(-1, buffers.IndexOfAfterCRLFCRLF());
+                Assert.AreEqual(-1, http.IndexOfAfterCRLFCRLF(buffers));
             }
 
             [Test]
@@ -236,7 +243,7 @@ namespace KayakTests.Extensions
                 buffers.Add(new ArraySegment<byte>(buffer, 0, 5));
                 buffers.Add(new ArraySegment<byte>(buffer, 5, 2));
 
-                Assert.AreEqual(-1, buffers.IndexOfAfterCRLFCRLF());
+                Assert.AreEqual(-1, http.IndexOfAfterCRLFCRLF(buffers));
             }
 
             [Test]
@@ -246,7 +253,7 @@ namespace KayakTests.Extensions
                 buffers.Add(new ArraySegment<byte>(buffer, 5, 2));
                 buffers.Add(new ArraySegment<byte>(buffer, 7, 4));
 
-                Assert.AreEqual(-1, buffers.IndexOfAfterCRLFCRLF());
+                Assert.AreEqual(-1, http.IndexOfAfterCRLFCRLF(buffers));
             }
         }
     }

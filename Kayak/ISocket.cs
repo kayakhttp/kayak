@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+using Kayak.Core;
 
 namespace Kayak
 {
@@ -23,10 +24,9 @@ namespace Kayak
 
         /// <summary>
         /// Returns an observable which, upon subscription, begins copying a file
-        /// to the socket. When the copy operation completes, the observable yields
-        /// the number of bytes written and completes.
+        /// to the socket. When the copy operation completes, the observable completes.
         /// </summary>
-        IObservable<int> WriteFile(string file);
+        IObservable<Unit> WriteFile(string file);
 
         /// <summary>
         /// Returns an observable which, upon subscription, begins an asynchronous read

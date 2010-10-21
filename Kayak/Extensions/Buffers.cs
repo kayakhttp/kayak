@@ -32,7 +32,7 @@ namespace Kayak
             return encoding.GetString(b.Array, b.Offset, b.Count);
         }
 
-        static IEnumerable<byte> GetBytes(this IEnumerable<ArraySegment<byte>> buffers)
+        internal static IEnumerable<byte> GetBytes(this IEnumerable<ArraySegment<byte>> buffers)
         {
             foreach (var seg in buffers)
                 for (int i = seg.Offset; i < seg.Offset + seg.Count; i++)

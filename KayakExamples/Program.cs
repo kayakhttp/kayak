@@ -13,18 +13,10 @@ namespace KayakExamples
 {
     class Program
     {
-        static Func<Exception, IHttpServerResponse> getExceptionResponse;
-
         static void Main(string[] args)
         {
             New();
             //Simple();
-
-            getExceptionResponse = e => {
-                var sw = new StringWriter();
-                sw.WriteException(e);
-                return new KayakResponse("503 Internal Server Error", new Dictionary<string, string>(), sw);
-            };
         }
 
         static void Simple()
@@ -32,7 +24,7 @@ namespace KayakExamples
             IObservable<ISocket> sockets = new KayakServer();
             IHttpResponder responder = new SampleResponder();
 
-            sockets.RespondWith(responder, getExceptionResponse);
+            sockets.RespondWith(responder);
         }
 
         class SampleResponder : IHttpResponder
@@ -64,7 +56,7 @@ namespace KayakExamples
             jm.AddDefaultInputConversions();
             jm.AddDefaultOutputConversions();
 
-            server.RespondWith(new KayakFrameworkResponder(mm, jm), getExceptionResponse);
+            server.RespondWith(new KayakFrameworkResponder(mm, jm));
         }
     }
 

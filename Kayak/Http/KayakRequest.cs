@@ -22,16 +22,14 @@ namespace Kayak
         {
             var bodyDataReadWithHeaders = headerBuffers.Last.Value;
             headerBuffers.RemoveLast();
-
-            IHttpServerRequest request = null;
-
+            
+            var headersString = headerBuffers.GetString();
+            var reader = new StringReader(headersString);
+            var requestLine = reader.ReadRequestLine();
+            var headers = reader.ReadHeaders();
             var context = new Dictionary<object, object>();
 
-            var headersString = headerBuffers.GetString();
-            using (var reader = new StringReader(headersString))
-                request = new KayakRequest(socket, reader.ReadRequestLine(), reader.ReadHeaders(), context, bodyDataReadWithHeaders);
-
-            return request;
+            return new KayakRequest(socket, requestLine, headers, context, bodyDataReadWithHeaders);
         }
 
 
