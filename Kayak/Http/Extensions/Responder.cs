@@ -12,12 +12,12 @@ namespace Kayak
     {
         public static IDisposable RespondWith(this IObservable<ISocket> sockets, IApplication responder)
         {
-            return sockets.RespondWith(responder, new HttpSupport(), new HttpResponderSupport(), new HttpErrorHandler());
+            return sockets.RespondWith(responder, new HttpSupport(), new HttpErrorHandler());
         }
 
-        public static IDisposable RespondWith(this IObservable<ISocket> sockets, IApplication responder, IHttpSupport http, IHttpResponderSupport responderSupport, IHttpErrorHandler errorHandler)
+        public static IDisposable RespondWith(this IObservable<ISocket> sockets, IApplication responder, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
-            return sockets.Subscribe(s => responder.RespondTo(s, http, responderSupport, errorHandler).Subscribe(CreateContextObserver()));
+            return sockets.Subscribe(s => responder.RespondTo(s, http, errorHandler).Subscribe(CreateContextObserver()));
         }
 
         public static IObserver<Unit> CreateContextObserver()
@@ -37,12 +37,12 @@ namespace Kayak
                 });
         }
 
-        public static IObservable<Unit> RespondTo(this IApplication responder, ISocket socket, IHttpSupport http, IHttpResponderSupport responderSupport, IHttpErrorHandler errorHandler)
+        public static IObservable<Unit> RespondTo(this IApplication responder, ISocket socket, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
-            return responder.RespondToInternal(socket, http, responderSupport, errorHandler).AsCoroutine<Unit>();
+            return responder.RespondToInternal(socket, http, errorHandler).AsCoroutine<Unit>();
         }
 
-        static IEnumerable<object> RespondToInternal(this IApplication responder, ISocket socket, IHttpSupport http, IHttpResponderSupport responderSupport, IHttpErrorHandler errorHandler)
+        static IEnumerable<object> RespondToInternal(this IApplication responder, ISocket socket, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
             IRequest request = null;
 
@@ -50,7 +50,10 @@ namespace Kayak
 
             IResponse response = null;
 
-            yield return responderSupport.GetResponse(request, responder).Do(r => response = r);
+            yield return new AsyncOperation<IResponse>(
+                    (cb, s) => responder.BeginInvoke(request, cb, s),
+                    iasr => responder.EndInvoke(iasr))
+                .Do(r => response = r);
 
             yield return SafeEnumerateResponse(response, socket, http, errorHandler).AsCoroutine<Unit>();
         }

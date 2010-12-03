@@ -89,7 +89,6 @@
     <Compile Include="Http\HttpSupport.cs" />
     <Compile Include="Http\KayakRequest.cs" />
     <Compile Include="Http\KayakResponse.cs" />
-    <Compile Include="Http\ResponderSupport.cs" />
     <Compile Include="Http\SafeEnumerator.cs" />
     <Compile Include="ISocket.cs" />
     <Compile Include="KayakServer.cs" />
