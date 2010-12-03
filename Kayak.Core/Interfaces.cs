@@ -5,15 +5,22 @@ using System.Text;
 
 namespace Kayak.Core
 {
-    public interface IHttpResponder
+    public interface IApplication
     {
-        // may return IHttpServerResponse or IObservable<IHttpServerResponse>
-        // (observables must yield single value and complete or yield exception.)
-        object Respond(IHttpServerRequest request);
+        IAsyncResult BeginInvoke(IRequest request, AsyncCallback callback, object state);
+        IResponse EndInvoke(IAsyncResult result);
     }
 
-    public interface IHttpServerRequest
+    public interface IRequest
     {
+        string Method { get; }
+        string Uri { get; }
+        IDictionary<string, IEnumerable<string>> Headers { get; }
+        IDictionary<string, object> Items { get; }
+        IAsyncResult BeginReadBody(byte[] buffer, int offset, int count, AsyncCallback callback, object state);
+        int EndReadBody(IAsyncResult result);
+
+        /*
         IDictionary<object, object> Context { get; }
         string Verb { get; }
         string RequestUri { get; }
@@ -25,12 +32,13 @@ namespace Kayak.Core
         // observable may yield 0 bytes, this does not signify the end of the stream (stream ends when enumerable
         // ends). this is useful for middlewares which must do buffering.
         IEnumerable<Func<ArraySegment<byte>, IObservable<int>>> GetBody();
+         * */
     }
 
-    public interface IHttpServerResponse
+    public interface IResponse
     {
         string Status { get; }
-        IDictionary<string, string> Headers { get; }
+        IDictionary<string, IEnumerable<string>> Headers { get; }
 
         // may contain string, ArraySegment<byte>, FileInfo, or observables which contain
         // string, ArraySegment<byte>, or FileInfo.

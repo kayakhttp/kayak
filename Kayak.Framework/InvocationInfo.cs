@@ -41,15 +41,15 @@ namespace Kayak.Framework
 
     public static partial class InvocationInfoExtensions
     {
-        static object InvocationInfoContextKey = new object();
+        static string InvocationInfoContextKey = "InvocationInfo";
 
-        public static InvocationInfo GetInvocationInfo(this IDictionary<object, object> context)
+        public static InvocationInfo GetInvocationInfo(this IDictionary<string, object> context)
         {
             if (!context.ContainsKey(InvocationInfoContextKey)) return null;
             return context[InvocationInfoContextKey] as InvocationInfo;
         }
 
-        internal static void SetInvocationInfo(this IDictionary<object, object> context, InvocationInfo info)
+        internal static void SetInvocationInfo(this IDictionary<string, object> context, InvocationInfo info)
         {
             context[InvocationInfoContextKey] = info;
         }

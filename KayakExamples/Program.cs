@@ -7,7 +7,7 @@ using Kayak.Framework;
 using System.IO;
 using System.Reflection;
 using LitJson;
-using Kayak.Core;
+using Owin;
 
 namespace KayakExamples
 {
@@ -22,16 +22,16 @@ namespace KayakExamples
         static void Simple()
         {
             IObservable<ISocket> sockets = new KayakServer();
-            IHttpResponder responder = new SampleResponder();
+            IApplication responder = new SampleResponder();
 
             sockets.RespondWith(responder);
         }
 
-        class SampleResponder : IHttpResponder
+        class SampleResponder : IApplication
         {
             #region IHttpResponder Members
 
-            public object Respond(IHttpServerRequest request)
+            public object Respond(IRequest request)
             {
                 return new object[] { 
                     "200 OK", 
@@ -42,6 +42,20 @@ namespace KayakExamples
                     // "Hello world."
                     ExampleService.EchoGenerator(request)
                 };
+            }
+
+            #endregion
+
+            #region IHttpResponder Members
+
+            public IAsyncResult BeginInvoke(IRequest request, AsyncCallback callback, object state)
+            {
+                throw new NotImplementedException();
+            }
+
+            public IResponse EndInvoke(IAsyncResult result)
+            {
+                throw new NotImplementedException();
             }
 
             #endregion
@@ -112,7 +126,7 @@ namespace KayakExamples
             int contentLength = -1;
 
             if (Request.Headers.ContainsKey("Content-Length"))
-                contentLength = int.Parse(Request.Headers["Content-Length"]);
+                contentLength = int.Parse(Request.Headers["Content-Length"].First());
 
             return new object[] {
                 "200 OK",
@@ -124,23 +138,31 @@ namespace KayakExamples
             };
         }
 
-        public static IEnumerable<object> EchoGenerator(IHttpServerRequest request)
+        [Verb("POST")]
+        [Path("/postvars")]
+        public object PostVars()
         {
-            var buffer = new byte[2048];
+            return null;
+        }
 
-            foreach (var getChunk in request.GetBody())
-            {
-                var bytesRead = 0;
-                yield return Observable.CreateWithDisposable<ArraySegment<byte>>(o =>
-                    {
-                        return getChunk(new ArraySegment<byte>(buffer, 0, buffer.Length)).Subscribe(n => bytesRead = n, e => o.OnError(e),
-                            () =>
-                            {
-                                o.OnNext(new ArraySegment<byte>(buffer, 0, bytesRead));
-                                o.OnCompleted();
-                            });
-                    });
-            }
+        public static IEnumerable<object> EchoGenerator(IRequest request)
+        {
+            return null;
+            //var buffer = new byte[2048];
+
+            //foreach (var getChunk in request.GetBody())
+            //{
+            //    var bytesRead = 0;
+            //    yield return Observable.CreateWithDisposable<ArraySegment<byte>>(o =>
+            //        {
+            //            return getChunk(new ArraySegment<byte>(buffer, 0, buffer.Length)).Subscribe(n => bytesRead = n, e => o.OnError(e),
+            //                () =>
+            //                {
+            //                    o.OnNext(new ArraySegment<byte>(buffer, 0, bytesRead));
+            //                    o.OnCompleted();
+            //                });
+            //        });
+            //}
         }
 
         [Path("/yield")]

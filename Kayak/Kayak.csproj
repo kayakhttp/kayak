@@ -76,17 +76,20 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Compat.cs" />
     <Compile Include="Coroutine.cs" />
     <Compile Include="Extensions\Buffers.cs" />
     <Compile Include="Extensions\IO.cs" />
-    <Compile Include="Extensions\Responder.cs" />
     <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
+    <Compile Include="Http\ErrorHandler.cs" />
     <Compile Include="Http\Extensions\Parsing.cs" />
+    <Compile Include="Http\Extensions\Responder.cs" />
     <Compile Include="Http\Extensions\ToResponse.cs" />
     <Compile Include="Http\HttpSupport.cs" />
     <Compile Include="Http\KayakRequest.cs" />
     <Compile Include="Http\KayakResponse.cs" />
+    <Compile Include="Http\ResponderSupport.cs" />
     <Compile Include="Http\SafeEnumerator.cs" />
     <Compile Include="ISocket.cs" />
     <Compile Include="KayakServer.cs" />
@@ -120,9 +123,9 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Kayak.Core\Kayak.Core.csproj">
-      <Project>{470EE8A2-2D24-4D62-88FD-6E78C0552A8F}</Project>
-      <Name>Kayak.Core</Name>
+    <ProjectReference Include="..\..\owin\src\Owin.csproj">
+      <Project>{F00527A1-ABBA-4620-B8E2-257DDBEEEE0B}</Project>
+      <Name>Owin</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />

@@ -10,4 +10,5 @@ KayakFrameworkTests.csproj.user
 Kayak.Core.csproj.user
 KayakDocs.csproj.user
 Kayak.pidb
+NUnitTests.VisualState.xml
 KayakTests.pidb

@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Kayak.Core;
+using Owin;
 
 namespace Kayak.Framework
 {
-    public class BaseResponse : IHttpServerResponse
+    public class BaseResponse : IResponse
     {
         public string Status { get; set; }
-        Dictionary<string, string> headers;
+        Dictionary<string, IEnumerable<string>> headers;
         IEnumerable<object> body;
 
         public BaseResponse()
@@ -17,9 +17,9 @@ namespace Kayak.Framework
             Status = "200 OK";
         }
 
-        public IDictionary<string, string> Headers
+        public IDictionary<string, IEnumerable<string>> Headers
         {
-            get { return headers ?? (headers = new Dictionary<string, string>()); }
+            get { return headers ?? (headers = new Dictionary<string, IEnumerable<string>>()); }
         }
 
         public virtual IEnumerable<object> GetBody()

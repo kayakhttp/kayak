@@ -99,10 +99,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CoroutineTests.cs" />
+    <Compile Include="Extensions\BufferTests.cs" />
     <Compile Include="Extensions\HttpTests.cs" />
-    <Compile Include="Extensions\ResponderTests.cs" />
     <Compile Include="Extensions\ResponseTests.cs" />
     <Compile Include="Extensions\SocketTests.cs" />
+    <Compile Include="Http\Extensions\ResponderTests.cs" />
     <Compile Include="KayakContextResponseTests.cs" />
     <Compile Include="KayakContextRequestTests.cs" />
     <Compile Include="KayakServerRequestTests.cs" />

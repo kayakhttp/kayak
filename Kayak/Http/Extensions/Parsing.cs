@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Web;
-using Kayak.Core;
+using Owin;
 
 namespace Kayak
 {
@@ -34,29 +34,29 @@ namespace Kayak
         /// Returns the value of the Content-Length header, or -1 if there is no Content-Length header or its value 
         /// can't be parsed.
         /// </summary>
-        public static int GetContentLength(this IDictionary<string, string> headers)
+        public static int GetContentLength(this IDictionary<string, IEnumerable<string>> headers)
         {
             int contentLength = -1;
             
             // ugly. we need to decide in one spot whether or not we're case-sensitive for all headers.
             if (headers.ContainsKey("Content-Length"))
-                int.TryParse(headers["Content-Length"], out contentLength);
+                int.TryParse(headers["Content-Length"].First(), out contentLength);
             else if (headers.ContainsKey("Content-length"))
-                int.TryParse(headers["Content-length"], out contentLength);
+                int.TryParse(headers["Content-length"].First(), out contentLength);
             else if (headers.ContainsKey("content-length"))
-                int.TryParse(headers["content-length"], out contentLength);
+                int.TryParse(headers["content-length"].First(), out contentLength);
 
             return contentLength;
         }
 
-        public static void SetContentLength(this IDictionary<string, string> headers, int value)
+        public static void SetContentLength(this IDictionary<string, IEnumerable<string>> headers, int value)
         {
-            headers["Content-Length"] = value.ToString();
+            headers["Content-Length"] = new string[] { value.ToString() };
         }
 
-        public static string GetPath(this IHttpServerRequest request)
+        public static string GetPath(this IRequest request)
         {
-            return GetPath(request.RequestUri);
+            return GetPath(request.Uri);
         }
 
         public static string GetPath(string uri)
@@ -65,9 +65,9 @@ namespace Kayak
             return HttpUtility.UrlDecode(question >= 0 ? uri.Substring(0, question) : uri);
         }
 
-        public static IDictionary<string, string> GetQueryString(this IHttpServerRequest request)
+        public static IDictionary<string, string> GetQueryString(this IRequest request)
         {
-            return GetQueryString(request.RequestUri);
+            return GetQueryString(request.Uri);
         }
 
         public static IDictionary<string, string> GetQueryString(string uri)
@@ -151,21 +151,21 @@ namespace Kayak
                 };
         }
 
-        public static IDictionary<string, string> ReadHeaders(this TextReader reader)
+        public static IDictionary<string, IEnumerable<string>> ReadHeaders(this TextReader reader)
         {
-            var headers = new Dictionary<string, string>();
+            var headers = new Dictionary<string, IEnumerable<string>>();
             string line = null;
 
             while (!string.IsNullOrEmpty(line = reader.ReadLine()))
             {
                 int colon = line.IndexOf(':');
-                headers.Add(line.Substring(0, colon), line.Substring(colon + 1).Trim());
+                headers.Add(line.Substring(0, colon), new string[] { line.Substring(colon + 1).Trim() });
             }
 
             return headers;
         }
 
-        public static byte[] WriteStatusLineAndHeaders(this IHttpServerResponse response)
+        public static byte[] WriteStatusLineAndHeaders(this IResponse response)
         {
             var sb = new StringBuilder();
 
@@ -174,13 +174,14 @@ namespace Kayak
             var headers = response.Headers;
 
             if (!headers.ContainsKey("Server"))
-                headers["Server"] = "Kayak";
+                headers["Server"] = new string[] { "Kayak" };
 
             if (!headers.ContainsKey("Date"))
-                headers["Date"] = DateTime.UtcNow.ToString();
+                headers["Date"] = new string[] { DateTime.UtcNow.ToString() };
 
             foreach (var pair in headers)
-                sb.AppendFormat("{0}: {1}\r\n", pair.Key, pair.Value);
+                foreach (var line in pair.Value)
+                sb.AppendFormat("{0}: {1}\r\n", pair.Key, line);
 
             sb.Append("\r\n");
 

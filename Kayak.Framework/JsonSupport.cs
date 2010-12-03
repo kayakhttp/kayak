@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Kayak.Core;
+using Owin;
 using LitJson;
 
 namespace Kayak.Framework
@@ -12,23 +12,23 @@ namespace Kayak.Framework
     {
         static readonly string MinifiedOutputKey = "JsonSerializerPrettyPrint";
         
-        public static void SetJsonOutputMinified(this IDictionary<object, object> context, bool value)
+        public static void SetJsonOutputMinified(this IDictionary<string, object> context, bool value)
         {
             context[MinifiedOutputKey] = value;
         }
         
-        public static bool GetJsonOutputMinified(this IDictionary<object, object> context)
+        public static bool GetJsonOutputMinified(this IDictionary<string, object> context)
         {
             return
                 context.ContainsKey(MinifiedOutputKey) &&
                 (bool)Convert.ChangeType(context[MinifiedOutputKey], typeof(bool));
         }
 
-        public static IHttpServerResponse GetJsonResponse(this InvocationInfo info, JsonMapper2 jsonMapper, bool minified)
+        public static IResponse GetJsonResponse(this InvocationInfo info, JsonMapper2 jsonMapper, bool minified)
         {
             var response = new BufferedResponse();
 
-            response.Headers["Content-Type"] = minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8";
+            response.Headers["Content-Type"] = new string[] { minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8" };
 
             if (info.Exception != null)
             {
@@ -61,21 +61,21 @@ namespace Kayak.Framework
             return buffer.ToArray();
         }
 
-        public static IObservable<Unit> DeserializeArgsFromJson(this InvocationInfo info, IHttpServerRequest request, JsonMapper2 mapper)
+        public static IObservable<Unit> DeserializeArgsFromJson(this InvocationInfo info, IRequest request, JsonMapper2 mapper)
         {
             return info.DeserializeArgsFromJsonInternal(mapper, request).AsCoroutine<Unit>();
         }
 
         internal static IEnumerable<object> DeserializeArgsFromJsonInternal(this InvocationInfo info, 
-            JsonMapper2 mapper, IHttpServerRequest request)
+            JsonMapper2 mapper, IRequest request)
         {
             var contentLength = request.Headers.GetContentLength();
             var parameters = info.Method.GetParameters().Where(p => RequestBodyAttribute.IsDefinedOn(p));
 
             if (parameters.Count() != 0 && contentLength != 0)
             {
-                LinkedList<ArraySegment<byte>> requestBody = null;
-                yield return BufferRequestBody(request).AsCoroutine<LinkedList<ArraySegment<byte>>>().Do(d => requestBody = d);
+                IEnumerable<ArraySegment<byte>> requestBody = null;
+                yield return request.BufferRequestBody().Do(d => requestBody = d);
 
                 var reader = new JsonReader(new StringReader(requestBody.GetString()));
 
@@ -88,26 +88,6 @@ namespace Kayak.Framework
                 //if (parameters.Count() > 1)
                 //    reader.Read(); // read array end
             }
-        }
-
-        // wish i had an evented JSON parser.
-        static IEnumerable<object> BufferRequestBody(IHttpServerRequest request)
-        {
-            var result = new LinkedList<ArraySegment<byte>>();
-            var buffer = new byte[2048];
-            var totalBytesRead = 0;
-            var bytesRead = 0;
-
-            var body = request.GetBody();
-
-            foreach (var getChunk in body)
-            {
-                yield return getChunk(new ArraySegment<byte>(buffer, 0, buffer.Length)).Do(n => bytesRead = n);
-                result.AddLast(new ArraySegment<byte>(buffer, 0, bytesRead));
-                totalBytesRead += bytesRead;
-            }
-
-            yield return result;
         }
     }
 }

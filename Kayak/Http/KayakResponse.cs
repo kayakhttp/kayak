@@ -1,12 +1,13 @@
 ﻿using System.Collections.Generic;
-using Kayak.Core;
+using Owin;
+using System.Collections;
 
 namespace Kayak
 {
-    public class KayakResponse : IHttpServerResponse
+    public class KayakResponse : IResponse
     {
         string statusLine;
-        IDictionary<string,string> headers;
+        IDictionary<string,IEnumerable<string>> headers;
         IEnumerable<object> getBody;
 
         public string Status
@@ -14,7 +15,7 @@ namespace Kayak
             get { return statusLine; }
         }
 
-        public IDictionary<string, string> Headers
+        public IDictionary<string, IEnumerable<string>> Headers
         {
             get { return headers; }
         }
@@ -24,10 +25,10 @@ namespace Kayak
             return getBody;
         }
 
-        public KayakResponse(string statusLine, IDictionary<string, string> headers, params object[] body)
+        public KayakResponse(string statusLine, IDictionary<string, IEnumerable<string>> headers, params object[] body)
             : this(statusLine, headers, (IEnumerable<object>)body) { }
 
-        public KayakResponse(string statusLine, IDictionary<string, string> headers, IEnumerable<object> getBody)
+        public KayakResponse(string statusLine, IDictionary<string, IEnumerable<string>> headers, IEnumerable<object> getBody)
         {
             this.statusLine = statusLine;
             this.headers = headers;

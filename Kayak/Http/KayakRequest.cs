@@ -2,23 +2,22 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Kayak.Core;
+using Owin;
 using System.IO;
 
 namespace Kayak
 {
-    public class KayakRequest : IHttpServerRequest
+    public class KayakRequest : IRequest
     {
-        public string Verb { get; set; }
-        public string RequestUri { get; set; }
-        public string HttpVersion { get; set; }
-        public IDictionary<string, string> Headers { get; private set; }
-        public IDictionary<object, object> Context { get; private set; }
+        public string Method { get; set; }
+        public string Uri { get; set; }
+        public IDictionary<string, IEnumerable<string>> Headers { get; private set; }
+        public IDictionary<string, object> Items { get; private set; }
 
         ISocket socket;
         ArraySegment<byte> bodyDataReadWithHeaders;
 
-        public static IHttpServerRequest CreateRequest(ISocket socket, LinkedList<ArraySegment<byte>> headerBuffers)
+        public static IRequest CreateRequest(ISocket socket, LinkedList<ArraySegment<byte>> headerBuffers)
         {
             var bodyDataReadWithHeaders = headerBuffers.Last.Value;
             headerBuffers.RemoveLast();
@@ -27,20 +26,18 @@ namespace Kayak
             var reader = new StringReader(headersString);
             var requestLine = reader.ReadRequestLine();
             var headers = reader.ReadHeaders();
-            var context = new Dictionary<object, object>();
+            var context = new Dictionary<string, object>();
 
             return new KayakRequest(socket, requestLine, headers, context, bodyDataReadWithHeaders);
         }
 
-
-        public KayakRequest(ISocket socket, HttpRequestLine requestLine, IDictionary<string, string> headers, IDictionary<object, object> context, ArraySegment<byte> bodyDataReadWithHeaders)
+        public KayakRequest(ISocket socket, HttpRequestLine requestLine, IDictionary<string, IEnumerable<string>> headers, IDictionary<string, object> context, ArraySegment<byte> bodyDataReadWithHeaders)
         {
             this.socket = socket;
-            Verb = requestLine.Verb;
-            RequestUri = requestLine.RequestUri;
-            HttpVersion = requestLine.HttpVersion;
+            Method = requestLine.Verb;
+            Uri = requestLine.RequestUri;
             Headers = headers;
-            Context = context;
+            Items = context;
             this.bodyDataReadWithHeaders = bodyDataReadWithHeaders;
         }
 
@@ -82,5 +79,33 @@ namespace Kayak
                 } while (bytesRead != 0 && (contentLength == -1 || totalBytesRead < contentLength));
             }
         }
+
+        #region IHttpServerRequest Members
+
+        IEnumerator<Func<ArraySegment<byte>, IObservable<int>>> bodyEnumerator;
+        bool enumerationFinished;
+
+        public IAsyncResult BeginReadBody(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
+        {
+            if (bodyEnumerator == null)
+                bodyEnumerator = GetBody().GetEnumerator();
+
+            if (bodyEnumerator.MoveNext())
+                return new ObservableAsyncResult<int>(bodyEnumerator.Current(new ArraySegment<byte>(buffer, offset, count)), callback);
+            else
+            {
+                enumerationFinished = true;
+                var result = new BaseAsyncResult<int>(0);
+                callback(result);
+                return result;
+            }
+        }
+
+        public int EndReadBody(IAsyncResult result)
+        {
+            return ((BaseAsyncResult<int>)result).GetResult();
+        }
+
+        #endregion
     }
 }

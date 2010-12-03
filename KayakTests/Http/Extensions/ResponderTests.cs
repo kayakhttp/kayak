@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Kayak.Core;
 using Moq;
 using Kayak;
+using Kayak.Http;
 
 namespace KayakTests.Extensions
 {
@@ -15,6 +16,7 @@ namespace KayakTests.Extensions
         [TestFixture]
         public class RespondToTests
         {
+            Mock<IHttpSupport> mockHttpSupport;
             Mock<IHttpResponder> mockResponder;
             Mock<ISocket> mockSocket;
             Mock<IObserver<Unit>> mockObserver;
@@ -22,6 +24,7 @@ namespace KayakTests.Extensions
             [SetUp]
             public void SetUp()
             {
+                mockHttpSupport = new Mock<IHttpSupport>();
                 mockResponder = new Mock<IHttpResponder>();
                 mockSocket = new Mock<ISocket>();
                 mockObserver = new Mock<IObserver<Unit>>();
@@ -30,6 +33,8 @@ namespace KayakTests.Extensions
             [Test]
             public void Test1()
             {
+                mockResponder.Object.RespondTo(mockSocket.Object, mockHttpSupport.Object, null, null);
+
             }
         }
     }

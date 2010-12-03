@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kayak.Core;
+using Owin;
 
 namespace Kayak.Http
 {
@@ -11,7 +11,7 @@ namespace Kayak.Http
         // any subsequent errors during enumeration will cause the sequence to end
         // with an observable which will write a textual description of the error
         // if an error handler is provided (if no error handler, sequence ends on error)
-        public static IEnumerator<object> Create(IHttpServerResponse response, ISocket socket, IHttpErrorHandler errorHandler)
+        public static IEnumerator<object> Create(IResponse response, ISocket socket, IHttpErrorHandler errorHandler)
         {
             var en = response.GetBody().GetEnumerator();
 
@@ -24,6 +24,7 @@ namespace Kayak.Http
             }
             catch
             {
+                // possible to get object disposed if the using block in DoSafeEnum somehow disposes `en` first?
                 en.Dispose();
                 throw;
             }
@@ -31,36 +32,38 @@ namespace Kayak.Http
 
         static IEnumerable<object> DoSafeEnum(IEnumerator<object> en, ISocket socket, IHttpErrorHandler errorHandler)
         {
-            bool continues = false;
-            do
+            using (en)
             {
-                object current = null;
-                Exception ex = null;
-                try
+                bool continues = false;
+                do
                 {
-                    continues = en.MoveNext();
+                    object current = null;
+                    Exception ex = null;
+                    try
+                    {
+                        continues = en.MoveNext();
 
-                    if (continues)
-                        current = en.Current;
+                        if (continues)
+                            current = en.Current;
+                    }
+                    catch (Exception e)
+                    {
+                        ex = e;
+                    }
+
+                    if (ex != null)
+                    {
+                        yield return errorHandler.WriteExceptionText(ex, socket);
+                        yield break;
+                    }
+
+                    if (!continues)
+                        yield break;
+
+                    yield return current;
                 }
-                catch (Exception e)
-                {
-                    ex = e;
-                }
-
-                if (ex != null)
-                {
-                    yield return errorHandler.WriteExceptionText(ex, socket);
-                    yield break;
-                }
-
-                if (!continues)
-                    yield break;
-
-                yield return current;
+                while (continues);
             }
-            while (continues);
-            en.Dispose();
         }
     }
 }

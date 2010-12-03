@@ -2,24 +2,24 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using Kayak.Core;
+using Owin;
 
 namespace Kayak.Http
 {
     public interface IHttpSupport
     {
-        IObservable<IHttpServerRequest> BeginRequest(ISocket socket);
-        IObservable<Unit> BeginResponse(ISocket socket, IHttpServerResponse response);
+        IObservable<IRequest> BeginRequest(ISocket socket);
+        IObservable<Unit> BeginResponse(ISocket socket, IResponse response);
     }
 
     class HttpSupport : IHttpSupport
     {
-        public IObservable<IHttpServerRequest> BeginRequest(ISocket socket)
+        public IObservable<IRequest> BeginRequest(ISocket socket)
         {
             return BufferHeaders(socket).Select(h => KayakRequest.CreateRequest(socket, h));
         }
 
-        public IObservable<Unit> BeginResponse(ISocket socket, IHttpServerResponse response)
+        public IObservable<Unit> BeginResponse(ISocket socket, IResponse response)
         {
             return socket.WriteAll(new ArraySegment<byte>(response.WriteStatusLineAndHeaders()));
         }

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
-using Kayak.Core;
+using Owin;
 
 namespace Kayak
 {

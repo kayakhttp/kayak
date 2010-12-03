@@ -61,9 +61,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Kayak.Core\Kayak.Core.csproj">
-      <Project>{470EE8A2-2D24-4D62-88FD-6E78C0552A8F}</Project>
-      <Name>Kayak.Core</Name>
+    <ProjectReference Include="..\..\owin\src\Owin.csproj">
+      <Project>{F00527A1-ABBA-4620-B8E2-257DDBEEEE0B}</Project>
+      <Name>Owin</Name>
     </ProjectReference>
     <ProjectReference Include="..\Kayak.Framework\Kayak.Framework.csproj">
       <Project>{88EB6BDB-6585-4CA3-87BE-11F7262B95DF}</Project>

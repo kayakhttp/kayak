@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Kayak.Core;
+using Owin;
 using LitJson;
 
 namespace Kayak.Framework
 {
-    public class KayakFrameworkResponder : IHttpResponder
+    public class KayakFrameworkResponder : IApplication
     {
         MethodMap methodMap;
         JsonMapper2 mapper;
@@ -17,19 +17,29 @@ namespace Kayak.Framework
             this.mapper = mapper;
         }
 
-        public object Respond(IHttpServerRequest request)
+        public IAsyncResult BeginInvoke(IRequest request, AsyncCallback callback, object state)
         {
-            return RespondInternal(request).AsCoroutine<IHttpServerResponse>();
+            return new ObservableAsyncResult<IResponse>(RespondInternal(request).AsCoroutine<IResponse>(), callback);
         }
 
-        public IEnumerable<object> RespondInternal(IHttpServerRequest request)
+        public IResponse EndInvoke(IAsyncResult result)
+        {
+            return ((ObservableAsyncResult<IResponse>)result).GetResult();
+        }
+
+        public object Respond(IRequest request)
+        {
+            return RespondInternal(request).AsCoroutine<IResponse>();
+        }
+
+        public IEnumerable<object> RespondInternal(IRequest request)
         {
             var info = new InvocationInfo();
 
-            var context = request.Context;
+            var context = request.Items;
 
             bool notFound, invalidMethod;
-            info.Method = methodMap.GetMethod(request.GetPath(), request.Verb, context, out notFound, out invalidMethod);
+            info.Method = methodMap.GetMethod(request.GetPath(), request.Method, context, out notFound, out invalidMethod);
 
             if (notFound)
             {
@@ -39,7 +49,7 @@ namespace Kayak.Framework
 
             if (invalidMethod)
             {
-                yield return DefaultResponses.InvalidMethodResponse(request.Verb);
+                yield return DefaultResponses.InvalidMethodResponse(request.Method);
                 yield break;
             }
 
@@ -63,13 +73,13 @@ namespace Kayak.Framework
 
             if (service != null)
             {
-                service.Context = context;
+                //service.Context = context;
                 service.Request = request;
             }
 
             info.Invoke();
 
-            if (info.Result is IHttpServerResponse)
+            if (info.Result is IResponse)
                 yield return info.Result;
             else if (info.Result is object[])
             {
@@ -77,12 +87,12 @@ namespace Kayak.Framework
             }
             else if (info.Method.ReturnType == typeof(IEnumerable<object>))
             {
-                IHttpServerResponse response = null;
+                IResponse response = null;
 
                 var continuation = info.Result as IEnumerable<object>;
                 info.Result = null;
 
-                yield return HandleCoroutine(continuation, info, request, context).Do(r => response = r);
+                yield return HandleCoroutine(continuation, info, request).Do(r => response = r);
                 yield return response;
 
             }
@@ -97,9 +107,9 @@ namespace Kayak.Framework
                     target[pair.Key] = dict[pair.Key];
         }
 
-        IObservable<IHttpServerResponse> HandleCoroutine(IEnumerable<object> continuation, InvocationInfo info, IHttpServerRequest request, IDictionary<object, object> context)
+        IObservable<IResponse> HandleCoroutine(IEnumerable<object> continuation, InvocationInfo info, IRequest request)
         {
-            return Observable.CreateWithDisposable<IHttpServerResponse>(o => continuation.AsCoroutine<object>().Subscribe(
+            return Observable.CreateWithDisposable<IResponse>(o => continuation.AsCoroutine<object>().Subscribe(
                       r => info.Result = r,
                       e =>
                       {
@@ -112,9 +122,9 @@ namespace Kayak.Framework
                       }));
         }
 
-        public virtual IHttpServerResponse GetResponse(IHttpServerRequest request)
+        public virtual IResponse GetResponse(IRequest request)
         {
-            var context = request.Context;
+            var context = request.Items;
             var info = context.GetInvocationInfo();
             bool minified = context.GetJsonOutputMinified();
 

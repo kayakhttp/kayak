@@ -38,7 +38,7 @@ namespace Kayak
     // Observable.FromAsyncPattern schedules the callback on the ThreadPoolScheduler. Lame! Why doesn't
     // it allow the underlying async mechanism to determine what thread the callback comes in on?
     // 
-    // And so we roll our own
+    // And so we roll our own.
     class AsyncOperation<T> : IObservable<T>
     {
         Func<AsyncCallback, object, IAsyncResult> begin;

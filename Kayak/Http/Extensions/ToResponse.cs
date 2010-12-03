@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using Kayak.Core;
+using Owin;
 
 namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IHttpServerResponse ToResponse(this object[] responseArray)
+        public static IResponse ToResponse(this object[] responseArray)
         {
             if (responseArray.Length != 2 && responseArray.Length != 3)
                 throw new ArgumentException("response array is not of valid length.");
@@ -26,10 +26,10 @@ namespace Kayak
             if (!int.TryParse(spaceSplit[0], out statusCode))
                 throw new ArgumentException("first token in status is not an integer");
 
-            if (!(responseArray[1] is IDictionary<string, string>))
-                throw new ArgumentException("response headers is not IDictionary<string, string>");
+            if (!(responseArray[1] is IDictionary<string, IEnumerable<string>>))
+                throw new ArgumentException("response headers is not IDictionary<string, IEnumerable<string>>");
 
-            var headers = responseArray[1] as IDictionary<string, string>;
+            var headers = responseArray[1] as IDictionary<string, IEnumerable<string>>;
 
             IEnumerable<object> body = null;
 

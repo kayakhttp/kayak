@@ -8,7 +8,7 @@ namespace Kayak.Framework
     {
         static string CoerceContextKey = "CoerceFunction";
 
-        public static object Coerce(this IDictionary<object, object> context, string str, Type type)
+        public static object Coerce(this IDictionary<string, object> context, string str, Type type)
         {
             var coerce = (Func<string, Type, object>)
                 (context.ContainsKey(CoerceContextKey) ? context[CoerceContextKey] : null);
@@ -19,7 +19,7 @@ namespace Kayak.Framework
             return coerce(str, type);
         }
 
-        public static void SetCoerce(this IDictionary<object, object> context, Func<string, Type, object> coerce)
+        public static void SetCoerce(this IDictionary<string, object> context, Func<string, Type, object> coerce)
         {
             context[CoerceContextKey] = coerce;
         }

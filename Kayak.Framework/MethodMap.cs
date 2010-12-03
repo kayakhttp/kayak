@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using Kayak.Core;
+using Owin;
 
 namespace Kayak.Framework
 {
@@ -65,7 +65,7 @@ namespace Kayak.Framework
         //    return method;
         //}
 
-        public MethodInfo GetMethod(string path, string verb, IDictionary<object, object> context, out bool notFound, out bool invalidMethod)
+        public MethodInfo GetMethod(string path, string verb, IDictionary<string, object> context, out bool notFound, out bool invalidMethod)
         {
             notFound = false;
             invalidMethod = false;
@@ -136,20 +136,20 @@ namespace Kayak.Framework
 
     class DefaultResponses
     {
-        public static IHttpServerResponse InvalidMethodResponse(string verb)
+        public static IResponse InvalidMethodResponse(string verb)
         {
             var response = new BufferedResponse();
             response.Status = "405 Invalid Method";
-            response.Headers["Content-Type"] = "text/html";
+            response.Headers["Content-Type"] = new string[] { "text/html" };
             response.Add("<h1>Invalid method</h1><p>The requested resource does not support the method '" + verb + "'.");
             return response;
         }
 
-        public static IHttpServerResponse NotFoundResponse()
+        public static IResponse NotFoundResponse()
         {
             var response = new BufferedResponse();
             response.Status = "404 Not Found";
-            response.Headers["Content-Type"] = "text/html";
+            response.Headers["Content-Type"] = new string[] { "text/html" };
             response.Add("<h1>Not Found</h1><p>The requested resource was not found.");
             return response;
         }
@@ -181,7 +181,7 @@ namespace Kayak.Framework
             return map;
         }
 
-        public static IDictionary<string, string> GetPathParameters(this IDictionary<object, object> context)
+        public static IDictionary<string, string> GetPathParameters(this IDictionary<string, object> context)
         {
             return context.ContainsKey(MethodMap.PathParamsContextKey) ?
                 context[MethodMap.PathParamsContextKey] as IDictionary<string, string> : null;

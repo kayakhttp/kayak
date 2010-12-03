@@ -5,7 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using Kayak.Core;
+using Owin;
 
 namespace Kayak
 {
