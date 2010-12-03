@@ -56,6 +56,11 @@ namespace Kayak
                 .Do(r => response = r);
 
             yield return SafeEnumerateResponse(response, socket, http, errorHandler).AsCoroutine<Unit>();
+
+            // HTTP/1.1 support might only close the connection if client wants to || enumerationException != null
+
+            Trace.Write("Closed connection.");
+            socket.Dispose();
         }
 
         // this method will not throw.
@@ -98,11 +103,6 @@ namespace Kayak
             }
 
             bodyEnumerator.Dispose();
-
-            // HTTP/1.1 support might only close the connection if client wants to || enumerationException != null
-
-            Trace.Write("Closed connection.");
-            socket.Dispose();
         }
 
         static IEnumerable<object> HandleEnumerator(IResponse response, 
@@ -140,18 +140,13 @@ namespace Kayak
                         if (!headersWritten)
                         {
                             var exceptionResponse = errorHandler.GetExceptionResponse(ex);
-                            var exceptionBodyEnumerator = exceptionResponse.GetBody().GetEnumerator();
 
                             Exception errorException;
-
+                            
                             // use null error handler. we don't want to handle any errors 
                             // that occur while we're already handling an error.
-                            yield return HandleEnumerator(exceptionResponse, exceptionBodyEnumerator, 
-                                socket, http, null).AsCoroutine<Unit>()
-                                // catch exceptions, want to dispose the enumerator
+                            yield return SafeEnumerateResponse(exceptionResponse, socket, http, null).AsCoroutine<Unit>()
                                 .Do(u => {}, e => errorException = e, () => { }).Catch(Observable.Empty<Unit>());
-
-                            exceptionBodyEnumerator.Dispose();
 
                             yield break;
                         }
