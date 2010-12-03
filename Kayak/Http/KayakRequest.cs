@@ -83,7 +83,6 @@ namespace Kayak
         #region IHttpServerRequest Members
 
         IEnumerator<Func<ArraySegment<byte>, IObservable<int>>> bodyEnumerator;
-        bool enumerationFinished;
 
         public IAsyncResult BeginReadBody(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
         {
@@ -94,7 +93,6 @@ namespace Kayak
                 return new ObservableAsyncResult<int>(bodyEnumerator.Current(new ArraySegment<byte>(buffer, offset, count)), callback);
             else
             {
-                enumerationFinished = true;
                 var result = new BaseAsyncResult<int>(0);
                 callback(result);
                 return result;

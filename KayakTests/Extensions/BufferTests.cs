@@ -5,7 +5,7 @@ using System.Text;
 using NUnit.Framework;
 using Moq;
 using Kayak;
-using Kayak.Core;
+using Owin;
 
 namespace KayakTests.Extensions
 {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using NUnit.Framework;
-using Kayak.Core;
+using Owin;
 using Moq;
 using Kayak;
 using Kayak.Http;
