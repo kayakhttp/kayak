@@ -10,14 +10,14 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IDisposable RespondWith(this IObservable<ISocket> sockets, IApplication responder)
+        public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication application)
         {
-            return sockets.RespondWith(responder, new HttpSupport(), new HttpErrorHandler());
+            return sockets.Invoke(application, new HttpSupport(), new HttpErrorHandler());
         }
 
-        public static IDisposable RespondWith(this IObservable<ISocket> sockets, IApplication responder, IHttpSupport http, IHttpErrorHandler errorHandler)
+        public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication responder, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
-            return sockets.Subscribe(s => responder.RespondTo(s, http, errorHandler).Subscribe(CreateContextObserver()));
+            return sockets.Subscribe(s => s.Invoke(responder, http, errorHandler).Subscribe(CreateContextObserver()));
         }
 
         public static IObserver<Unit> CreateContextObserver()
@@ -37,12 +37,12 @@ namespace Kayak
                 });
         }
 
-        public static IObservable<Unit> RespondTo(this IApplication responder, ISocket socket, IHttpSupport http, IHttpErrorHandler errorHandler)
+        public static IObservable<Unit> Invoke(this ISocket socket, IApplication application, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
-            return responder.RespondToInternal(socket, http, errorHandler).AsCoroutine<Unit>();
+            return socket.InvokeInternal(application, http, errorHandler).AsCoroutine<Unit>();
         }
 
-        static IEnumerable<object> RespondToInternal(this IApplication responder, ISocket socket, IHttpSupport http, IHttpErrorHandler errorHandler)
+        static IEnumerable<object> InvokeInternal(this ISocket socket, IApplication application, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
             IRequest request = null;
 
@@ -51,8 +51,8 @@ namespace Kayak
             IResponse response = null;
 
             yield return new AsyncOperation<IResponse>(
-                    (cb, s) => responder.BeginInvoke(request, cb, s),
-                    iasr => responder.EndInvoke(iasr))
+                    (cb, s) => application.BeginInvoke(request, cb, s),
+                    iasr => application.EndInvoke(iasr))
                 .Do(r => response = r);
 
             yield return SafeEnumerateResponse(response, socket, http, errorHandler).AsCoroutine<Unit>();
@@ -95,12 +95,6 @@ namespace Kayak
             yield return HandleEnumerator(response, bodyEnumerator, socket, http, errorHandler).AsCoroutine<Unit>()
                 // catch exceptions, want to make sure we dispose the enumerator
                 .Do(u => { }, e => enumerationException = e, () => { }).Catch(Observable.Empty<Unit>());
-
-            if (enumerationException != null)
-            {
-                Console.WriteLine("Error while enumerating response.");
-                Console.Out.WriteException(enumerationException);
-            }
 
             bodyEnumerator.Dispose();
         }

@@ -16,61 +16,12 @@ namespace KayakExamples
         static void Main(string[] args)
         {
             New();
-            //Simple();
-        }
-
-        static void Simple()
-        {
-            IObservable<ISocket> sockets = new KayakServer();
-            IApplication responder = new SampleResponder();
-
-            sockets.RespondWith(responder);
-        }
-
-        class SampleResponder : IApplication
-        {
-            #region IHttpResponder Members
-
-            public object Respond(IRequest request)
-            {
-                return new object[] { 
-                    "200 OK", 
-                    new Dictionary<string, string>()
-                    {
-                        { "Content-Type", "text/plain" }
-                    }, 
-                    // "Hello world."
-                    ExampleService.EchoGenerator(request)
-                };
-            }
-
-            #endregion
-
-            #region IHttpResponder Members
-
-            public IAsyncResult BeginInvoke(IRequest request, AsyncCallback callback, object state)
-            {
-                throw new NotImplementedException();
-            }
-
-            public IResponse EndInvoke(IAsyncResult result)
-            {
-                throw new NotImplementedException();
-            }
-
-            #endregion
         }
 
         static void New()
         {
             var server = new KayakServer();
-            
-            var mm = new Type[] { typeof(ExampleService) }.CreateMethodMap();
-            var jm = new JsonMapper2();
-            jm.AddDefaultInputConversions();
-            jm.AddDefaultOutputConversions();
-
-            server.RespondWith(new KayakFrameworkResponder(mm, jm));
+            server.UseFramework();
         }
     }
 
