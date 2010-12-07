@@ -6,12 +6,12 @@ using Owin;
 
 namespace Kayak
 {
-    class BaseAsyncResult<T> : IAsyncResult
+    class AsyncResult<T> : IAsyncResult
     {
         protected T result;
         
-        public BaseAsyncResult() { }
-        public BaseAsyncResult(T result)
+        public AsyncResult() { }
+        public AsyncResult(T result)
         {
             this.result = result;
         }
@@ -45,7 +45,7 @@ namespace Kayak
 
         #endregion
     }
-    class ObservableAsyncResult<T> : BaseAsyncResult<T>
+    class ObservableAsyncResult<T> : AsyncResult<T>
     {
         Exception e;
         IDisposable sx;

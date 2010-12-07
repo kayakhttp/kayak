@@ -14,8 +14,6 @@ namespace Kayak.Framework
 
             var file = info.Result as FileInfo;
 
-            var response = new BaseResponse();
-
             // TODO support 304, Range: header, etc.
 
             var headers = new Dictionary<string, IEnumerable<string>>();

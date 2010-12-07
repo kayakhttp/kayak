@@ -6,105 +6,72 @@ using Owin;
 
 namespace Kayak.Framework
 {
-    public class BaseResponse : IResponse
-    {
-        public string Status { get; set; }
-        Dictionary<string, IEnumerable<string>> headers;
-        IEnumerable<object> body;
 
-        public BaseResponse()
-        {
-            Status = "200 OK";
-        }
-
-        public IDictionary<string, IEnumerable<string>> Headers
-        {
-            get { return headers ?? (headers = new Dictionary<string, IEnumerable<string>>()); }
-        }
-
-        public virtual IEnumerable<object> GetBody()
-        {
-            return body;
-        }
-
-        public void SetBody(IEnumerable<object> body)
-        {
-            this.body = body;
-        }
-    }
-
-    public class BufferedResponse : BaseResponse
-    {
-        LinkedList<ArraySegment<byte>> buffers;
-
-        public BufferedResponse() { }
-
-        public BufferedResponse(string body)
-        {
-            Add(body);
-        }
-
-        public void SetContentLength()
-        {
-            var cl = 0;
-            foreach (var b in buffers)
-                cl += b.Count;
-            if (cl > 0)
-                Headers.SetContentLength(cl);
-        }
-
-        public void Add(ArraySegment<byte> buffer)
-        {
-            if (buffers == null)
-                buffers = new LinkedList<ArraySegment<byte>>();
-
-            buffers.AddLast(buffer);
-        }
-
-        public void Add(byte[] buffer)
-        {
-            Add(new ArraySegment<byte>(buffer));
-        }
-
-        public void Add(string s)
-        {
-            Add(new ArraySegment<byte>(Encoding.UTF8.GetBytes(s)));
-        }
-
-        public override IEnumerable<object> GetBody()
-        {
-            if (buffers == null)
-                yield break;
-
-            foreach (var b in buffers)
-                yield return new ArraySegment<byte>[] { b }.ToObservable();
-
-            if (buffers.Count == 0)
-                buffers = null;
-        }
-    }
-
-    //public static partial class Extensions
+    //public class BufferedResponse : KayakResponse
     //{
-    //    #region Common Statuses
-        
-    //    /// <summary>
-    //    /// Sets the response status to 200 OK.
-    //    /// </summary>
-    //    public static void SetStatusToOK(this IKayakServerResponse response)
+    //    LinkedList<ArraySegment<byte>> buffers;
+
+    //    public void SetContentLength()
     //    {
-    //        response.StatusCode = 200;
-    //        response.ReasonPhrase = "OK";
+    //        var cl = 0;
+    //        foreach (var b in buffers)
+    //            cl += b.Count;
+    //        if (cl > 0)
+    //            Headers.SetContentLength(cl);
     //    }
 
-    //    /// <summary>
-    //    /// Sets the response status to 201 Created.
-    //    /// </summary>
-    //    public static void SetStatusToCreated(this IKayakServerResponse response)
+    //    public void Add(ArraySegment<byte> buffer)
     //    {
-    //        response.StatusCode = 201;
-    //        response.ReasonPhrase = "Created";
+    //        if (buffers == null)
+    //            buffers = new LinkedList<ArraySegment<byte>>();
+
+    //        buffers.AddLast(buffer);
     //    }
+
+    //    public void Add(byte[] buffer)
+    //    {
+    //        Add(new ArraySegment<byte>(buffer));
+    //    }
+
+    //    public void Add(string s)
+    //    {
+    //        Add(new ArraySegment<byte>(Encoding.UTF8.GetBytes(s)));
+    //    }
+
+    //    IEnumerable<object> EnumerateBody()
+    //    {
+    //        if (buffers == null)
+    //            yield break;
+
+    //        foreach (var b in buffers)
+    //            yield return new ArraySegment<byte>[] { b }.ToObservable();
+
+    //        if (buffers.Count == 0)
+    //            buffers = null;
+    //    }
+    //}
+
+    public static partial class Extensions
+    {
+        #region Common Statuses
+        
+        ///// <summary>
+        ///// Sets the response status to 200 OK.
+        ///// </summary>
+        //public static void SetStatusToOK(this IKayakServerResponse response)
+        //{
+        //    response.StatusCode = 200;
+        //    response.ReasonPhrase = "OK";
+        //}
+
+        ///// <summary>
+        ///// Sets the response status to 201 Created.
+        ///// </summary>
+        //public static void SetStatusToCreated(this IKayakServerResponse response)
+        //{
+        //    response.StatusCode = 201;
+        //    response.ReasonPhrase = "Created";
+        //}
 
     //    /// <summary>
     //    /// Sets the response status to 302 Found.
@@ -169,7 +136,7 @@ namespace Kayak.Framework
     //        response.ReasonPhrase = "Internal Server Error";
     //    }
 
-    //    #endregion
+        #endregion
 
     //    /// <summary>
     //    /// Sets the response status to 302 Found, and the Location header to the given URL.
@@ -233,5 +200,5 @@ namespace Kayak.Framework
 
     //        return Encoding.UTF8.GetBytes(sb.ToString());
     //    }
-    //}
+    }
 }

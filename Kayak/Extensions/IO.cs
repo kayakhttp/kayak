@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net.Sockets;
 using System.Disposables;
+using Owin;
 
 namespace Kayak
 {
@@ -32,6 +33,13 @@ namespace Kayak
             return new AsyncOperation<Socket>(
                 (c, st) => listener.BeginAcceptSocket(c, st),
                 iasr => listener.EndAcceptSocket(iasr));
+        }
+
+        public static IObservable<int> ReadBodyAsync(this IRequest request, byte[] buffer, int offset, int count)
+        {
+            return new AsyncOperation<int>(
+                (c, s) => request.BeginReadBody(buffer, offset, count, c, s),
+                iasr => request.EndReadBody(iasr));
         }
     }
 

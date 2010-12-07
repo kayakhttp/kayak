@@ -57,6 +57,7 @@
     <Compile Include="Extensions\Coerce.cs" />
     <Compile Include="Extensions\Request.cs" />
     <Compile Include="Extensions\Response.cs" />
+    <Compile Include="Extensions\UseFramework.cs" />
     <Compile Include="HeaderBinder.cs" />
     <Compile Include="InvocationInfo.cs" />
     <Compile Include="JsonSupport.cs" />
@@ -74,7 +75,6 @@
     <Compile Include="LitJson\TypeExtensions.cs" />
     <Compile Include="MethodMap.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="UseFramework.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kayak\Kayak.csproj">

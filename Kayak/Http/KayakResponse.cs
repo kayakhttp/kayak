@@ -1,14 +1,15 @@
 ﻿using System.Collections.Generic;
 using Owin;
 using System.Collections;
+using System.Linq;
 
 namespace Kayak
 {
     public class KayakResponse : IResponse
     {
         string statusLine;
-        IDictionary<string,IEnumerable<string>> headers;
-        IEnumerable<object> getBody;
+        IDictionary<string, IEnumerable<string>> headers;
+        IEnumerable<object> body;
 
         public string Status
         {
@@ -22,17 +23,31 @@ namespace Kayak
 
         public IEnumerable<object> GetBody()
         {
-            return getBody;
+            return body;
         }
+
+        protected void SetBody(IEnumerable<object> body)
+        {
+            this.body = body;
+        }
+
+        public KayakResponse(string statusLine)
+            : this(statusLine, Enumerable.Empty<object>()) { }
+
+        public KayakResponse(string statusLine, IEnumerable<object> body)
+            : this(statusLine, new Dictionary<string, IEnumerable<string>>(), body) { }
+
+        public KayakResponse(string statusLine, params object[] body)
+            : this(statusLine, new Dictionary<string, IEnumerable<string>>(), body) { }
 
         public KayakResponse(string statusLine, IDictionary<string, IEnumerable<string>> headers, params object[] body)
             : this(statusLine, headers, (IEnumerable<object>)body) { }
 
-        public KayakResponse(string statusLine, IDictionary<string, IEnumerable<string>> headers, IEnumerable<object> getBody)
+        public KayakResponse(string statusLine, IDictionary<string, IEnumerable<string>> headers, IEnumerable<object> body)
         {
             this.statusLine = statusLine;
             this.headers = headers;
-            this.getBody = getBody;
+            this.body = body;
         }
     }
 }

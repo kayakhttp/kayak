@@ -24,7 +24,6 @@ namespace Kayak.Http
             return socket.WriteAll(new ArraySegment<byte>(response.WriteStatusLineAndHeaders()));
         }
 
-
         static int MaxHeaderLength = 1024 * 10;
         static int BufferSize = 1024 * 2;
 

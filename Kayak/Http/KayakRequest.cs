@@ -93,7 +93,7 @@ namespace Kayak
                 return new ObservableAsyncResult<int>(bodyEnumerator.Current(new ArraySegment<byte>(buffer, offset, count)), callback);
             else
             {
-                var result = new BaseAsyncResult<int>(0);
+                var result = new AsyncResult<int>(0);
                 callback(result);
                 return result;
             }
@@ -101,7 +101,7 @@ namespace Kayak
 
         public int EndReadBody(IAsyncResult result)
         {
-            return ((BaseAsyncResult<int>)result).GetResult();
+            return ((AsyncResult<int>)result).GetResult();
         }
 
         #endregion

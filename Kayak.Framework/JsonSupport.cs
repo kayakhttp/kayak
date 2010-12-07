@@ -26,9 +26,10 @@ namespace Kayak.Framework
 
         public static IResponse GetJsonResponse(this InvocationInfo info, JsonMapper2 jsonMapper, bool minified)
         {
-            var response = new BufferedResponse();
+            var headers = new Dictionary<string, IEnumerable<string>>();
+            headers["Content-Type"] = new string[] { minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8" };
 
-            response.Headers["Content-Type"] = new string[] { minified ? "application/json; charset=utf-8" : "text/plain; charset=utf-8" };
+            byte[] jsonBytes = null;
 
             if (info.Exception != null)
             {
@@ -37,17 +38,15 @@ namespace Kayak.Framework
                 if (exception is TargetInvocationException)
                     exception = exception.InnerException;
 
-                response.Status = "503 Internal Server Error";
-                response.Add(GetJsonRepresentation(new { error = exception.Message }, jsonMapper, minified));
-                response.SetContentLength();
-            } 
-            else
-            {
-                response.Add(GetJsonRepresentation(info.Result, jsonMapper, minified));
-                response.SetContentLength();
+                jsonBytes = GetJsonRepresentation(new { error = exception.Message }, jsonMapper, minified);
+                headers.SetContentLength(jsonBytes.Length);
+
+                return new KayakResponse("503 Internal Server Error", headers, jsonBytes);
             }
 
-            return response;
+            jsonBytes = GetJsonRepresentation(info.Result, jsonMapper, minified);
+            headers.SetContentLength(jsonBytes.Length);
+            return new KayakResponse("200 OK", headers, jsonBytes);
         }
 
         static byte[] GetJsonRepresentation(object o, JsonMapper2 mapper, bool minified)

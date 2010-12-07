@@ -21,12 +21,18 @@ namespace Kayak
         {
             var sw = new StringWriter();
             sw.WriteException(e);
-            return new KayakResponse("503 Internal Server Error", new Dictionary<string, IEnumerable<string>>(), sw);
+            Console.WriteLine("Exception while processing request.");
+            Console.Out.WriteException(e);
+            return new KayakResponse("503 Internal Server Error", new Dictionary<string, IEnumerable<string>>(), sw.ToString());
         }
 
-        public IObservable<Unit> WriteExceptionText(Exception exception, ISocket socket)
+        public IObservable<Unit> WriteExceptionText(Exception e, ISocket socket)
         {
-            throw new NotImplementedException();
+            var sw = new StringWriter();
+            sw.WriteException(e);
+            Console.WriteLine("Exception while processing request.");
+            Console.Out.WriteException(e);
+            return socket.WriteObject(sw.ToString());
         }
     }
 }

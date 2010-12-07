@@ -49,11 +49,18 @@ namespace Kayak
             yield return http.BeginRequest(socket).Do(r => request = r);
 
             IResponse response = null;
+            Exception exception = null;
 
             yield return new AsyncOperation<IResponse>(
                     (cb, s) => application.BeginInvoke(request, cb, s),
                     iasr => application.EndInvoke(iasr))
-                .Do(r => response = r);
+                .Do(r => response = r, e => exception = e, () => { }).Catch(Observable.Empty<IResponse>());
+
+            if (exception != null)
+            {
+                response = errorHandler.GetExceptionResponse(exception);
+                errorHandler = null;
+            }
 
             yield return SafeEnumerateResponse(response, socket, http, errorHandler).AsCoroutine<Unit>();
 
@@ -156,6 +163,12 @@ namespace Kayak
                 }
 
                 yield return socket.WriteObject(obj);
+            }
+
+            if (!headersWritten)
+            {
+                yield return http.BeginResponse(socket, response);
+                headersWritten = true;
             }
         }
 

@@ -138,22 +138,29 @@ namespace Kayak.Framework
     {
         public static IResponse InvalidMethodResponse(string verb)
         {
-            var response = new BufferedResponse();
-            response.Status = "405 Invalid Method";
-            response.Headers["Content-Type"] = new string[] { "text/html" };
-            response.Add("<h1>Invalid method</h1><p>The requested resource does not support the method '" + verb + "'.");
-            return response;
+            var headers = new Dictionary<string, IEnumerable<string>>()
+            {
+                { "Content-Type", new string[] { "text/html" } }
+            };
+
+            var body = "<h1>Invalid method</h1><p>The requested resource does not support the method '" + verb + "'.";
+            headers.SetContentLength(body.Length);
+
+            return new KayakResponse("405 Invalid Method", headers, body);
         }
 
         public static IResponse NotFoundResponse()
         {
-            var response = new BufferedResponse();
-            response.Status = "404 Not Found";
-            response.Headers["Content-Type"] = new string[] { "text/html" };
-            response.Add("<h1>Not Found</h1><p>The requested resource was not found.");
-            return response;
-        }
+            var headers = new Dictionary<string, IEnumerable<string>>()
+            {
+                { "Content-Type", new string[] { "text/html" } }
+            };
 
+            var body = "<h1>Not Found</h1><p>The requested resource was not found.";
+            headers.SetContentLength(body.Length);
+
+            return new KayakResponse("404 Not Found", headers, body);
+        }
     }
 
     public static class MethodMapExtensions

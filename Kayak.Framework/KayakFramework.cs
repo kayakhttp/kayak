@@ -76,10 +76,6 @@ namespace Kayak.Framework
 
             if (info.Result is IResponse)
                 yield return info.Result;
-            else if (info.Result is object[])
-            {
-                yield return (info.Result as object[]).ToResponse();
-            }
             else if (info.Method.ReturnType == typeof(IEnumerable<object>))
             {
                 IResponse response = null;
@@ -91,8 +87,10 @@ namespace Kayak.Framework
                 yield return response;
 
             }
-            else
+            else if (info.Method.ReturnType != typeof(void))
                 yield return GetResponse(request);
+            else
+                throw new Exception("Executed void method " + info);
         }
 
         void ConcatDicts<K, V>(IDictionary<K, V> target, params IDictionary<K, V>[] srcs)
