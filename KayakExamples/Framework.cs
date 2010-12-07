@@ -1,10 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
-using System.Text;
 using Kayak;
 using Kayak.Framework;
-using System.IO;
 using Owin;
 
 namespace KayakExamples

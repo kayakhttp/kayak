@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
-using Owin;
-using System.Collections;
 using System.Linq;
+using Owin;
 
 namespace Kayak
 {

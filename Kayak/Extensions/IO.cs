@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Net.Sockets;
 using System.Disposables;
+using System.Net.Sockets;
 using Owin;
 
 namespace Kayak

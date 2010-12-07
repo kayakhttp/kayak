@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using Owin;
 using LitJson;
+using Owin;
 
 namespace Kayak.Framework
 {
