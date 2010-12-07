@@ -6,16 +6,6 @@ using Owin;
 
 namespace Kayak
 {
-    public static class IHttpResponderExtensions
-    {
-        public static object Respond(this IApplication responder, IRequest request)
-        {
-            return new AsyncOperation<IResponse>(
-                (cb, s) => responder.BeginInvoke(request, cb, s), 
-                iasr => responder.EndInvoke(iasr));
-        }
-    }
-
     class BaseAsyncResult<T> : IAsyncResult
     {
         protected T result;

@@ -21,7 +21,11 @@ namespace KayakExamples
         static void New()
         {
             var server = new KayakServer();
-            server.UseFramework();
+            var pipeline = server.UseFramework();
+            Console.WriteLine("Press enter to exit.");
+            Console.ReadLine();
+            pipeline.Dispose();
+            
         }
     }
 
