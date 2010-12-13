@@ -14,39 +14,21 @@ namespace KayakTests.Extensions
         [TestFixture]
         public class GetContentLengthTests
         {
-            [Test]
-            public void UpperCase()
+            Dictionary<string, IEnumerable<string>> Header(string name, params string[] values)
             {
-                var headers = new Dictionary<string, string>();
-                headers["Content-Length"] = "3";
-
-                Assert.AreEqual(3, headers.GetContentLength(), "Unexpected content length.");
+                var headers = new Dictionary<string, IEnumerable<string>>();
+                headers[name] = values;
+                return headers;
             }
 
             [Test]
-            public void MixedCase()
+            public void CaseInsensitive()
             {
-                var headers = new Dictionary<string, string>();
-                headers["Content-length"] = "3";
-
-                Assert.AreEqual(3, headers.GetContentLength(), "Unexpected content length.");
-            }
-
-            [Test]
-            public void LowerCase()
-            {
-                var headers = new Dictionary<string, string>();
-                headers["content-length"] = "3";
-
-                Assert.AreEqual(3, headers.GetContentLength(), "Unexpected content length.");
-            }
-
-            [Test]
-            public void None()
-            {
-                var headers = new Dictionary<string, string>();
-
-                Assert.AreEqual(-1, headers.GetContentLength(), "Unexpected content length.");
+                Assert.AreEqual(3, Header("Content-Length", "3").GetContentLength());
+                Assert.AreEqual(3, Header("Content-length", "3").GetContentLength());
+                Assert.AreEqual(3, Header("content-Length", "3").GetContentLength());
+                Assert.AreEqual(3, Header("content-length", "3").GetContentLength());
+                Assert.AreEqual(3, Header("ConTenT-LeNGth", "3").GetContentLength());
             }
         }
 

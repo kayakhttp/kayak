@@ -5,6 +5,7 @@ using System.Text;
 using NUnit.Core;
 using NUnit.Framework;
 using Kayak;
+using Moq;
 
 namespace KayakTests
 {
@@ -57,6 +58,21 @@ namespace KayakTests
             AssertExpectedResults();
             AssertExpectedErrors();
             AssertCompleted();
+        }
+
+        [Test]
+        public void YieldValues2()
+        {
+            var mockObserver = new Mock<IObserver<object>>();
+
+            var results = new List<object>();
+
+            mockObserver.Setup(o => o.OnNext(It.IsAny<object>())).Callback<object>(o => results.Add(o));
+
+            YieldBlock().AsCoroutine<object>().Subscribe(mockObserver.Object);
+
+            mockObserver.Verify(o => o.OnError(It.IsAny<Exception>()), Times.Never());
+            mockObserver.Verify(o => o.OnCompleted(), Times.Once());
         }
 
         IEnumerable<object> YieldBlock()

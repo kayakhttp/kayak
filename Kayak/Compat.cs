@@ -41,6 +41,7 @@ namespace Kayak
 
         #endregion
     }
+
     class ObservableAsyncResult<T> : AsyncResult<T>
     {
         Exception e;

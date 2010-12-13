@@ -33,6 +33,10 @@
     <DocumentationFile>bin\Release\Kayak.Framework.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="owin, Version=1.0.3993.35516, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\lib\owin.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -80,10 +84,6 @@
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
       <Name>Kayak</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Owin\Owin.csproj">
-      <Project>{F00527A1-ABBA-4620-B8E2-257DDBEEEE0B}</Project>
-      <Name>Owin</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -74,6 +74,8 @@ namespace Kayak.Framework
             if (parameters.Count() != 0 && contentLength != 0)
             {
                 IEnumerable<ArraySegment<byte>> requestBody = null;
+
+                // wish i had an evented JSON parser.
                 yield return request.BufferRequestBody().Do(d => requestBody = d);
 
                 var reader = new JsonReader(new StringReader(requestBody.GetString()));

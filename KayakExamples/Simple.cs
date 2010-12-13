@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Kayak;
 using Owin;
+using System.Text;
 
 namespace KayakExamples
 {
@@ -33,7 +34,6 @@ namespace KayakExamples
                 "Hello world.");
         }
     }
-
 
     class SimpleApp : IApplication
     {

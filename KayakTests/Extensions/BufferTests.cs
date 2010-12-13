@@ -37,7 +37,7 @@ namespace KayakTests.Extensions
         [Test]
         public void TestBufferRequestBody()
         {
-            var mockRequest = new Mock<IHttpServerRequest>();
+            var mockRequest = new Mock<IRequest>();
             var mockObserver = new Mock<IObserver<IEnumerable<ArraySegment<byte>>>>();
 
             Assert.Fail("Borken.");

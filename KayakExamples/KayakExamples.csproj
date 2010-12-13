@@ -31,6 +31,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="owin, Version=1.0.3993.35516, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\lib\owin.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -40,7 +44,6 @@
       <HintPath>..\lib\rx3.5\System.CoreEx.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="System.Data" />
     <Reference Include="System.Observable, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Observable.dll</HintPath>
@@ -56,7 +59,6 @@
       <HintPath>..\lib\rx3.5\System.Threading.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Framework.cs" />
@@ -72,10 +74,6 @@
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
       <Name>Kayak</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Owin\Owin.csproj">
-      <Project>{F00527A1-ABBA-4620-B8E2-257DDBEEEE0B}</Project>
-      <Name>Owin</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

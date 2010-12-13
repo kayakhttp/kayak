@@ -37,14 +37,16 @@ namespace Kayak
         public static int GetContentLength(this IDictionary<string, IEnumerable<string>> headers)
         {
             int contentLength = -1;
-            
-            // ugly. we need to decide in one spot whether or not we're case-sensitive for all headers.
-            if (headers.ContainsKey("Content-Length"))
-                int.TryParse(headers["Content-Length"].First(), out contentLength);
-            else if (headers.ContainsKey("Content-length"))
-                int.TryParse(headers["Content-length"].First(), out contentLength);
-            else if (headers.ContainsKey("content-length"))
-                int.TryParse(headers["content-length"].First(), out contentLength);
+
+            var key = headers.Keys.FirstOrDefault(s => s.ToLowerInvariant() == "content-length");
+
+            if (key != null)
+            {
+                var value = headers[key].FirstOrDefault();
+
+                if (value != null)
+                    int.TryParse(value, out contentLength);
+            }
 
             return contentLength;
         }

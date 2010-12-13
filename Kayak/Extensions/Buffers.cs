@@ -13,7 +13,6 @@ namespace Kayak
             return BufferRequestBodyInternal(request).AsCoroutine<IEnumerable<ArraySegment<byte>>>();
         }
 
-        // wish i had an evented JSON parser.
         static IEnumerable<object> BufferRequestBodyInternal(this IRequest request)
         {
             var result = new LinkedList<ArraySegment<byte>>();
@@ -21,14 +20,13 @@ namespace Kayak
             var totalBytesRead = 0;
             var bytesRead = 0;
 
-            var body = ((KayakRequest)request).GetBody();
-
-            foreach (var getChunk in body)
+            do
             {
-                yield return getChunk(new ArraySegment<byte>(buffer, 0, buffer.Length)).Do(n => bytesRead = n);
+                yield return request.ReadBodyAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
                 result.AddLast(new ArraySegment<byte>(buffer, 0, bytesRead));
                 totalBytesRead += bytesRead;
             }
+            while (bytesRead != 0);
 
             yield return result;
         }

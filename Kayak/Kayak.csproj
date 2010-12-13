@@ -55,6 +55,10 @@
     <DocumentationFile>bin\Release\Kayak.XML</DocumentationFile>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="owin, Version=1.0.3993.35516, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\lib\owin.dll</HintPath>
+    </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -63,6 +67,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.CoreEx.dll</HintPath>
     </Reference>
+    <Reference Include="System.Data" />
     <Reference Include="System.Observable, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Observable.dll</HintPath>
@@ -71,11 +76,17 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\lib\rx3.5\System.Reactive.dll</HintPath>
     </Reference>
+    <Reference Include="System.Threading, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\kayak\lib\rx3.5\System.Threading.dll</HintPath>
+    </Reference>
     <Reference Include="System.Web" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Compat.cs" />
     <Compile Include="Coroutine.cs" />
+    <Compile Include="Coroutine2.cs" />
     <Compile Include="Extensions\Buffers.cs" />
     <Compile Include="Extensions\IO.cs" />
     <Compile Include="Extensions\Socket.cs" />
@@ -118,12 +129,6 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Owin\Owin.csproj">
-      <Project>{F00527A1-ABBA-4620-B8E2-257DDBEEEE0B}</Project>
-      <Name>Owin</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
