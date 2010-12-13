@@ -1,0 +1,112 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>owin</name>
+    </assembly>
+    <members>
+        <member name="T:Owin.IResponse">
+            <summary>
+            The HTTP response provides the status, headers, and body from an <see cref="T:Owin.IApplication"/>.
+            </summary>
+        </member>
+        <member name="M:Owin.IResponse.GetBody">
+            <summary>
+            Gets the body <see cref="!:IEnumerable&lt;object&gt;"/>.
+            </summary>
+            <returns>The response as an <see cref="!:IEnumerable&lt;object&gt;"/>.</returns>
+            <remarks>
+            The <see cref="!:IEnumerable&lt;object&gt;"/> is not guaranteed to be hot.
+            This method should be considered safe to generate either a cold or hot enumerable
+            so that it _could_ be called more than once, though the expectation is only one call.
+            </remarks>
+        </member>
+        <member name="P:Owin.IResponse.Status">
+            <summary>
+            Gets the status code and description.
+            </summary>
+            <remarks>The string should follow the format of "200 OK".</remarks>
+        </member>
+        <member name="P:Owin.IResponse.Headers">
+            <summary>
+            Gets the headers.
+            </summary>
+            <remarks>
+            Each header key may have one or more values matching the HTTP spec.
+            Example:
+              HTTP/1.1 200 OK
+              Set-Cookie: foo=bar
+              Set-Cookie: baz=quux
+            
+              Generates a headers dictionary with key "Set-Cookie" containing string ["foo=bar";"baz=quux"]
+            </remarks>
+        </member>
+        <member name="T:Owin.IRequest">
+            <summary>
+            The HTTP request provides the requested method, uri, headers, application items, and input body.
+            </summary>
+        </member>
+        <member name="M:Owin.IRequest.BeginReadBody(System.Byte[],System.Int32,System.Int32,System.AsyncCallback,System.Object)">
+            <summary>
+            Begins the asynchronous read from the request body.
+            </summary>
+            <param name="buffer">The buffer.</param>
+            <param name="offset">The offset.</param>
+            <param name="count">The count.</param>
+            <param name="callback">The callback.</param>
+            <param name="state">The state.</param>
+            <returns>An IAsyncResult that represents the asynchronous read, which could still be pending.</returns>
+            <see href="http://msdn.microsoft.com/en-us/library/system.io.stream.beginread.aspx"/>
+        </member>
+        <member name="M:Owin.IRequest.EndReadBody(System.IAsyncResult)">
+            <summary>
+            Ends the asynchronous read from the request body.
+            </summary>
+            <param name="result">The result.</param>
+            <returns>The number of bytes read into the buffer.</returns>
+            <see href="http://msdn.microsoft.com/en-us/library/system.io.stream.endread.aspx"/>
+        </member>
+        <member name="P:Owin.IRequest.Method">
+            <summary>
+            Gets the request method.
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "P:Owin.IRequest.Uri" -->
+        <member name="P:Owin.IRequest.Headers">
+             <summary>
+             Gets the headers.
+             </summary>
+             <remarks>
+             Each header key may have one or more values matching the HTTP spec.
+             Example:
+               GET / HTTP/1.0
+               Accept: text/html;application/xml
+            
+               Generates a headers dictionary with key "Accept" containing string "text/html;application/xml"
+             </remarks>
+        </member>
+        <member name="P:Owin.IRequest.Items">
+            <summary>Gets the application-specific items or settings.</summary>
+        </member>
+        <member name="T:Owin.IApplication">
+            <summary>
+            An HTTP application.
+            </summary>
+        </member>
+        <member name="M:Owin.IApplication.BeginInvoke(Owin.IRequest,System.AsyncCallback,System.Object)">
+            <summary>
+            Begins the asynchronous process to get the <see cref="T:Owin.IResponse"/>.
+            </summary>
+            <param name="request">The request.</param>
+            <param name="callback">The callback.</param>
+            <param name="state">The state.</param>
+            <returns>The <see cref="T:System.IAsyncResult"/> that represents the asynchronous invocation.</returns>
+        </member>
+        <member name="M:Owin.IApplication.EndInvoke(System.IAsyncResult)">
+            <summary>
+            Ends the asynchronous process to get the <see cref="T:Owin.IResponse"/>.
+            </summary>
+            <param name="result">The result.</param>
+            <returns>The <see cref="T:Owin.IResponse"/>.</returns>
+        </member>
+    </members>
+</doc>
