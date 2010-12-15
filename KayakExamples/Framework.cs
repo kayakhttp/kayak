@@ -5,6 +5,7 @@ using System.Linq;
 using Kayak;
 using Kayak.Framework;
 using Owin;
+using System.Threading.Tasks;
 
 namespace KayakExamples
 {
@@ -30,40 +31,71 @@ namespace KayakExamples
 
             // or an object to be serialized as json.
             // sets content-type and content-length automatically.
-            // 200 OK for objects, 503 Internal Server Error for exceptions
             [Path("/hello")]
             public object SayHello(string name)
             {
+                // name is from the query string.
                 return "hello, " + name + ".";
             }
 
-            static object foo;
-
-            [Verb("POST")]
-            [Verb("PUT")]
-            [Path("/foo")]
-            public IResponse PutFoo([RequestBody] object t)
+            // you can accept request data deserialized from JSON
+            // into strongly-typed objects. make sure your class 
+            // and its fields/properties are public...
+            public class Foo
             {
-                foo = t;
-                return new KayakResponse("201 Created");
+                public string Name;
+                public string Color;
             }
 
+            static Foo foo;
+
+            // ...decorate with the appropriate verbs.
+            [Verb("PUT")]
+            [Path("/foo")]
+            public IResponse PutFoo([RequestBody] Foo f)
+            {
+                foo = f; // a Foo from JSON!
+                return new KayakResponse("200 OK", new { message = "foo was updated." });
+            }
+
+            // GET is implied.
             [Path("/foo")]
             public object GetFoo()
             {
                 return foo;
             }
 
-            [Path("/error")]
-            public object Error()
-            {
-                throw new Exception("Uh oh.");
-            }
-
+            // You can serve files too!
             [Path("/files/{name}")]
             public FileInfo GetFile(string name)
             {
                 return new FileInfo(name);
+            }
+
+            // Coroutines without the Async CTP!
+            [Path("/yield")]
+            public IEnumerable<object> Yield()
+            {
+                var fetch = FetchFromDatabase();
+                // yield a Task to await its completion
+                yield return fetch;
+
+                // always check for Task exceptions, they're
+                // not thrown automatically.
+                if (fetch.Exception != null) 
+                    // string the aggregate exception
+                    throw fetch.Exception.InnerException;
+
+                // yield anything other than a task, and it will be
+                // treated as just if it had been returned from
+                // a regular method
+                yield return fetch.Result;
+            }
+
+            public Task<Foo> FetchFromDatabase()
+            {
+                // ...
+                return null;
             }
 
             [Verb("POST")]
@@ -72,6 +104,13 @@ namespace KayakExamples
             {
                 // TODO parse application/x-www-form-urlencoded
                 return null;
+            }
+
+            // exceptions han
+            [Path("/error")]
+            public object Error()
+            {
+                throw new Exception("Uh oh.");
             }
 
             [Verb("POST")]
@@ -114,19 +153,6 @@ namespace KayakExamples
                     });
                 }
                 while (bytesRead > 0);
-            }
-
-            [Path("/yield")]
-            public IEnumerable<object> Yield()
-            {
-                object phue = null;
-                yield return GetPhue().Do(p => phue = p);
-                yield return phue;
-            }
-
-            public IObservable<object> GetPhue()
-            {
-                return new object[] { new { bar = "phue" } }.ToObservable();
             }
         }
     }
