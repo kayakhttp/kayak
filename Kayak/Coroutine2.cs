@@ -4,17 +4,157 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.IO;
 
 namespace Kayak
 {
+    public class SingleThreadedScheduler : TaskScheduler, IDisposable
+    {
+        [ThreadStatic]
+        static bool isWorker;
+
+        LinkedList<Task> queue;
+        AutoResetEvent wh, stopWh;
+        bool stopRequested;
+        Thread worker;
+
+        public SingleThreadedScheduler()
+        {
+            queue = new LinkedList<Task>();
+            wh = new AutoResetEvent(false);
+        }
+
+        public void Start()
+        {
+            if (worker != null) throw new InvalidOperationException("Already started!");
+
+            worker = new Thread(() => { Run2(); }) { IsBackground = true };
+            worker.Start();
+        }
+
+        void Run2()
+        {
+            isWorker = true;
+
+            while (true)
+            {
+                Console.WriteLine("Scheduler waiting.");
+                wh.WaitOne();
+                Console.WriteLine("Scheduler set.");
+
+                try
+                {
+                    while (true)
+                    {
+                        Task item;
+
+                        lock (queue)
+                        {
+                            if (queue.Count == 0)
+                            {
+                                Console.WriteLine("No more items in queue!");
+                                break;
+                            }
+
+                            item = queue.First.Value;
+                            queue.RemoveFirst();
+                        }
+
+                        Console.WriteLine("Executing task. " + item);
+                        TryExecuteTask(item);
+                        Console.WriteLine("'Done' executing.");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Exception on worker!");
+                    Console.Out.WriteException(e);
+                }
+
+                if (stopRequested)
+                {
+                    Console.WriteLine("Scheduler stopping!");
+                    break;
+                }
+            }
+
+            stopWh.Set();
+
+            isWorker = false;
+        }
+
+        protected override IEnumerable<Task> GetScheduledTasks()
+        {
+            lock (queue)
+                return queue.ToArray();
+        }
+
+        protected override void QueueTask(Task task)
+        {
+            lock (queue)
+            {
+                queue.AddLast(task);
+
+                Console.WriteLine("Queued task, setting wh.");
+                wh.Set();
+            }
+        }
+
+        protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
+        {
+            Console.WriteLine("TryExecuteTaskInline: " + task + " taskWasPreviouslyQueued: " + taskWasPreviouslyQueued);
+
+            if (!isWorker)
+            {
+                Console.WriteLine("TryExecuteTaskInline: wrong thread.");
+                return false;
+            }
+
+            if (taskWasPreviouslyQueued)
+            {
+                Console.WriteLine("TryExecuteTaskInline: dequeuing task.");
+                TryDequeue(task);
+            }
+
+            var result = TryExecuteTask(task);
+
+            Console.WriteLine("TryExecuteTaskInline: returning " + result);
+            return result;
+        }
+
+        protected override bool TryDequeue(Task task)
+        {
+            bool result = false;
+            lock (queue)
+                result = queue.Remove(task);
+
+            Console.WriteLine("TryDequeue: " + result);
+            return result;
+        }
+
+        public void Dispose()
+        {
+            stopRequested = true;
+            stopWh = new AutoResetEvent(false);
+            wh.Set();
+            stopWh.WaitOne();
+            stopWh.Close();
+            wh.Close();
+            worker.Join();
+        }
+    }
+
+
     public class Coroutine2<T>
     {
         IEnumerator<object> continuation;
         ProperAsyncResult<T> asyncResult;
+        TaskScheduler scheduler;
 
-        public Coroutine2(IEnumerator<object> continuation)
+        public Coroutine2(IEnumerator<object> continuation, TaskScheduler scheduler)
         {
             this.continuation = continuation;
+            this.scheduler = scheduler;
         }
 
         public IAsyncResult BeginInvoke(AsyncCallback cb, object state)
@@ -65,10 +205,11 @@ namespace Kayak
 
                 if (task != null)
                 {
-                    Console.WriteLine("Will continuing after Task.");
+                    Console.WriteLine("Will continue after Task.");
                     task.ContinueWith(t => {
                         bool synch = ((IAsyncResult)t).CompletedSynchronously;
-                        if (t.IsFaulted)
+
+                        if (false && t.IsFaulted) // disabled, iterator blocks must always remember to check for exceptions
                         {
                             Console.WriteLine("Exception in Task.");
                             Console.Out.WriteException(t.Exception);
@@ -79,8 +220,7 @@ namespace Kayak
                             Console.WriteLine("Continuing after Task.");
                             Continue(sync);
                         }
-                    });
-                    task.Start();
+                    }, CancellationToken.None, TaskContinuationOptions.None, scheduler);
                 }
                 else
                 {
@@ -107,15 +247,54 @@ namespace Kayak
     {
         public static Task<T> AsCoroutine2<T>(this IEnumerable<object> iteratorBlock)
         {
-            return iteratorBlock.AsCoroutine2<T>(TaskCreationOptions.None);
+            return iteratorBlock.AsCoroutine2<T>(TaskScheduler.Current);
+        }
+        
+        public static Task<T> AsCoroutine2<T>(this IEnumerable<object> iteratorBlock, TaskScheduler scheduler)
+        {
+            return iteratorBlock.AsCoroutine2<T>(TaskCreationOptions.None, scheduler);
         }
 
-        public static Task<T> AsCoroutine2<T>(this IEnumerable<object> iteratorBlock, TaskCreationOptions opts)
+        public static Task<T> AsCoroutine2<T>(this IEnumerable<object> iteratorBlock, TaskCreationOptions opts, TaskScheduler scheduler)
         {
-            var coroutine = new Coroutine2<T>(iteratorBlock.GetEnumerator());
-            return Task.Factory.FromAsync<T>(
-               (cb, s) => coroutine.BeginInvoke(cb, s),
-               (iasr) => coroutine.EndInvoke(iasr), null, opts);
+            var coroutine = new Coroutine2<T>(iteratorBlock.GetEnumerator(), scheduler);
+
+            var cs = new TaskCompletionSource<T>(opts);
+
+            coroutine.BeginInvoke(iasr => {
+                try
+                {
+                    cs.SetResult(coroutine.EndInvoke(iasr));
+                }
+                catch(Exception e)
+                {
+                    cs.SetException(e);
+                }
+            }, null);
+
+            return cs.Task;
+        }
+
+        public static Task<T> CreateCoroutine<T>(this IEnumerable<object> iteratorBlock)
+        {
+            return iteratorBlock.CreateCoroutine<T>(TaskScheduler.Current);
+        }
+
+        public static Task<T> CreateCoroutine<T>(this IEnumerable<object> iteratorBlock, TaskScheduler scheduler)
+        {
+            var taskFactory = new TaskFactory(scheduler);
+            var tcs = new TaskCompletionSource<T>();
+            
+            taskFactory.StartNew(() => iteratorBlock.AsCoroutine2<T>().ContinueWith(t
+                =>
+                {
+                    if (t.IsFaulted)
+                        tcs.SetException(t.Exception.InnerExceptions);
+                    else
+                        tcs.SetResult(t.Result);
+                }));
+
+            return tcs.Task;
         }
     }
 
