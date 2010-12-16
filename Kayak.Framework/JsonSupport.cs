@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using LitJson;
 using Owin;
+using System.Threading.Tasks;
 
 namespace Kayak.Framework
 {
@@ -60,7 +61,7 @@ namespace Kayak.Framework
             return buffer.ToArray();
         }
 
-        public static IObservable<Unit> DeserializeArgsFromJson(this InvocationInfo info, IRequest request, JsonMapper2 mapper)
+        public static Task DeserializeArgsFromJson(this InvocationInfo info, IRequest request, JsonMapper2 mapper)
         {
             return info.DeserializeArgsFromJsonInternal(mapper, request).AsCoroutine<Unit>();
         }
@@ -76,7 +77,11 @@ namespace Kayak.Framework
                 IEnumerable<ArraySegment<byte>> requestBody = null;
 
                 // wish i had an evented JSON parser.
-                yield return request.BufferRequestBody().Do(d => requestBody = d);
+                var bufferBody = request.BufferRequestBody();
+                yield return bufferBody;
+
+                if (bufferBody.IsFaulted)
+                    throw bufferBody.Exception;
 
                 var reader = new JsonReader(new StringReader(requestBody.GetString()));
 

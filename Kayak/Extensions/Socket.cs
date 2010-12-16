@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IObservable<Unit> WriteObject(this ISocket socket, object obj)
+        public static Task WriteObject(this ISocket socket, object obj)
         {
             if (obj is FileInfo)
             {
@@ -29,7 +30,8 @@ namespace Kayak
                 return socket.WriteAll(chunk);
             }
         }
-        public static IObservable<Unit> WriteAll(this ISocket socket, ArraySegment<byte> chunk)
+
+        public static Task WriteAll(this ISocket socket, ArraySegment<byte> chunk)
         {
             return socket.WriteAllInternal(chunk).AsCoroutine<Unit>();
         }
@@ -40,8 +42,13 @@ namespace Kayak
 
             while (bytesWritten < chunk.Count)
             {
-                yield return socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten)
-                    .Do(n => bytesWritten += n);
+                var write = socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten);
+                yield return write;
+
+                if (write.Exception != null)
+                    throw write.Exception;
+
+                bytesWritten += write.Result;
             }
         }
     }

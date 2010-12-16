@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using Oars;
 using Oars.Core;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace Kayak.Oars
 {
@@ -60,17 +61,17 @@ namespace Kayak.Oars
         #region ISocket Members
 
 
-        public IObservable<int> Write(byte[] buffer, int offset, int count)
+        public Task<int> Write(byte[] buffer, int offset, int count)
         {
             throw new NotImplementedException();
         }
 
-        public IObservable<Unit> WriteFile(string file)
+        public Task WriteFile(string file)
         {
             throw new NotImplementedException();
         }
 
-        public IObservable<int> Read(byte[] buffer, int offset, int count)
+        public Task<int> Read(byte[] buffer, int offset, int count)
         {
             throw new NotImplementedException();
         }

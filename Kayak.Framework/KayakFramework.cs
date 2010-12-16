@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using LitJson;
 using Owin;
+using System.Threading.Tasks;
+using System.IO;
 
 namespace Kayak.Framework
 {
@@ -19,12 +21,20 @@ namespace Kayak.Framework
 
         public IAsyncResult BeginInvoke(IRequest request, AsyncCallback callback, object state)
         {
-            return new ObservableAsyncResult<IResponse>(InvokeInternal(request).AsCoroutine<IResponse>(), callback);
+            return InvokeInternal(request).AsCoroutine<IResponse>().ContinueWith(t =>
+                {
+                    callback(t);
+                });
         }
 
         public IResponse EndInvoke(IAsyncResult result)
         {
-            return ((ObservableAsyncResult<IResponse>)result).GetResult();
+            var task = ((Task<IResponse>)result);
+
+            if (task.IsFaulted)
+                throw task.Exception;
+
+            return task.Result;
         }
 
         public IEnumerable<object> InvokeInternal(IRequest request)
@@ -78,14 +88,17 @@ namespace Kayak.Framework
                 yield return info.Result;
             else if (info.Method.ReturnType == typeof(IEnumerable<object>))
             {
-                IResponse response = null;
-
                 var continuation = info.Result as IEnumerable<object>;
-                info.Result = null;
 
-                yield return HandleCoroutine(continuation, info, request).Do(r => response = r);
-                yield return response;
+                var coroutine = continuation.AsCoroutine<object>();
+                yield return coroutine;
 
+                if (coroutine.IsFaulted)
+                    info.Exception = coroutine.Exception;
+                else
+                    info.Result = coroutine.Result;
+
+                yield return GetResponse(request);
             }
             else if (info.Method.ReturnType != typeof(void))
                 yield return GetResponse(request);
@@ -100,28 +113,22 @@ namespace Kayak.Framework
                     target[pair.Key] = dict[pair.Key];
         }
 
-        IObservable<IResponse> HandleCoroutine(IEnumerable<object> continuation, InvocationInfo info, IRequest request)
-        {
-            return Observable.CreateWithDisposable<IResponse>(o => continuation.AsCoroutine<object>().Subscribe(
-                      r => info.Result = r,
-                      e =>
-                      {
-                          o.OnNext(GetResponse(request));
-                      },
-                      () =>
-                      {
-                          o.OnNext(GetResponse(request));
-                          o.OnCompleted();
-                      }));
-        }
-
         public virtual IResponse GetResponse(IRequest request)
         {
             var context = request.Items;
             var info = context.GetInvocationInfo();
-            bool minified = context.GetJsonOutputMinified();
 
-            return request.ServeFile() ?? info.GetJsonResponse(mapper, minified);
+            var response = info.Result as IResponse;
+
+            if (response != null)
+                return response;
+
+            var file = info.Result as FileInfo;
+
+            if (file != null)
+                return request.ServeFile(file);
+
+            return info.GetJsonResponse(mapper, context.GetJsonOutputMinified());
         }
     }
 }

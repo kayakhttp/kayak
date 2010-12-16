@@ -6,14 +6,8 @@ namespace Kayak.Framework
 {
     public static partial class Extensions
     {
-        public static IResponse ServeFile(this IRequest request)
+        public static IResponse ServeFile(this IRequest request, FileInfo file)
         {
-            var info = request.Items.GetInvocationInfo();
-
-            if (!(info.Result is FileInfo)) return null;
-
-            var file = info.Result as FileInfo;
-
             // TODO support 304, Range: header, etc.
 
             var headers = new Dictionary<string, IEnumerable<string>>();

@@ -12,161 +12,161 @@ namespace KayakTests.Extensions
 {
     public class HttpSupportTests
     {
-        [TestFixture]
-        public class BufferHeadersTests
-        {
-            HttpSupport http;
+        //[TestFixture]
+        //public class BufferHeadersTests
+        //{
+        //    HttpSupport http;
 
-            string headers = "1234567890\r\n\r\n";
-            string rest = "asdfjkl;";
-            byte[] buffer;
-            List<ArraySegment<byte>> chunks;
+        //    string headers = "1234567890\r\n\r\n";
+        //    string rest = "asdfjkl;";
+        //    byte[] buffer;
+        //    List<ArraySegment<byte>> chunks;
 
-            Mock<ISocket> mockSocket;
-            Mock<ISubject<LinkedList<ArraySegment<byte>>>> mockSubject;
+        //    Mock<ISocket> mockSocket;
+        //    Mock<ISubject<LinkedList<ArraySegment<byte>>>> mockSubject;
 
-            [SetUp]
-            public void SetUp()
-            {
-                buffer = Encoding.ASCII.GetBytes(headers + rest);
+        //    [SetUp]
+        //    public void SetUp()
+        //    {
+        //        buffer = Encoding.ASCII.GetBytes(headers + rest);
 
-                chunks = new List<ArraySegment<byte>>();
-                mockSocket = new Mock<ISocket>();
-                mockSubject = new Mock<ISubject<LinkedList<ArraySegment<byte>>>>();
-                mockSubject.Setup(s => s.OnError(It.IsAny<Exception>())).Callback<Exception>(e => Console.Out.WriteException(e));
+        //        chunks = new List<ArraySegment<byte>>();
+        //        mockSocket = new Mock<ISocket>();
+        //        mockSubject = new Mock<ISubject<LinkedList<ArraySegment<byte>>>>();
+        //        mockSubject.Setup(s => s.OnError(It.IsAny<Exception>())).Callback<Exception>(e => Console.Out.WriteException(e));
                 
-                mockSocket = Mocks.MockSocketRead(chunks);
+        //        mockSocket = Mocks.MockSocketRead(chunks);
 
-                http = new HttpSupport();
-            }
+        //        http = new HttpSupport();
+        //    }
 
-            void DoRead()
-            {
-                http.BufferHeaders(mockSocket.Object).Subscribe(mockSubject.Object);
-                Console.WriteLine("After read headers subscribe.");
-            }
+        //    void DoRead()
+        //    {
+        //        http.BufferHeaders(mockSocket.Object).Subscribe(mockSubject.Object);
+        //        Console.WriteLine("After read headers subscribe.");
+        //    }
 
-            [Test]
-            public void SingleReadNoOverlap()
-            {
-                chunks.Add(new ArraySegment<byte>(buffer, 0, 14));
+        //    [Test]
+        //    public void SingleReadNoOverlap()
+        //    {
+        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 14));
 
-                DoRead();
+        //        DoRead();
 
-                VerifySubject(new string[] { headers });
-            }
+        //        VerifySubject(new string[] { headers });
+        //    }
 
-            [Test]
-            public void SingleReadSomeOverlap()
-            {
-                chunks.Add(new ArraySegment<byte>(buffer, 0, 16));
+        //    [Test]
+        //    public void SingleReadSomeOverlap()
+        //    {
+        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 16));
 
-                DoRead();
+        //        DoRead();
 
-                VerifySubject(new string[] { headers, rest.Substring(0, 2) });
+        //        VerifySubject(new string[] { headers, rest.Substring(0, 2) });
 
-                //AssertObservableBehavior();
-                //Assert.AreEqual(2, result.Count, "Unexpected result buffer count.");
-                //AssertResult();
-                //Assert.AreEqual(14, result[0].Count, "Unexpected header buffer length.");
-                //AssertRest(2);
-            }
+        //        //AssertObservableBehavior();
+        //        //Assert.AreEqual(2, result.Count, "Unexpected result buffer count.");
+        //        //AssertResult();
+        //        //Assert.AreEqual(14, result[0].Count, "Unexpected header buffer length.");
+        //        //AssertRest(2);
+        //    }
 
-            [Test]
-            public void TwoReadNoOverlap()
-            {
-                chunks.Add(new ArraySegment<byte>(buffer, 0, 7));
-                chunks.Add(new ArraySegment<byte>(buffer, 7, 7));
+        //    [Test]
+        //    public void TwoReadNoOverlap()
+        //    {
+        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 7));
+        //        chunks.Add(new ArraySegment<byte>(buffer, 7, 7));
 
-                DoRead();
+        //        DoRead();
 
-                VerifySubject(new string[] { headers.Substring(0, 7), headers.Substring(7, 7) });
+        //        VerifySubject(new string[] { headers.Substring(0, 7), headers.Substring(7, 7) });
 
-                //AssertObservableBehavior();
-                //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-                //AssertResult();
-                //Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
-                //Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
-                //AssertRest(0);
-            }
+        //        //AssertObservableBehavior();
+        //        //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
+        //        //AssertResult();
+        //        //Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
+        //        //Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
+        //        //AssertRest(0);
+        //    }
 
-            [Test]
-            public void TwoReadSomeOverlap()
-            {
-                chunks.Add(new ArraySegment<byte>(buffer, 0, 7));
-                chunks.Add(new ArraySegment<byte>(buffer, 7, 9));
+        //    [Test]
+        //    public void TwoReadSomeOverlap()
+        //    {
+        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 7));
+        //        chunks.Add(new ArraySegment<byte>(buffer, 7, 9));
 
-                DoRead();
+        //        DoRead();
 
-                VerifySubject(new string[] { headers.Substring(0, 7), headers.Substring(7, 7), rest.Substring(0, 2) });
+        //        VerifySubject(new string[] { headers.Substring(0, 7), headers.Substring(7, 7), rest.Substring(0, 2) });
 
-                //AssertObservableBehavior();
-                //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-                //AssertResult();
-                //Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
-                //Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
-                //AssertRest(2);
-            }
+        //        //AssertObservableBehavior();
+        //        //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
+        //        //AssertResult();
+        //        //Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
+        //        //Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
+        //        //AssertRest(2);
+        //    }
 
-            [Test]
-            public void TwoReadSplitBreakNoOverlap()
-            {
-                chunks.Add(new ArraySegment<byte>(buffer, 0, 11));
-                chunks.Add(new ArraySegment<byte>(buffer, 11, 3));
+        //    [Test]
+        //    public void TwoReadSplitBreakNoOverlap()
+        //    {
+        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 11));
+        //        chunks.Add(new ArraySegment<byte>(buffer, 11, 3));
 
-                DoRead();
+        //        DoRead();
 
-                VerifySubject(new string[] { headers.Substring(0, 11), headers.Substring(11, 3) });
+        //        VerifySubject(new string[] { headers.Substring(0, 11), headers.Substring(11, 3) });
 
-                //AssertObservableBehavior();
-                //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-                //AssertResult();
-                //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
-                //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
-                //AssertRest(0);
-            }
+        //        //AssertObservableBehavior();
+        //        //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
+        //        //AssertResult();
+        //        //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
+        //        //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
+        //        //AssertRest(0);
+        //    }
 
-            [Test]
-            public void TwoReadSplitBreakSomeOverlap()
-            {
-                chunks.Add(new ArraySegment<byte>(buffer, 0, 11));
-                chunks.Add(new ArraySegment<byte>(buffer, 11, 6));
+        //    [Test]
+        //    public void TwoReadSplitBreakSomeOverlap()
+        //    {
+        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 11));
+        //        chunks.Add(new ArraySegment<byte>(buffer, 11, 6));
 
-                DoRead();
+        //        DoRead();
 
-                VerifySubject(new string[] { headers.Substring(0, 11), headers.Substring(11, 3), rest.Substring(0, 3) });
+        //        VerifySubject(new string[] { headers.Substring(0, 11), headers.Substring(11, 3), rest.Substring(0, 3) });
 
-                //AssertObservableBehavior();
-                //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-                //AssertResult();
-                //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
-                //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
-                //AssertRest(3);
-            }
+        //        //AssertObservableBehavior();
+        //        //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
+        //        //AssertResult();
+        //        //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
+        //        //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
+        //        //AssertRest(3);
+        //    }
 
-            bool MatchesChunks(LinkedList<ArraySegment<byte>> result, string[] expectedChunks)
-            {
-                var i = 0;
-                foreach (var c in expectedChunks)
-                {
-                    var seg = result.ElementAt(i++);
-                    if (c != Encoding.UTF8.GetString(seg.Array, seg.Offset, seg.Count))
-                        return false;
-                }
-                return true;
-            }
+        //    bool MatchesChunks(LinkedList<ArraySegment<byte>> result, string[] expectedChunks)
+        //    {
+        //        var i = 0;
+        //        foreach (var c in expectedChunks)
+        //        {
+        //            var seg = result.ElementAt(i++);
+        //            if (c != Encoding.UTF8.GetString(seg.Array, seg.Offset, seg.Count))
+        //                return false;
+        //        }
+        //        return true;
+        //    }
 
-            void VerifySubject(string[] expectedChunks)
-            {
-                mockSubject.Verify(s => s.OnError(It.IsAny<Exception>()), Times.Never(), "Subject got exception.");
-                mockSubject.Verify(s => s.OnNext(
-                    It.Is<LinkedList<ArraySegment<byte>>>(l => MatchesChunks(l, expectedChunks))),
-                    Times.Once(),
-                    "Didn't get correct result.");
+        //    void VerifySubject(string[] expectedChunks)
+        //    {
+        //        mockSubject.Verify(s => s.OnError(It.IsAny<Exception>()), Times.Never(), "Subject got exception.");
+        //        mockSubject.Verify(s => s.OnNext(
+        //            It.Is<LinkedList<ArraySegment<byte>>>(l => MatchesChunks(l, expectedChunks))),
+        //            Times.Once(),
+        //            "Didn't get correct result.");
 
-                mockSubject.Verify(s => s.OnCompleted());
-            }
-        }
+        //        mockSubject.Verify(s => s.OnCompleted());
+        //    }
+        //}
 
         [TestFixture]
         public class IndexOfAfterCRLFCRLFTests

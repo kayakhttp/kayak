@@ -40,6 +40,9 @@ namespace Kayak
             this.bodyDataReadWithHeaders = bodyDataReadWithHeaders;
         }
 
+
+        // TODO this needs to be rewritten!
+
         public IEnumerable<Func<ArraySegment<byte>, IObservable<int>>> GetBody()
         {
             var contentLength = Headers.GetContentLength();
@@ -73,7 +76,7 @@ namespace Kayak
                 var bytesRead = 0;
                 do
                 {
-                    yield return (seg) => socket.Read(seg.Array, seg.Offset, seg.Count).Do(n => bytesRead = n);
+                    //yield return (seg) => socket.Read(seg.Array, seg.Offset, seg.Count).Do(n => bytesRead = n);
                     totalBytesRead += bytesRead;
                 } while (bytesRead != 0 && (contentLength == -1 || totalBytesRead < contentLength));
             }

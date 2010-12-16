@@ -14,7 +14,7 @@ using System.Concurrency;
 namespace KayakTests
 {
     [TestFixture]
-    public class Coroutine2Tests
+    public class CoroutineTests
     {
         [Test]
         public void ReturnsResult()
@@ -23,7 +23,7 @@ namespace KayakTests
             Mock<IDisposable> mockDisposable = new Mock<IDisposable>();
 
             scheduler.Start();
-            var task = ReturnsResultBlock(mockDisposable.Object).AsCoroutine2<string>(TaskCreationOptions.None, scheduler);
+            var task = ReturnsResultBlock(mockDisposable.Object).AsCoroutine<string>(TaskCreationOptions.None, scheduler);
             scheduler.Dispose();
 
             mockDisposable.Verify(d => d.Dispose(), Times.Once(), "Disposable not disposed.");
@@ -57,7 +57,7 @@ namespace KayakTests
             {
                 var block = ImmediateExceptionBlock(exception, mockDisposable.Object);
 
-                task = block.AsCoroutine2<string>(scheduler);
+                task = block.AsCoroutine<string>(scheduler);
             }
             catch (Exception e)
             {
@@ -258,7 +258,7 @@ namespace KayakTests
         IEnumerable<object> ReturnsResultFromNestedCoroutineBlock()
         {
             Assert.AreEqual(typeof(SingleThreadedScheduler), TaskScheduler.Current.GetType());
-            var inner = ReturnsResultFromNestedCoroutineBlockInner().AsCoroutine2<int>();
+            var inner = ReturnsResultFromNestedCoroutineBlockInner().AsCoroutine<int>();
             yield return inner;
             yield return inner.Result;
         }
@@ -275,7 +275,7 @@ namespace KayakTests
             Exception e = new Exception("Boo.");
 
             scheduler.Start();
-            var task = PropagatesExceptionFromNestedCoroutineBlock(e).AsCoroutine2<int>();
+            var task = PropagatesExceptionFromNestedCoroutineBlock(e).AsCoroutine<int>();
             Thread.SpinWait(10000);
             scheduler.Dispose();
 
@@ -286,7 +286,7 @@ namespace KayakTests
 
         IEnumerable<object> PropagatesExceptionFromNestedCoroutineBlock(Exception e)
         {
-            var inner = PropagatesExceptionFromNestedCoroutineBlockInner(e).AsCoroutine2<int>();
+            var inner = PropagatesExceptionFromNestedCoroutineBlockInner(e).AsCoroutine<int>();
             yield return inner;
             if (inner.Exception != null)
                 throw inner.Exception;

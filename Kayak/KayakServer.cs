@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using Owin;
+using System.Threading.Tasks;
 
 namespace Kayak
 {
@@ -148,17 +149,17 @@ namespace Kayak
 
         #region ISocket Members
 
-        public IObservable<int> Write(byte[] buffer, int offset, int count)
+        public Task<int> Write(byte[] buffer, int offset, int count)
         {
             return socket.SendAsync(buffer, offset, count);
         }
 
-        public IObservable<Unit> WriteFile(string file)
+        public Task WriteFile(string file)
         {
             return socket.SendFileAsync(file);
         }
 
-        public IObservable<int> Read(byte[] buffer, int offset, int count)
+        public Task<int> Read(byte[] buffer, int offset, int count)
         {
             return socket.ReceiveAsync(buffer, offset, count);
         }

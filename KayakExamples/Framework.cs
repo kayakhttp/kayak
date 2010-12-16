@@ -106,7 +106,7 @@ namespace KayakExamples
                 return null;
             }
 
-            // exceptions han
+            // exceptions serialized as JSON
             [Path("/error")]
             public object Error()
             {
@@ -126,9 +126,9 @@ namespace KayakExamples
                 return new KayakResponse(
                     "200 OK",
                     new Dictionary<string, IEnumerable<string>>()
-                {
-                    { "Content-Length", new string[] { contentLength.ToString() } }
-                },
+                    {
+                        { "Content-Length", new string[] { contentLength.ToString() } }
+                    },
                     EchoGenerator(Request));
             }
 
@@ -137,20 +137,17 @@ namespace KayakExamples
                 var buffer = new byte[2048];
 
                 var bytesRead = 0;
+
                 do
                 {
-                    yield return Observable.CreateWithDisposable<ArraySegment<byte>>(o =>
-                    {
-                        return request.ReadBodyAsync(buffer, 0, buffer.Length)
-                            .Subscribe(
-                                n => bytesRead = n,
-                                e => o.OnError(e),
-                                () =>
-                                {
-                                    o.OnNext(new ArraySegment<byte>(buffer, 0, bytesRead));
-                                    o.OnCompleted();
-                                });
-                    });
+                    yield return request.ReadBodyAsync(buffer, 0, bytesRead)
+                        .ContinueWith<ArraySegment<byte>>(t => {
+                            if (t.IsFaulted)
+                                throw t.Exception;
+                            
+                            bytesRead = t.Result;
+                            return new ArraySegment<byte>(buffer, 0, bytesRead);
+                        });
                 }
                 while (bytesRead > 0);
             }

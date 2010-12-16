@@ -3,11 +3,31 @@ using System.Collections.Generic;
 using System.Linq;
 using Kayak.Http;
 using Owin;
+using System.Threading.Tasks;
 
 namespace Kayak
 {
     public static partial class Extensions
     {
+        public static Task<IResponse> InvokeAsync(this IApplication application, IRequest request)
+        {
+            var tcs = new TaskCompletionSource<IResponse>();
+
+            application.BeginInvoke(request, iasr => 
+            {
+                try
+                {
+                    tcs.SetResult(application.EndInvoke(iasr));
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }, null);
+
+            return tcs.Task;
+        }
+
         public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication application)
         {
             return sockets.Invoke(application, new HttpSupport(), new HttpErrorHandler());
@@ -15,27 +35,20 @@ namespace Kayak
 
         public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication responder, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
-            return sockets.Subscribe(s => s.Invoke(responder, http, errorHandler).Subscribe(CreateContextObserver()));
-        }
-
-        public static IObserver<Unit> CreateContextObserver()
-        {
-            return Observer.Create<Unit>(
-                c =>
+            return sockets.Subscribe(s => 
                 {
-                    // TODO pull request and response out of context and log?
-                },
-                e =>
-                {
-                    Console.WriteLine("Error during context.");
-                    Console.Out.WriteException(e);
-                },
-                () =>
-                {
+                    s.Invoke(responder, http, errorHandler).ContinueWith(t =>
+                    {
+                        if (t.Exception != null)
+                        {
+                            Console.WriteLine("Error while processing request.");
+                            Console.Out.WriteException(t.Exception);
+                        }
+                    });
                 });
         }
 
-        public static IObservable<Unit> Invoke(this ISocket socket, IApplication application, IHttpSupport http, IHttpErrorHandler errorHandler)
+        public static Task Invoke(this ISocket socket, IApplication application, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
             return socket.InvokeInternal(application, http, errorHandler).AsCoroutine<Unit>();
         }
@@ -43,22 +56,29 @@ namespace Kayak
         static IEnumerable<object> InvokeInternal(this ISocket socket, IApplication application, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
             IRequest request = null;
-
-            yield return http.BeginRequest(socket).Do(r => request = r);
-
-            IResponse response = null;
             Exception exception = null;
 
-            yield return new AsyncOperation<IResponse>(
-                    (cb, s) => application.BeginInvoke(request, cb, s),
-                    iasr => application.EndInvoke(iasr))
-                .Do(r => response = r, e => exception = e, () => { }).Catch(Observable.Empty<IResponse>());
+            var beginRequest = http.BeginRequest(socket);
+            yield return beginRequest;
 
-            if (exception != null)
+            if (beginRequest.IsFaulted)
+                throw beginRequest.Exception;
+
+            request = beginRequest.Result;
+
+            IResponse response = null;
+
+            var invoke = application.InvokeAsync(request);
+
+            yield return invoke;
+
+            if (invoke.IsFaulted)
             {
-                response = errorHandler.GetExceptionResponse(exception);
+                response = errorHandler.GetExceptionResponse(invoke.Exception);
                 errorHandler = null;
             }
+            else
+                response = invoke.Result;
 
             yield return SafeEnumerateResponse(response, socket, http, errorHandler).AsCoroutine<Unit>();
 
@@ -95,13 +115,14 @@ namespace Kayak
                 errorHandler = null;
             }
 
-            Exception enumerationException = null;
+            var handleEnumerator = HandleEnumerator(response, bodyEnumerator, socket, http, errorHandler).AsCoroutine<Unit>();
 
-            yield return HandleEnumerator(response, bodyEnumerator, socket, http, errorHandler).AsCoroutine<Unit>()
-                // catch exceptions, want to make sure we dispose the enumerator
-                .Do(u => { }, e => enumerationException = e, () => { }).Catch(Observable.Empty<Unit>());
+            yield return handleEnumerator;
 
             bodyEnumerator.Dispose();
+
+            if (handleEnumerator.IsFaulted)
+                throw handleEnumerator.Exception;
         }
 
         static IEnumerable<object> HandleEnumerator(IResponse response, 
@@ -121,36 +142,33 @@ namespace Kayak
 
                 object obj = item;
 
-                var observableItem = item.AsObservable();
+                Task<object> taskWithValue = item is Task ? (item as Task).AsTaskWithValue() : null;
 
-                if (observableItem != null)
+                if (taskWithValue != null)
                 {
-                    Exception ex = null;
-                    yield return observableItem.Do(i => obj = i, e => ex = e, () => { }).Catch(Observable.Empty<object>());
+                    yield return taskWithValue;
+
+                    obj = taskWithValue.Result;
 
                     // exception during async processing?
-                    if (ex != null)
+                    if (taskWithValue.IsFaulted)
                     {
                         // should only happen if a response provided by the error handler throws up.
                         // (verify this by searching for calls to the method you're reading now)
                         if (errorHandler == null)
-                            throw new Exception("Observable in response body yielded exception, no error handler available. Did the response object from your error handle throw up?", ex);
+                            throw new Exception("Observable in response body yielded exception, no error handler available. Did the response object from your error handle throw up?", taskWithValue.Exception);
 
                         if (!headersWritten)
                         {
-                            var exceptionResponse = errorHandler.GetExceptionResponse(ex);
+                            var exceptionResponse = errorHandler.GetExceptionResponse(taskWithValue.Exception);
 
-                            Exception errorException;
-                            
                             // use null error handler. we don't want to handle any errors 
                             // that occur while we're already handling an error.
-                            yield return SafeEnumerateResponse(exceptionResponse, socket, http, null).AsCoroutine<Unit>()
-                                .Do(u => {}, e => errorException = e, () => { }).Catch(Observable.Empty<Unit>());
-
+                            yield return SafeEnumerateResponse(exceptionResponse, socket, http, null).AsCoroutine<Unit>();
                             yield break;
                         }
                         else
-                            yield return errorHandler.WriteExceptionText(ex, socket);
+                            yield return errorHandler.WriteExceptionText(taskWithValue.Exception, socket);
                     }
                 }
 

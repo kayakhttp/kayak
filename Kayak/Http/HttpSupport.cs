@@ -2,23 +2,25 @@
 using System.Collections.Generic;
 using System.Linq;
 using Owin;
+using System.Threading.Tasks;
 
 namespace Kayak.Http
 {
     public interface IHttpSupport
     {
-        IObservable<IRequest> BeginRequest(ISocket socket);
-        IObservable<Unit> BeginResponse(ISocket socket, IResponse response);
+        Task<IRequest> BeginRequest(ISocket socket);
+        Task BeginResponse(ISocket socket, IResponse response);
     }
 
     class HttpSupport : IHttpSupport
     {
-        public IObservable<IRequest> BeginRequest(ISocket socket)
+        public Task<IRequest> BeginRequest(ISocket socket)
         {
-            return BufferHeaders(socket).Select(h => KayakRequest.CreateRequest(socket, h));
+
+            return BufferHeaders(socket).ContinueWith(t => KayakRequest.CreateRequest(socket, t.Result));
         }
 
-        public IObservable<Unit> BeginResponse(ISocket socket, IResponse response)
+        public Task BeginResponse(ISocket socket, IResponse response)
         {
             return socket.WriteAll(new ArraySegment<byte>(response.WriteStatusLineAndHeaders()));
         }
@@ -30,7 +32,7 @@ namespace Kayak.Http
         /// Buffers HTTP headers from a socket. The last ArraySegment in the list is any
         /// data beyond headers which was read, which may be of zero length.
         /// </summary>
-        internal IObservable<LinkedList<ArraySegment<byte>>> BufferHeaders(ISocket socket)
+        internal Task<LinkedList<ArraySegment<byte>>> BufferHeaders(ISocket socket)
         {
             return BufferHeadersInternal(socket).AsCoroutine<LinkedList<ArraySegment<byte>>>();
         }
@@ -53,7 +55,14 @@ namespace Kayak.Http
                 int bytesRead = 0;
 
                 //Trace.Write("About to read header chunk.");
-                yield return socket.Read(buffer, bufferPosition, buffer.Length - bufferPosition).Do(n => bytesRead = n);
+                var read = socket.Read(buffer, bufferPosition, buffer.Length - bufferPosition);
+                yield return read;
+
+                if (read.Exception != null)
+                    throw read.Exception;
+
+                bytesRead = read.Result;
+
                 //Trace.Write("Read {0} bytes.", bytesRead);
 
                 result.AddLast(new ArraySegment<byte>(buffer, bufferPosition, bytesRead));

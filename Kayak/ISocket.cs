@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using Owin;
+using System.Threading.Tasks;
 
 namespace Kayak
 {
@@ -20,20 +21,20 @@ namespace Kayak
         /// operation. When the operation completes, the observable yields the number of
         /// bytes written and completes.
         /// </summary>
-        IObservable<int> Write(byte[] buffer, int offset, int count);
+        Task<int> Write(byte[] buffer, int offset, int count);
 
         /// <summary>
         /// Returns an observable which, upon subscription, begins copying a file
         /// to the socket. When the copy operation completes, the observable completes.
         /// </summary>
-        IObservable<Unit> WriteFile(string file);
+        Task WriteFile(string file);
 
         /// <summary>
         /// Returns an observable which, upon subscription, begins an asynchronous read
         /// operation. When the operation completes, the observable yields the number of
         /// bytes read and completes.
         /// </summary>
-        IObservable<int> Read(byte[] buffer, int offset, int count);
+        Task<int> Read(byte[] buffer, int offset, int count);
     }
 
 }

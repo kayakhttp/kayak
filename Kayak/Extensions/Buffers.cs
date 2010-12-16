@@ -3,12 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using Owin;
+using System.Threading.Tasks;
 
 namespace Kayak
 {
     public static partial class Extensions
     {
-        public static IObservable<IEnumerable<ArraySegment<byte>>> BufferRequestBody(this IRequest request)
+        public static Task<IEnumerable<ArraySegment<byte>>> BufferRequestBody(this IRequest request)
         {
             return BufferRequestBodyInternal(request).AsCoroutine<IEnumerable<ArraySegment<byte>>>();
         }
@@ -22,7 +23,14 @@ namespace Kayak
 
             do
             {
-                yield return request.ReadBodyAsync(buffer, 0, buffer.Length).Do(n => bytesRead = n);
+                var read = request.ReadBodyAsync(buffer, 0, buffer.Length);
+                yield return read;
+
+                if (read.Exception != null)
+                    throw read.Exception;
+
+                bytesRead = read.Result;
+
                 result.AddLast(new ArraySegment<byte>(buffer, 0, bytesRead));
                 totalBytesRead += bytesRead;
             }

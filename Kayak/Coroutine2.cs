@@ -145,13 +145,13 @@ namespace Kayak
     }
 
 
-    public class Coroutine2<T>
+    public class Coroutine<T>
     {
         IEnumerator<object> continuation;
         ProperAsyncResult<T> asyncResult;
         TaskScheduler scheduler;
 
-        public Coroutine2(IEnumerator<object> continuation, TaskScheduler scheduler)
+        public Coroutine(IEnumerator<object> continuation, TaskScheduler scheduler)
         {
             this.continuation = continuation;
             this.scheduler = scheduler;
@@ -245,19 +245,20 @@ namespace Kayak
 
     public static partial class Extensions
     {
-        public static Task<T> AsCoroutine2<T>(this IEnumerable<object> iteratorBlock)
+
+        public static Task<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock)
         {
-            return iteratorBlock.AsCoroutine2<T>(TaskScheduler.Current);
+            return iteratorBlock.AsCoroutine<T>(TaskScheduler.Current);
         }
         
-        public static Task<T> AsCoroutine2<T>(this IEnumerable<object> iteratorBlock, TaskScheduler scheduler)
+        public static Task<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock, TaskScheduler scheduler)
         {
-            return iteratorBlock.AsCoroutine2<T>(TaskCreationOptions.None, scheduler);
+            return iteratorBlock.AsCoroutine<T>(TaskCreationOptions.None, scheduler);
         }
 
-        public static Task<T> AsCoroutine2<T>(this IEnumerable<object> iteratorBlock, TaskCreationOptions opts, TaskScheduler scheduler)
+        public static Task<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock, TaskCreationOptions opts, TaskScheduler scheduler)
         {
-            var coroutine = new Coroutine2<T>(iteratorBlock.GetEnumerator(), scheduler);
+            var coroutine = new Coroutine<T>(iteratorBlock.GetEnumerator(), scheduler);
 
             var cs = new TaskCompletionSource<T>(opts);
 
@@ -285,7 +286,7 @@ namespace Kayak
             var taskFactory = new TaskFactory(scheduler);
             var tcs = new TaskCompletionSource<T>();
             
-            taskFactory.StartNew(() => iteratorBlock.AsCoroutine2<T>().ContinueWith(t
+            taskFactory.StartNew(() => iteratorBlock.AsCoroutine<T>().ContinueWith(t
                 =>
                 {
                     if (t.IsFaulted)
@@ -296,9 +297,28 @@ namespace Kayak
 
             return tcs.Task;
         }
+
+        public static Task<object> AsTaskWithValue(this Task task)
+        {
+            // well, this is significantly less painful than the observable version...
+
+            var taskType = task.GetType();
+
+            if (!taskType.IsGenericType) return null;
+
+            var tcs = new TaskCompletionSource<object>();
+            task.ContinueWith(t =>
+            {
+                if (task.IsFaulted)
+                    tcs.SetException(task.Exception);
+                else
+                    tcs.SetResult(taskType.GetProperty("Result").GetGetMethod().Invoke(task, null));
+            });
+            return tcs.Task;
+        }
     }
 
-    // lifted from 
+    // lifted from http://msdn.microsoft.com/en-us/magazine/cc163467.aspx
     internal class AsyncResultNoResult : IAsyncResult
     {
         // Fields set at construction which never change while 

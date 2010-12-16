@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using Owin;
+using System.Threading.Tasks;
 
 namespace Kayak
 {
@@ -12,7 +13,7 @@ namespace Kayak
         IResponse GetExceptionResponse(Exception exception);
 
         // called if an exception occurs after the response has begun
-        IObservable<Unit> WriteExceptionText(Exception exception, ISocket socket);
+        Task WriteExceptionText(Exception exception, ISocket socket);
     }
 
     public class HttpErrorHandler : IHttpErrorHandler
@@ -26,7 +27,7 @@ namespace Kayak
             return new KayakResponse("503 Internal Server Error", new Dictionary<string, IEnumerable<string>>(), sw.ToString());
         }
 
-        public IObservable<Unit> WriteExceptionText(Exception e, ISocket socket)
+        public Task WriteExceptionText(Exception e, ISocket socket)
         {
             var sw = new StringWriter();
             sw.WriteException(e);

@@ -47,7 +47,7 @@ namespace KayakTests.Extensions
 
             var bufferObservable = mockRequest.Object.BufferRequestBody();
 
-            bufferObservable.Subscribe(mockObserver.Object);
+            //bufferObservable.Subscribe(mockObserver.Object);
 
             //mockRequest.Verify(r => r.GetBody());
         }
