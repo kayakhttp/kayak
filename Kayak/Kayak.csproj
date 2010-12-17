@@ -79,7 +79,7 @@
   <ItemGroup>
     <Compile Include="Async\AsyncResult.cs" />
     <Compile Include="Async\Coroutine.cs" />
-    <Compile Include="Async\SingleThreadTaskScheduler.cs" />
+    <Compile Include="Async\SingleThreadedTaskScheduler.cs" />
     <Compile Include="Extensions\Buffers.cs" />
     <Compile Include="Extensions\IO.cs" />
     <Compile Include="Extensions\Socket.cs" />
