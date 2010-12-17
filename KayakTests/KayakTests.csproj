@@ -93,7 +93,7 @@
   <ItemGroup>
     <Compile Include="Async\CoroutineTests.cs" />
     <Compile Include="Extensions\BuffersTests.cs" />
-    <Compile Include="Extensions\HttpTests.cs" />
+    <Compile Include="Http\Extensions\ParsingTests.cs" />
     <Compile Include="Http\KayakRequestTests.cs" />
     <Compile Include="KayakContextResponseTests.cs" />
     <Compile Include="KayakContextRequestTests.cs" />
@@ -141,9 +141,7 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Http\Extensions\" />
-  </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

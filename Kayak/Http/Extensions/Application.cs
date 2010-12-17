@@ -39,7 +39,7 @@ namespace Kayak
                 {
                     s.Invoke(responder, http, errorHandler).ContinueWith(t =>
                     {
-                        if (t.Exception != null)
+                        if (t.IsFaulted)
                         {
                             Console.WriteLine("Error while processing request.");
                             Console.Out.WriteException(t.Exception);
@@ -56,7 +56,6 @@ namespace Kayak
         static IEnumerable<object> InvokeInternal(this ISocket socket, IApplication application, IHttpSupport http, IHttpErrorHandler errorHandler)
         {
             IRequest request = null;
-            Exception exception = null;
 
             var beginRequest = http.BeginRequest(socket);
             yield return beginRequest;
@@ -73,119 +72,34 @@ namespace Kayak
             yield return invoke;
 
             if (invoke.IsFaulted)
+                throw invoke.Exception;
+
+            response = invoke.Result;
+
+            yield return http.BeginResponse(socket, response);
+
+            foreach (var obj in response.GetBody())
             {
-                response = errorHandler.GetExceptionResponse(invoke.Exception);
-                errorHandler = null;
+                var objectToWrite = obj;
+
+                if (obj is Task)
+                {
+                    var task = (obj as Task).AsTaskWithValue();
+
+                    yield return task;
+
+                    if (task.IsFaulted)
+                        throw task.Exception;
+
+                    objectToWrite = task.Result;
+                }
+
+                socket.WriteObject(objectToWrite);
             }
-            else
-                response = invoke.Result;
 
-            yield return SafeEnumerateResponse(response, socket, http, errorHandler).AsCoroutine<Unit>();
-
-            // HTTP/1.1 support might only close the connection if client wants to || enumerationException != null
-
-            Trace.Write("Closed connection.");
+            // HTTP/1.1 support might only close the connection if client wants to
+            //Trace.Write("Closed connection.");
             socket.Dispose();
-        }
-
-        // this method will not throw.
-        static IEnumerable<object> SafeEnumerateResponse(IResponse response, ISocket socket, IHttpSupport http, IHttpErrorHandler errorHandler)
-        {
-            IEnumerator<object> bodyEnumerator = null;
-
-            // enumerate first chunk of body. if success, write to socket.
-            // if fail, provide exception response
-            // enumerate remaining chunks. if success, write. if fail, write something helpful and close the connection.
-
-            Exception ex = null;
-
-            try
-            {
-                bodyEnumerator = SafeResponseEnumerator.Create(response, socket, errorHandler);
-            }
-            catch (Exception e)
-            {
-                ex = e;
-            }
-
-            if (ex != null)
-            {
-                response = errorHandler.GetExceptionResponse(ex);
-                bodyEnumerator = response.GetBody().GetEnumerator();
-                errorHandler = null;
-            }
-
-            var handleEnumerator = HandleEnumerator(response, bodyEnumerator, socket, http, errorHandler).AsCoroutine<Unit>();
-
-            yield return handleEnumerator;
-
-            bodyEnumerator.Dispose();
-
-            if (handleEnumerator.IsFaulted)
-                throw handleEnumerator.Exception;
-        }
-
-        static IEnumerable<object> HandleEnumerator(IResponse response, 
-            IEnumerator<object> bodyEnumerator, ISocket socket, IHttpSupport http, IHttpErrorHandler errorHandler)
-        {
-            var headersWritten = false;
-
-            while (true)
-            {
-                var continues = bodyEnumerator.MoveNext();
-
-                if (!continues) break;
-
-                var item = bodyEnumerator.Current;
-
-                if (item == null) continue;
-
-                object obj = item;
-
-                Task<object> taskWithValue = item is Task ? (item as Task).AsTaskWithValue() : null;
-
-                if (taskWithValue != null)
-                {
-                    yield return taskWithValue;
-
-                    obj = taskWithValue.Result;
-
-                    // exception during async processing?
-                    if (taskWithValue.IsFaulted)
-                    {
-                        // should only happen if a response provided by the error handler throws up.
-                        // (verify this by searching for calls to the method you're reading now)
-                        if (errorHandler == null)
-                            throw new Exception("Observable in response body yielded exception, no error handler available. Did the response object from your error handle throw up?", taskWithValue.Exception);
-
-                        if (!headersWritten)
-                        {
-                            var exceptionResponse = errorHandler.GetExceptionResponse(taskWithValue.Exception);
-
-                            // use null error handler. we don't want to handle any errors 
-                            // that occur while we're already handling an error.
-                            yield return SafeEnumerateResponse(exceptionResponse, socket, http, null).AsCoroutine<Unit>();
-                            yield break;
-                        }
-                        else
-                            yield return errorHandler.WriteExceptionText(taskWithValue.Exception, socket);
-                    }
-                }
-
-                if (!headersWritten)
-                {
-                    yield return http.BeginResponse(socket, response);
-                    headersWritten = true;
-                }
-
-                yield return socket.WriteObject(obj);
-            }
-
-            if (!headersWritten)
-            {
-                yield return http.BeginResponse(socket, response);
-                headersWritten = true;
-            }
         }
     }
 }
