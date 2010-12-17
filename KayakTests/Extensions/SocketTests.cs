@@ -12,248 +12,140 @@ namespace KayakTests.Extensions
 {
     public class HttpSupportTests
     {
-        //[TestFixture]
-        //public class BufferHeadersTests
-        //{
-        //    HttpSupport http;
-
-        //    string headers = "1234567890\r\n\r\n";
-        //    string rest = "asdfjkl;";
-        //    byte[] buffer;
-        //    List<ArraySegment<byte>> chunks;
-
-        //    Mock<ISocket> mockSocket;
-        //    Mock<ISubject<LinkedList<ArraySegment<byte>>>> mockSubject;
-
-        //    [SetUp]
-        //    public void SetUp()
-        //    {
-        //        buffer = Encoding.ASCII.GetBytes(headers + rest);
-
-        //        chunks = new List<ArraySegment<byte>>();
-        //        mockSocket = new Mock<ISocket>();
-        //        mockSubject = new Mock<ISubject<LinkedList<ArraySegment<byte>>>>();
-        //        mockSubject.Setup(s => s.OnError(It.IsAny<Exception>())).Callback<Exception>(e => Console.Out.WriteException(e));
-                
-        //        mockSocket = Mocks.MockSocketRead(chunks);
-
-        //        http = new HttpSupport();
-        //    }
-
-        //    void DoRead()
-        //    {
-        //        http.BufferHeaders(mockSocket.Object).Subscribe(mockSubject.Object);
-        //        Console.WriteLine("After read headers subscribe.");
-        //    }
-
-        //    [Test]
-        //    public void SingleReadNoOverlap()
-        //    {
-        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 14));
-
-        //        DoRead();
-
-        //        VerifySubject(new string[] { headers });
-        //    }
-
-        //    [Test]
-        //    public void SingleReadSomeOverlap()
-        //    {
-        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 16));
-
-        //        DoRead();
-
-        //        VerifySubject(new string[] { headers, rest.Substring(0, 2) });
-
-        //        //AssertObservableBehavior();
-        //        //Assert.AreEqual(2, result.Count, "Unexpected result buffer count.");
-        //        //AssertResult();
-        //        //Assert.AreEqual(14, result[0].Count, "Unexpected header buffer length.");
-        //        //AssertRest(2);
-        //    }
-
-        //    [Test]
-        //    public void TwoReadNoOverlap()
-        //    {
-        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 7));
-        //        chunks.Add(new ArraySegment<byte>(buffer, 7, 7));
-
-        //        DoRead();
-
-        //        VerifySubject(new string[] { headers.Substring(0, 7), headers.Substring(7, 7) });
-
-        //        //AssertObservableBehavior();
-        //        //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-        //        //AssertResult();
-        //        //Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
-        //        //Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
-        //        //AssertRest(0);
-        //    }
-
-        //    [Test]
-        //    public void TwoReadSomeOverlap()
-        //    {
-        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 7));
-        //        chunks.Add(new ArraySegment<byte>(buffer, 7, 9));
-
-        //        DoRead();
-
-        //        VerifySubject(new string[] { headers.Substring(0, 7), headers.Substring(7, 7), rest.Substring(0, 2) });
-
-        //        //AssertObservableBehavior();
-        //        //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-        //        //AssertResult();
-        //        //Assert.AreEqual(7, result[0].Count, "Unexpected header buffer length.");
-        //        //Assert.AreEqual(7, result[1].Count, "Unexpected header buffer length.");
-        //        //AssertRest(2);
-        //    }
-
-        //    [Test]
-        //    public void TwoReadSplitBreakNoOverlap()
-        //    {
-        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 11));
-        //        chunks.Add(new ArraySegment<byte>(buffer, 11, 3));
-
-        //        DoRead();
-
-        //        VerifySubject(new string[] { headers.Substring(0, 11), headers.Substring(11, 3) });
-
-        //        //AssertObservableBehavior();
-        //        //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-        //        //AssertResult();
-        //        //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
-        //        //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
-        //        //AssertRest(0);
-        //    }
-
-        //    [Test]
-        //    public void TwoReadSplitBreakSomeOverlap()
-        //    {
-        //        chunks.Add(new ArraySegment<byte>(buffer, 0, 11));
-        //        chunks.Add(new ArraySegment<byte>(buffer, 11, 6));
-
-        //        DoRead();
-
-        //        VerifySubject(new string[] { headers.Substring(0, 11), headers.Substring(11, 3), rest.Substring(0, 3) });
-
-        //        //AssertObservableBehavior();
-        //        //Assert.AreEqual(3, result.Count, "Unexpected result buffer count.");
-        //        //AssertResult();
-        //        //Assert.AreEqual(11, result[0].Count, "Unexpected header buffer length.");
-        //        //Assert.AreEqual(3, result[1].Count, "Unexpected header buffer length.");
-        //        //AssertRest(3);
-        //    }
-
-        //    bool MatchesChunks(LinkedList<ArraySegment<byte>> result, string[] expectedChunks)
-        //    {
-        //        var i = 0;
-        //        foreach (var c in expectedChunks)
-        //        {
-        //            var seg = result.ElementAt(i++);
-        //            if (c != Encoding.UTF8.GetString(seg.Array, seg.Offset, seg.Count))
-        //                return false;
-        //        }
-        //        return true;
-        //    }
-
-        //    void VerifySubject(string[] expectedChunks)
-        //    {
-        //        mockSubject.Verify(s => s.OnError(It.IsAny<Exception>()), Times.Never(), "Subject got exception.");
-        //        mockSubject.Verify(s => s.OnNext(
-        //            It.Is<LinkedList<ArraySegment<byte>>>(l => MatchesChunks(l, expectedChunks))),
-        //            Times.Once(),
-        //            "Didn't get correct result.");
-
-        //        mockSubject.Verify(s => s.OnCompleted());
-        //    }
-        //}
 
         [TestFixture]
-        public class IndexOfAfterCRLFCRLFTests
+        public class BufferHeadersTests2
         {
-            byte[] buffer;
-            List<ArraySegment<byte>> buffers;
-            HttpSupport http;
-
-            [SetUp]
-            public void SetUp()
+            string StringAtIndex(IEnumerable<ArraySegment<byte>> chunks, int index)
             {
-                buffer = Encoding.ASCII.GetBytes("1234567890\r\n\r\nasdfjkl;");
-                buffers = new List<ArraySegment<byte>>();
-                http = new HttpSupport();
+                var chunk = chunks.ElementAt(index);
+
+                Console.WriteLine("chunk offset = " + chunk.Offset + " count = " + chunk.Count);
+                return Encoding.UTF8.GetString(chunk.Array, chunk.Offset, chunk.Count);
             }
 
             [Test]
-            public void ContainsCRLFCRLFPositive1Seg()
+            public void OneChunk()
             {
-                buffers.Add(new ArraySegment<byte>(buffer, 0, 14));
+                var chunks = new string[] { "adsfasdf\r\n\r\n" };
+                var mockSocket = Mocks.MockSocket(chunks);
 
-                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(2, result.Count);
+                Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
+                Assert.AreEqual(0, result.ElementAt(1).Count);
             }
 
             [Test]
-            public void ContainsCRLFCRLFPositive2Seg()
+            public void TwoChunks()
             {
-                buffers.Add(new ArraySegment<byte>(buffer, 0, 4));
-                buffers.Add(new ArraySegment<byte>(buffer, 4, 10));
+                var chunks = new string[] { "adsf", "asdf\r\n\r\n" };
+                var mockSocket = Mocks.MockSocket(chunks);
 
-                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(3, result.Count);
+                Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
+                Assert.AreEqual(chunks[1], StringAtIndex(result, 1));
+                Assert.AreEqual(0, result.ElementAt(2).Count);
             }
 
             [Test]
-            public void ContainsCRLFCRLFPositive3Seg()
+            public void TwoChunksSplitLineBreaks()
             {
-                buffers.Add(new ArraySegment<byte>(buffer, 0, 5));
-                buffers.Add(new ArraySegment<byte>(buffer, 5, 5));
-                buffers.Add(new ArraySegment<byte>(buffer, 10, 5));
+                var chunks = new string[] { "adsfasdf\r\n", "\r\n", "asdf" };
+                var mockSocket = Mocks.MockSocket(chunks);
 
-                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(3, result.Count);
+                Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
+                Assert.AreEqual(chunks[1], StringAtIndex(result, 1));
+                Assert.AreEqual(0, result.ElementAt(2).Count);
             }
 
             [Test]
-            public void ContainsCRLFCRLFPositive2SegSplit()
+            public void TwoChunksSplitLineBreaks2()
             {
-                buffers.Add(new ArraySegment<byte>(buffer, 0, 11));
-                buffers.Add(new ArraySegment<byte>(buffer, 11, 5));
+                var chunks = new string[] { "adsfasdf\r\n\r", "\n", "asdf" };
+                var mockSocket = Mocks.MockSocket(chunks);
 
-                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(3, result.Count);
+                Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
+                Assert.AreEqual(chunks[1], StringAtIndex(result, 1));
+                Assert.AreEqual(0, result.ElementAt(2).Count);
             }
 
             [Test]
-            public void ContainsCRLFCRLFPositive3SegSplit()
+            public void TwoChunksSplitLineBreaks3()
             {
-                buffers.Add(new ArraySegment<byte>(buffer, 0, 11));
-                buffers.Add(new ArraySegment<byte>(buffer, 11, 1));
-                buffers.Add(new ArraySegment<byte>(buffer, 12, 3));
+                var chunks = new string[] { "adsfasdf", "\r\n\r\n", "asdf" };
+                var mockSocket = Mocks.MockSocket(chunks);
 
-                Assert.AreEqual(14, http.IndexOfAfterCRLFCRLF(buffers));
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(3, result.Count);
+                Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
+                Assert.AreEqual(chunks[1], StringAtIndex(result, 1));
+                Assert.AreEqual(0, result.ElementAt(2).Count);
             }
 
             [Test]
-            public void ContainsCRLFCRLFNegative1Seg()
+            public void SeparatesBodyData()
             {
-                buffers.Add(new ArraySegment<byte>(buffer, 0, 5));
+                var chunks = new string[] { "adsfasdf\r\n\r\nasdf", "asdf" };
+                var mockSocket = Mocks.MockSocket(chunks);
 
-                Assert.AreEqual(-1, http.IndexOfAfterCRLFCRLF(buffers));
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(2, result.Count);
+                Assert.AreEqual("adsfasdf\r\n\r\n", StringAtIndex(result, 0));
+                Assert.AreEqual("asdf", StringAtIndex(result, 1));
             }
 
             [Test]
-            public void ContainsCRLFCRLFNegative2Seg()
+            public void SeparatesBodyDataTwoChunks()
             {
-                buffers.Add(new ArraySegment<byte>(buffer, 0, 5));
-                buffers.Add(new ArraySegment<byte>(buffer, 5, 2));
+                var chunks = new string[] { "adsf", "asdf\r\n\r\nasdf", "asdf" };
+                var mockSocket = Mocks.MockSocket(chunks);
 
-                Assert.AreEqual(-1, http.IndexOfAfterCRLFCRLF(buffers));
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(3, result.Count);
+                Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
+                Assert.AreEqual("asdf\r\n\r\n", StringAtIndex(result, 1));
+                Assert.AreEqual("asdf", StringAtIndex(result, 2));
             }
 
             [Test]
-            public void ContainsCRLFCRLFNegative3Seg()
+            public void SeparatesBodyDataTwoChunksSplitLineBreaks()
             {
-                buffers.Add(new ArraySegment<byte>(buffer, 0, 5));
-                buffers.Add(new ArraySegment<byte>(buffer, 5, 2));
-                buffers.Add(new ArraySegment<byte>(buffer, 7, 4));
+                var chunks = new string[] { "adsfasdf\r", "\n\r\nasdf", "asdf" };
+                var mockSocket = Mocks.MockSocket(chunks);
 
-                Assert.AreEqual(-1, http.IndexOfAfterCRLFCRLF(buffers));
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(3, result.Count);
+                Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
+                Assert.AreEqual("\n\r\n", StringAtIndex(result, 1));
+                Assert.AreEqual("asdf", StringAtIndex(result, 2));
+            }
+
+            [Test]
+            public void SeparatesBodyDataTwoChunksSplitLineBreaks2()
+            {
+                var chunks = new string[] { "adsfasdf\r\n", "\r\nasddddf", "asdf" };
+                var mockSocket = Mocks.MockSocket(chunks);
+
+                var result = HttpSupport.BufferHeaders(mockSocket.Object).Result;
+
+                Assert.AreEqual(3, result.Count);
+                Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
+                Assert.AreEqual("\r\n", StringAtIndex(result, 1));
+                Assert.AreEqual("asddddf", StringAtIndex(result, 2));
             }
         }
     }

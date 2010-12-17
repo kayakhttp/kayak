@@ -72,7 +72,6 @@
     <Compile Include="BindingAttributes.cs" />
     <Compile Include="Extensions\Coerce.cs" />
     <Compile Include="Extensions\Request.cs" />
-    <Compile Include="Extensions\Response.cs" />
     <Compile Include="Extensions\UseFramework.cs" />
     <Compile Include="HeaderBinder.cs" />
     <Compile Include="InvocationInfo.cs" />
@@ -95,7 +94,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
-      <Name>Kayak</Name>
+      <Name>Kayak %28Kayak\Kayak%29</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

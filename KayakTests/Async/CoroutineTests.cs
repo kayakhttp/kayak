@@ -19,7 +19,7 @@ namespace KayakTests
         [Test]
         public void ReturnsResult()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
             Mock<IDisposable> mockDisposable = new Mock<IDisposable>();
 
             scheduler.Start();
@@ -45,7 +45,7 @@ namespace KayakTests
         [Test]
         public void ImmediateException()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
             Mock<IDisposable> mockDisposable = new Mock<IDisposable>();
             var exception = new Exception("oops");
 
@@ -84,7 +84,7 @@ namespace KayakTests
         [Test]
         public void DeferredException()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
             Mock<IDisposable> mockDisposable = new Mock<IDisposable>();
             var exception = new Exception("oops");
 
@@ -123,7 +123,7 @@ namespace KayakTests
         [Test]
         public void RunsTask()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
             Mock<IDisposable> mockDisposable = new Mock<IDisposable>();
 
             bool taskRun = false;
@@ -158,7 +158,7 @@ namespace KayakTests
         //[Test]
         public void PropagatesExceptionFromTask()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
             Mock<IDisposable> mockDisposable = new Mock<IDisposable>();
 
             Exception exception = null;
@@ -192,7 +192,7 @@ namespace KayakTests
         [Test]
         public void PropagatesValueFromTask()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
             Mock<IDisposable> mockDisposable = new Mock<IDisposable>();
 
             int value = 42;
@@ -223,7 +223,7 @@ namespace KayakTests
         [Test]
         public void SetsSchedulerImplicitly()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
 
             scheduler.Start();
             var task = SetsSchedulerImplicitlyBlock(scheduler).CreateCoroutine<TaskScheduler>(scheduler);
@@ -243,7 +243,7 @@ namespace KayakTests
         [Test]
         public void ReturnsResultFromNestedCoroutine()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
 
             scheduler.Start();
             var task = ReturnsResultFromNestedCoroutineBlock().CreateCoroutine<int>(scheduler);
@@ -257,7 +257,7 @@ namespace KayakTests
 
         IEnumerable<object> ReturnsResultFromNestedCoroutineBlock()
         {
-            Assert.AreEqual(typeof(SingleThreadedScheduler), TaskScheduler.Current.GetType());
+            Assert.AreEqual(typeof(SingleThreadedTaskScheduler), TaskScheduler.Current.GetType());
             var inner = ReturnsResultFromNestedCoroutineBlockInner().AsCoroutine<int>();
             yield return inner;
             yield return inner.Result;
@@ -271,7 +271,7 @@ namespace KayakTests
         [Test]
         public void PropagatesExceptionFromNestedCoroutine()
         {
-            var scheduler = new SingleThreadedScheduler();
+            var scheduler = new SingleThreadedTaskScheduler();
             Exception e = new Exception("Boo.");
 
             scheduler.Start();

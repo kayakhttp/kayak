@@ -74,7 +74,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
-      <Name>Kayak</Name>
+      <Name>Kayak %28Kayak\Kayak%29</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

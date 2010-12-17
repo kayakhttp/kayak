@@ -16,7 +16,6 @@ namespace Kayak.Http
     {
         public Task<IRequest> BeginRequest(ISocket socket)
         {
-
             return BufferHeaders(socket).ContinueWith(t => KayakRequest.CreateRequest(socket, t.Result));
         }
 
@@ -32,12 +31,12 @@ namespace Kayak.Http
         /// Buffers HTTP headers from a socket. The last ArraySegment in the list is any
         /// data beyond headers which was read, which may be of zero length.
         /// </summary>
-        internal Task<LinkedList<ArraySegment<byte>>> BufferHeaders(ISocket socket)
+        static internal Task<LinkedList<ArraySegment<byte>>> BufferHeaders(ISocket socket)
         {
             return BufferHeadersInternal(socket).AsCoroutine<LinkedList<ArraySegment<byte>>>();
         }
 
-        IEnumerable<object> BufferHeadersInternal(ISocket socket)
+        static IEnumerable<object> BufferHeadersInternal(ISocket socket)
         {
             LinkedList<ArraySegment<byte>> result = new LinkedList<ArraySegment<byte>>();
 
@@ -54,7 +53,7 @@ namespace Kayak.Http
 
                 int bytesRead = 0;
 
-                //Trace.Write("About to read header chunk.");
+                Trace.Write("About to read header chunk.");
                 var read = socket.Read(buffer, bufferPosition, buffer.Length - bufferPosition);
                 yield return read;
 
@@ -63,7 +62,7 @@ namespace Kayak.Http
 
                 bytesRead = read.Result;
 
-                //Trace.Write("Read {0} bytes.", bytesRead);
+                Trace.Write("Read {0} bytes.", bytesRead);
 
                 result.AddLast(new ArraySegment<byte>(buffer, bufferPosition, bytesRead));
 
@@ -79,7 +78,7 @@ namespace Kayak.Http
 
                 if (bodyDataPosition != -1)
                 {
-                    //Console.WriteLine("Read " + totalBytesRead + ", body starts at " + bodyDataPosition);
+                    Console.WriteLine("Read " + totalBytesRead + ", body starts at " + bodyDataPosition);
                     var last = result.Last.Value;
                     result.RemoveLast();
                     var overlapLength = totalBytesRead - bodyDataPosition;
@@ -96,7 +95,7 @@ namespace Kayak.Http
             yield return result;
         }
 
-        internal int IndexOfAfterCRLFCRLF(IEnumerable<ArraySegment<byte>> buffers)
+        static internal int IndexOfAfterCRLFCRLF(IEnumerable<ArraySegment<byte>> buffers)
         {
             Queue<byte> lastFour = new Queue<byte>(4);
 

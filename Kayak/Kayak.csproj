@@ -77,17 +77,17 @@
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Coroutine.cs" />
-    <Compile Include="Coroutine2.cs" />
+    <Compile Include="Async\AsyncResult.cs" />
+    <Compile Include="Async\Coroutine.cs" />
+    <Compile Include="Async\SingleThreadTaskScheduler.cs" />
     <Compile Include="Extensions\Buffers.cs" />
     <Compile Include="Extensions\IO.cs" />
     <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
-    <Compile Include="Http\AsyncCallback.cs" />
     <Compile Include="Http\ErrorHandler.cs" />
     <Compile Include="Http\Extensions\Application.cs" />
     <Compile Include="Http\Extensions\Parsing.cs" />
-    <Compile Include="Http\Extensions\ToResponse.cs" />
+    <Compile Include="Http\Extensions\Request.cs" />
     <Compile Include="Http\HttpSupport.cs" />
     <Compile Include="Http\KayakRequest.cs" />
     <Compile Include="Http\KayakResponse.cs" />

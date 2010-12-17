@@ -91,11 +91,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Coroutine2Tests.cs" />
-    <Compile Include="CoroutineTests.cs" />
-    <Compile Include="CurrentThreadTaskScheduler.cs" />
-    <Compile Include="Extensions\BufferTests.cs" />
+    <Compile Include="Async\CoroutineTests.cs" />
     <Compile Include="Extensions\HttpTests.cs" />
+    <Compile Include="Extensions\ISubject.cs" />
     <Compile Include="Extensions\SocketTests.cs" />
     <Compile Include="Http\KayakRequestTests.cs" />
     <Compile Include="KayakContextResponseTests.cs" />
@@ -114,7 +112,7 @@
     </ProjectReference>
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
-      <Name>Kayak</Name>
+      <Name>Kayak %28Kayak\Kayak%29</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

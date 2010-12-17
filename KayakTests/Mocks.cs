@@ -5,7 +5,6 @@ using Kayak;
 using Moq;
 using System.Threading.Tasks;
 using System.Text;
-using System.Threading.Tasks.Schedulers;
 
 namespace KayakTests
 {

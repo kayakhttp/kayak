@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Owin;
 
-namespace Kayak.Http.Extensions
+namespace Kayak
 {
     public static partial class Extensions
     {
@@ -12,7 +12,6 @@ namespace Kayak.Http.Extensions
 
             request.BeginReadBody(buffer, offset, count, iasr =>
             {
-                Console.WriteLine("Got asynccallback");
                 try
                 {
                     tcs.SetResult(request.EndReadBody(iasr));

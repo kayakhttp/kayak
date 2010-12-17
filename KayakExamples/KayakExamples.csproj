@@ -75,11 +75,11 @@
   <ItemGroup>
     <ProjectReference Include="..\Kayak.Framework\Kayak.Framework.csproj">
       <Project>{88EB6BDB-6585-4CA3-87BE-11F7262B95DF}</Project>
-      <Name>Kayak.Framework</Name>
+      <Name>Kayak.Framework %28Kayak.Framework\Kayak.Framework%29</Name>
     </ProjectReference>
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
-      <Name>Kayak</Name>
+      <Name>Kayak %28Kayak\Kayak%29</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
