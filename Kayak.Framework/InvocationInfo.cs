@@ -18,9 +18,9 @@ namespace Kayak.Framework
         public void Invoke()
         {
             if (Method == null)
-                throw new Exception("Context has invalid instance of InvocationInfo. Method was null.");
+                throw new Exception("Invalid instance of InvocationInfo. Method was null.");
             if (Target == null)
-                throw new Exception("Context has invalid instance of InvocationInfo. Target was null.");
+                throw new Exception("Invalid instance of InvocationInfo. Target was null.");
 
             try
             {
@@ -29,6 +29,9 @@ namespace Kayak.Framework
             catch (Exception e)
             {
                 Exception = e;
+
+                if (Exception is TargetInvocationException)
+                    Exception = Exception.InnerException;
             }
         }
 

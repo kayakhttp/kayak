@@ -24,7 +24,7 @@ namespace Kayak.Framework
 
         public static IDisposable UseFramework(this IObservable<ISocket> server, IEnumerable<Type> types)
         {
-            return server.Invoke(CreateFramework(types));
+            return server.InvokeWithErrorHandler(CreateFramework(types));
         }
     }
 }

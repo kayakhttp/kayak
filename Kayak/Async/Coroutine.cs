@@ -28,7 +28,7 @@ namespace Kayak
 
         public T EndInvoke(IAsyncResult result)
         {
-            Console.WriteLine("Coroutine.EndInvoke");
+            //Console.WriteLine("Coroutine.EndInvoke");
             AsyncResult<T> ar = (AsyncResult<T>)result;
             continuation.Dispose();
             return ar.EndInvoke();
@@ -36,7 +36,7 @@ namespace Kayak
 
         void Continue(bool sync)
         {
-            Console.WriteLine("Continuing!");
+            //Console.WriteLine("Continuing!");
             var continues = false;
 
             try
@@ -45,14 +45,14 @@ namespace Kayak
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception during MoveNext.");
+                //Console.WriteLine("Exception during MoveNext.");
                 asyncResult.SetAsCompleted(e, sync);
                 return;
             }
 
             if (!continues)
             {
-                Console.WriteLine("Continuation does not continue.");
+                //Console.WriteLine("Continuation does not continue.");
                 asyncResult.SetAsCompleted(null, sync);
                 return;
             }
@@ -65,19 +65,19 @@ namespace Kayak
 
                 if (task != null)
                 {
-                    Console.WriteLine("Will continue after Task.");
+                    //Console.WriteLine("Will continue after Task.");
                     task.ContinueWith(t => {
                         bool synch = ((IAsyncResult)t).CompletedSynchronously;
 
                         if (false && t.IsFaulted) // disabled, iterator blocks must always remember to check for exceptions
                         {
-                            Console.WriteLine("Exception in Task.");
-                            Console.Out.WriteException(t.Exception);
+                            //Console.WriteLine("Exception in Task.");
+                            //Console.Out.WriteException(t.Exception);
                             asyncResult.SetAsCompleted(t.Exception, sync);
                         }
                         else
                         {
-                            Console.WriteLine("Continuing after Task.");
+                            //Console.WriteLine("Continuing after Task.");
                             Continue(sync);
                         }
                     }, CancellationToken.None, TaskContinuationOptions.None, scheduler);
@@ -86,12 +86,12 @@ namespace Kayak
                 {
                     if (value is T)
                     {
-                        Console.WriteLine("Completing with value.");
+                        //Console.WriteLine("Completing with value.");
                         asyncResult.SetAsCompleted((T)value, sync);
                         return;
                     }
 
-                    Console.WriteLine("Continuing, discarding value.");
+                    //Console.WriteLine("Continuing, discarding value.");
                     Continue(sync);
                 }
             }

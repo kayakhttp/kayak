@@ -84,7 +84,6 @@
     <Compile Include="Extensions\IO.cs" />
     <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
-    <Compile Include="Http\ErrorHandler.cs" />
     <Compile Include="Http\Extensions\Application.cs" />
     <Compile Include="Http\Extensions\ErrorHandlingMiddleware.cs" />
     <Compile Include="Http\Extensions\Parsing.cs" />

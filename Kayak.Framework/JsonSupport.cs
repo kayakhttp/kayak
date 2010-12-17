@@ -36,9 +36,6 @@ namespace Kayak.Framework
             {
                 var exception = info.Exception;
 
-                if (exception is TargetInvocationException)
-                    exception = exception.InnerException;
-
                 jsonBytes = GetJsonRepresentation(new { error = exception.Message }, jsonMapper, minified);
                 headers.SetContentLength(jsonBytes.Length);
 

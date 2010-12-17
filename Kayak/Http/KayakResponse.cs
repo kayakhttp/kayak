@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Owin;
+using System.Text;
 
 namespace Kayak
 {
@@ -46,7 +47,7 @@ namespace Kayak
         {
             this.statusLine = statusLine;
             this.headers = headers;
-            this.body = body;
+            this.body = body.Select(o => o is string ? Encoding.ASCII.GetBytes(o as string) : o);
         }
     }
 }

@@ -83,10 +83,10 @@ namespace KayakExamples
                 // always check for Task exceptions, they're
                 // not thrown automatically.
                 if (fetch.Exception != null) 
-                    // string the aggregate exception
+                    // strip the aggregate exception
                     throw fetch.Exception.InnerException;
 
-                // yield anything other than a task, and it will be
+                // yield anything other than a Task, and it will be
                 // treated as just if it had been returned from
                 // a regular method
                 yield return fetch.Result;

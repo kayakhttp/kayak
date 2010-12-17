@@ -5,6 +5,7 @@ using LitJson;
 using Owin;
 using System.Threading.Tasks;
 using System.IO;
+using System.Reflection;
 
 namespace Kayak.Framework
 {
@@ -93,7 +94,9 @@ namespace Kayak.Framework
 
             info.Invoke();
 
-            if (info.Result is IResponse)
+            if (info.Exception != null && !(info.Exception.InnerException is KayakServiceException))
+                throw new Exception("An error while invoking the service.", info.Exception);
+            else if (info.Result is IResponse || info.Result is byte[] || info.Result is ArraySegment<byte>)
                 yield return info.Result;
             else if (info.Method.ReturnType == typeof(IEnumerable<object>))
             {
@@ -112,7 +115,7 @@ namespace Kayak.Framework
             else if (info.Method.ReturnType != typeof(void))
                 yield return GetResponse(request);
             else
-                throw new Exception("Executed void method " + info);
+                throw new Exception("InvocationInfo could not be handled. " + info);
         }
 
         void ConcatDicts<K, V>(IDictionary<K, V> target, params IDictionary<K, V>[] srcs)

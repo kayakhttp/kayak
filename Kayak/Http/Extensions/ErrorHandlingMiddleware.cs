@@ -16,7 +16,7 @@ namespace Kayak
         string GetExceptionText(IApplication threw, Exception exception);
     }
 
-    public class HttpErrorHandler : IErrorHandler
+    public class ErrorHandler : IErrorHandler
     {
         public IResponse GetExceptionResponse(IApplication threw, Exception e)
         {
@@ -24,7 +24,12 @@ namespace Kayak
             sw.WriteException(e);
             Console.WriteLine("Exception while processing request.");
             Console.Out.WriteException(e);
-            return new KayakResponse("503 Internal Server Error", new Dictionary<string, IEnumerable<string>>(), sw.ToString());
+            return new KayakResponse("503 Internal Server Error",
+                new Dictionary<string, IEnumerable<string>>()
+                {
+                    { "Content-Type", new string[] { "text/html" } }
+                },
+                "<pre>" + sw.ToString() + "</pre>");
         }
 
         public string GetExceptionText(IApplication threw, Exception e)
@@ -186,9 +191,9 @@ namespace Kayak
                         break;
                     }
 
-                    yield return rest.Current;
-
-                    if (!continues)
+                    if (continues)
+                        yield return rest.Current;
+                    else
                         break;
                 }
             }

@@ -26,9 +26,14 @@ namespace Kayak
             return tcs.Task;
         }
 
+        public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application)
+        {
+            return sockets.InvokeWithErrorHandler(application, new ErrorHandler());
+        }
+
         public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, IErrorHandler errorHandler)
         {
-            return sockets.Invoke(new ErrorHandlingMiddleware(application, errorHandler), new HttpSupport());
+            return sockets.Invoke(new ErrorHandlingMiddleware(application, errorHandler));
         }
 
         public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication application)

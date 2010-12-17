@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Reflection;
 
 namespace Kayak
 {
@@ -7,15 +8,17 @@ namespace Kayak
     {
         public static void WriteException(this TextWriter writer, Exception exception)
         {
-            writer.WriteLine("____________________________________________________________________________");
-
-            writer.WriteLine("[{0}] {1}", exception.GetType().Name, exception.Message);
-            writer.WriteLine(exception.StackTrace);
-            writer.WriteLine();
-
+            int i = 0;
             for (Exception e = exception.InnerException; e != null; e = e.InnerException)
             {
-                writer.WriteLine("Caused by:\r\n[{0}] {1}", e.GetType().Name, e.Message);
+                //if (e is TargetInvocationException || e is AggregateException) continue;
+
+                if (i++ == 0)
+                    writer.WriteLine("____________________________________________________________________________");
+                else
+                    writer.WriteLine("Caused by:");
+
+                writer.WriteLine("[{0}] {1}", e.GetType().Name, e.Message);
                 writer.WriteLine(e.StackTrace);
                 writer.WriteLine();
             }

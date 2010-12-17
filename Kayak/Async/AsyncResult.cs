@@ -66,7 +66,7 @@ namespace Kayak
             }
 
             // Operation is done: if an exception occured, throw it
-            if (m_exception != null) throw m_exception;
+            if (m_exception != null) throw new Exception("Exception during operation.", m_exception);
         }
 
         #region Implementation of IAsyncResult

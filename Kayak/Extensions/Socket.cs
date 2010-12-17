@@ -21,8 +21,8 @@ namespace Kayak
 
                 if (obj is ArraySegment<byte>)
                     chunk = (ArraySegment<byte>)obj;
-                else if (obj is string)
-                    chunk = new ArraySegment<byte>(Encoding.UTF8.GetBytes(obj as string));
+                else if (obj is byte[])
+                    chunk = new ArraySegment<byte>(obj as byte[]);
                 else
                     throw new ArgumentException("Invalid object of type " + obj.GetType() + " '" + obj.ToString() + "'");
 
