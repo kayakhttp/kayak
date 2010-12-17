@@ -1,216 +1,463 @@
-//using System;
-//using System.Collections.Generic;
-//using System.Disposables;
-//using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Threading;
+using System.IO;
 
-//namespace Kayak
-//{
-//    /// <summary>This is an observable that enumerates an enumerator.
-//    /// 
-//    /// Coroutine yields any object the enumerator yields, except if it returns 
-//    /// an observable, it subscribes to it, yields an error if the observable 
-//    /// yields an error, and only continues enumerating after the observable 
-//    /// completes (the values in the observable sequence are discarded by Coroutine).
-//    /// 
-//    /// Coroutine allows you to easily write asynchronous code using iterator 
-//    /// blocks declared to return `IEnumerable&lt;object&gt;`. To perform an asynchronous
-//    /// operation, yield an observable which completes after the operation is complete. If the
-//    /// operation returns one or more values, you can use the `Observable.Do` method to capture
-//    /// those values and do something with them in your local scope.
-//    /// </summary>
-//    /// <remarks>
-//    /// TODO (maybe): Add an option to prevent exceptions from being passed on to observers. In this
-//    /// way, users can handle exceptions locally. Unfortunately, if you don't explicitly handle
-//    /// exceptions when this option is set, your program will just continue, possibly leading to 
-//    /// strange behavior, because there's no way for coroutine to know if the exception was handled. Is there?
-//    /// Seems like a pretty hacky, horrible abuse of C#.
-//    /// </remarks>
-//    public class Coroutine<T> : IObservable<T>
-//    {
-//        IObserver<T> observer;
-//        IEnumerator<object> continuation;
-//        IDisposable subscription;
+namespace Kayak
+{
+    public class SingleThreadedScheduler : TaskScheduler, IDisposable
+    {
+        [ThreadStatic]
+        static bool isWorker;
 
-//        /// <summary>
-//        /// Constructs a coroutine using the given enumerator. Usually this will be an enumerator of
-//        /// an iterator block, which represents a continuation.
-//        /// </summary>
-//        public Coroutine(IEnumerator<object> continuation)
-//        {
-//            this.continuation = continuation;
-//        }
+        LinkedList<Task> queue;
+        AutoResetEvent wh, stopWh;
+        bool stopRequested;
+        Thread worker;
 
-//        internal void OnCompleted()
-//        {
-//            if (subscription != null)
-//            {
-//                subscription.Dispose();
-//                subscription = null;
-//            }
-//            Continue();
-//        }
+        public SingleThreadedScheduler()
+        {
+            queue = new LinkedList<Task>();
+            wh = new AutoResetEvent(false);
+        }
 
-//        void Complete()
-//        {
-//            //Console.WriteLine("Coroutine " + continuation + " completed.");
-//            observer.OnCompleted();
-//        }
+        public void Start()
+        {
+            if (worker != null) throw new InvalidOperationException("Already started!");
 
-//        internal void OnError(Exception exception)
-//        {
-//            //Trace.Write("Coroutine error: " + exception.Message);
-//            //Trace.Write(exception.StackTrace);
-//            //Console.WriteLine("OnError!");
-//            observer.OnError(exception);
-//        }
+            worker = new Thread(() => { Run2(); }) { IsBackground = true };
+            worker.Start();
+        }
 
-//        public IDisposable Subscribe(IObserver<T> observer)
-//        {
-//            if (observer == null)
-//                throw new ArgumentNullException("observer");
+        void Run2()
+        {
+            isWorker = true;
 
-//            if (this.observer != null)
-//                throw new InvalidOperationException("Coroutine already has observer.");
+            while (true)
+            {
+                Console.WriteLine("Scheduler waiting.");
+                wh.WaitOne();
+                Console.WriteLine("Scheduler set.");
 
-//            this.observer = observer;
+                try
+                {
+                    while (true)
+                    {
+                        Task item;
 
-//            Continue();
+                        lock (queue)
+                        {
+                            if (queue.Count == 0)
+                            {
+                                Console.WriteLine("No more items in queue!");
+                                break;
+                            }
 
-//            //Console.WriteLine("Adding observer to continuation " + continuation);
-//            return Disposable.Create(() =>
-//            {
-//                if (subscription != null)
-//                    subscription.Dispose();
+                            item = queue.First.Value;
+                            queue.RemoveFirst();
+                        }
 
-//                this.observer = null;
-//            });
-//        }
+                        Console.WriteLine("Executing task. " + item);
+                        TryExecuteTask(item);
+                        Console.WriteLine("'Done' executing.");
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Exception on worker!");
+                    Console.Out.WriteException(e);
+                }
 
-//        void Continue()
-//        {
-//            var continues = false;
+                if (stopRequested)
+                {
+                    Console.WriteLine("Scheduler stopping!");
+                    break;
+                }
+            }
 
-//            try
-//            {
-//                continues = continuation.MoveNext();
-//            }
-//            catch (Exception e)
-//            {
-//                OnError(e);
-//                return;
-//            }
+            stopWh.Set();
 
-//            if (!continues)
-//            {
-//                Complete();
-//                return;
-//            }
+            isWorker = false;
+        }
 
-//            try
-//            {
-//                var value = continuation.Current;
+        protected override IEnumerable<Task> GetScheduledTasks()
+        {
+            lock (queue)
+                return queue.ToArray();
+        }
 
-//                var observable = value.AsObservable();
+        protected override void QueueTask(Task task)
+        {
+            lock (queue)
+            {
+                queue.AddLast(task);
 
-//                if (observable != null)
-//                    observable.Subscribe(Observer.Create<object>(o => { }, OnError, OnCompleted));
-//                else
-//                {
-//                    // TODO test (or amend) this behavior
-//                    if (value is T /* || type.IsAssignableFrom(value.GetType()) */) // maybe?
-//                        observer.OnNext((T)value);
+                Console.WriteLine("Queued task, setting wh.");
+                wh.Set();
+            }
+        }
 
-//                    Continue();
-//                }
+        protected override bool TryExecuteTaskInline(Task task, bool taskWasPreviouslyQueued)
+        {
+            Console.WriteLine("TryExecuteTaskInline: " + task + " taskWasPreviouslyQueued: " + taskWasPreviouslyQueued);
 
-//            }
-//            catch (Exception e)
-//            {
-//                OnError(e);
-//            }
-//        }
-//    }
+            if (!isWorker)
+            {
+                Console.WriteLine("TryExecuteTaskInline: wrong thread.");
+                return false;
+            }
 
-//    public static partial class Extensions
-//    {
-//        public static IObservable<object> AsObservable(this object value)
-//        {
-//            if (value == null)
-//                throw new ArgumentNullException("value");
+            if (taskWasPreviouslyQueued)
+            {
+                Console.WriteLine("TryExecuteTaskInline: dequeuing task.");
+                TryDequeue(task);
+            }
 
-//            // really i want to type
-//            //
-//            // if (value is IObservable<object>)
-//            //     (value as IObservable<object>).Subscribe(o => { }, e => OnError, OnCompleted)
-//            // else
-//            //     ...
+            var result = TryExecuteTask(task);
 
-//            // unfortunately i can't get the variant versions of IObservable/IObserver
-//            // to work with mono! i can't call IObservable<T>.Subscribe() with
-//            // an IObserver<object>, so I bake up a crazy shim type which forwards
-//            // Exception and Complete messages to us. Values are discarded; they're 
-//            // only meaningful to the enclosing scope, which is opaque to this class.
+            Console.WriteLine("TryExecuteTaskInline: returning " + result);
+            return result;
+        }
 
-//            Type observableInterface = null;
+        protected override bool TryDequeue(Task task)
+        {
+            bool result = false;
+            lock (queue)
+                result = queue.Remove(task);
 
-//            if (value != null)
-//                observableInterface = value.GetType().GetInterface("IObservable`1");
+            Console.WriteLine("TryDequeue: " + result);
+            return result;
+        }
 
-//            if (observableInterface == null)
-//                return null;
+        public void Dispose()
+        {
+            stopRequested = true;
+            stopWh = new AutoResetEvent(false);
+            wh.Set();
+            stopWh.WaitOne();
+            stopWh.Close();
+            wh.Close();
+            worker.Join();
+        }
+    }
 
-//            return Observable.CreateWithDisposable<object>(o =>
-//            {
-//                var genericArg = observableInterface.GetGenericArguments()[0];
-//                var shimType = typeof(ObserverShim<>).MakeGenericType(genericArg);
 
-//                var shimConstructor = shimType.GetConstructor(new Type[] { typeof(IObserver<object>) });
-//                var shim = shimConstructor.Invoke(new object[] { o });
+    public class Coroutine<T>
+    {
+        IEnumerator<object> continuation;
+        AsyncResult<T> asyncResult;
+        TaskScheduler scheduler;
 
-//                var genericSubscribe = observableInterface.GetMethod("Subscribe");
-//                return (IDisposable)genericSubscribe.Invoke(value, new object[] { shim });
-//            });
-//        }
-//    }
+        public Coroutine(IEnumerator<object> continuation, TaskScheduler scheduler)
+        {
+            this.continuation = continuation;
+            this.scheduler = scheduler;
+        }
 
-//    // this must be outside Coroutine<T> or else their generic types will get tangled.
-//    class ObserverShim<T> : IObserver<T>
-//    {
-//        IObserver<object> observer;
+        public IAsyncResult BeginInvoke(AsyncCallback cb, object state)
+        {
+            asyncResult = new AsyncResult<T>(cb, state);
 
-//        public void OnNext(T value)
-//        {
-//            observer.OnNext(value);
-//        }
+            Continue(true);
 
-//        public void OnError(Exception exception)
-//        {
-//            observer.OnError(exception);
-//        }
+            return asyncResult;
+        }
 
-//        public void OnCompleted()
-//        {
-//            observer.OnCompleted();
-//        }
+        public T EndInvoke(IAsyncResult result)
+        {
+            Console.WriteLine("Coroutine.EndInvoke");
+            AsyncResult<T> ar = (AsyncResult<T>)result;
+            continuation.Dispose();
+            return ar.EndInvoke();
+        }
 
-//        public ObserverShim(IObserver<object> observer)
-//        {
-//            this.observer = observer;
-//        }
-//    }
+        void Continue(bool sync)
+        {
+            Console.WriteLine("Continuing!");
+            var continues = false;
 
-//    public static partial class CoroutineExtensions
-//    {
-//        /// <summary>
-//        /// Creates a Coroutine over an `IEnumerable&lt;object&gt;` defined using the C# iterator
-//        /// block syntax. The iterator block must be an enumerator of type `object`. You can `yield return` 
-//        /// objects of any type from the iterator block (including observables, which are handled as described
-//        /// above), but the observable that this method returns will only yield values yielded by the iterator block
-//        /// which can be cast to the type `T`.
-//        /// </summary>
-//        public static IObservable<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock)
-//        {
-//            return new Coroutine<T>(iteratorBlock.GetEnumerator());
-//        }
-//    }
-//}
+            try
+            {
+                continues = continuation.MoveNext();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception during MoveNext.");
+                asyncResult.SetAsCompleted(e, sync);
+                return;
+            }
+
+            if (!continues)
+            {
+                Console.WriteLine("Continuation does not continue.");
+                asyncResult.SetAsCompleted(null, sync);
+                return;
+            }
+
+            try
+            {
+                var value = continuation.Current;
+
+                var task = value as Task;
+
+                if (task != null)
+                {
+                    Console.WriteLine("Will continue after Task.");
+                    task.ContinueWith(t => {
+                        bool synch = ((IAsyncResult)t).CompletedSynchronously;
+
+                        if (false && t.IsFaulted) // disabled, iterator blocks must always remember to check for exceptions
+                        {
+                            Console.WriteLine("Exception in Task.");
+                            Console.Out.WriteException(t.Exception);
+                            asyncResult.SetAsCompleted(t.Exception, sync);
+                        }
+                        else
+                        {
+                            Console.WriteLine("Continuing after Task.");
+                            Continue(sync);
+                        }
+                    }, CancellationToken.None, TaskContinuationOptions.None, scheduler);
+                }
+                else
+                {
+                    if (value is T)
+                    {
+                        Console.WriteLine("Completing with value.");
+                        asyncResult.SetAsCompleted((T)value, sync);
+                        return;
+                    }
+
+                    Console.WriteLine("Continuing, discarding value.");
+                    Continue(sync);
+                }
+            }
+            catch (Exception e)
+            {
+                asyncResult.SetAsCompleted(e, sync);
+                return;
+            }
+        }
+    }
+
+    public static partial class Extensions
+    {
+
+        public static Task<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock)
+        {
+            return iteratorBlock.AsCoroutine<T>(TaskScheduler.Current);
+        }
+        
+        public static Task<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock, TaskScheduler scheduler)
+        {
+            return iteratorBlock.AsCoroutine<T>(TaskCreationOptions.None, scheduler);
+        }
+
+        public static Task<T> AsCoroutine<T>(this IEnumerable<object> iteratorBlock, TaskCreationOptions opts, TaskScheduler scheduler)
+        {
+            var coroutine = new Coroutine<T>(iteratorBlock.GetEnumerator(), scheduler);
+
+            var cs = new TaskCompletionSource<T>(opts);
+
+            coroutine.BeginInvoke(iasr => {
+                try
+                {
+                    cs.SetResult(coroutine.EndInvoke(iasr));
+                }
+                catch(Exception e)
+                {
+                    cs.SetException(e);
+                }
+            }, null);
+
+            return cs.Task;
+        }
+
+        public static Task<T> CreateCoroutine<T>(this IEnumerable<object> iteratorBlock)
+        {
+            return iteratorBlock.CreateCoroutine<T>(TaskScheduler.Current);
+        }
+
+        public static Task<T> CreateCoroutine<T>(this IEnumerable<object> iteratorBlock, TaskScheduler scheduler)
+        {
+            var taskFactory = new TaskFactory(scheduler);
+            var tcs = new TaskCompletionSource<T>();
+            
+            taskFactory.StartNew(() => iteratorBlock.AsCoroutine<T>().ContinueWith(t
+                =>
+                {
+                    if (t.IsFaulted)
+                        tcs.SetException(t.Exception.InnerExceptions);
+                    else
+                        tcs.SetResult(t.Result);
+                }));
+
+            return tcs.Task;
+        }
+
+        public static Task<object> AsTaskWithValue(this Task task)
+        {
+            // well, this is significantly less painful than the observable version...
+
+            var taskType = task.GetType();
+
+            if (!taskType.IsGenericType) return null;
+
+            var tcs = new TaskCompletionSource<object>();
+            task.ContinueWith(t =>
+            {
+                if (task.IsFaulted)
+                    tcs.SetException(task.Exception);
+                else
+                    tcs.SetResult(taskType.GetProperty("Result").GetGetMethod().Invoke(task, null));
+            });
+            return tcs.Task;
+        }
+    }
+
+    // lifted from http://msdn.microsoft.com/en-us/magazine/cc163467.aspx
+    internal class AsyncResultNoResult : IAsyncResult
+    {
+        // Fields set at construction which never change while 
+        // operation is pending
+        private readonly AsyncCallback m_AsyncCallback;
+        private readonly Object m_AsyncState;
+
+        // Fields set at construction which do change after 
+        // operation completes
+        private const Int32 c_StatePending = 0;
+        private const Int32 c_StateCompletedSynchronously = 1;
+        private const Int32 c_StateCompletedAsynchronously = 2;
+        private Int32 m_CompletedState = c_StatePending;
+
+        // Field that may or may not get set depending on usage
+        private ManualResetEvent m_AsyncWaitHandle;
+
+        // Fields set when operation completes
+        private Exception m_exception;
+
+        public AsyncResultNoResult(AsyncCallback asyncCallback, Object state)
+        {
+            m_AsyncCallback = asyncCallback;
+            m_AsyncState = state;
+        }
+
+        public void SetAsCompleted(
+           Exception exception, Boolean completedSynchronously)
+        {
+            // Passing null for exception means no error occurred. 
+            // This is the common case
+            m_exception = exception;
+
+            // The m_CompletedState field MUST be set prior calling the callback
+            Int32 prevState = Interlocked.Exchange(ref m_CompletedState,
+               completedSynchronously ? c_StateCompletedSynchronously :
+               c_StateCompletedAsynchronously);
+            if (prevState != c_StatePending)
+                throw new InvalidOperationException(
+                    "You can set a result only once");
+
+            // If the event exists, set it
+            if (m_AsyncWaitHandle != null) m_AsyncWaitHandle.Set();
+
+            // If a callback method was set, call it
+            if (m_AsyncCallback != null) m_AsyncCallback(this);
+        }
+
+        public void EndInvoke()
+        {
+            // This method assumes that only 1 thread calls EndInvoke 
+            // for this object
+            if (!IsCompleted)
+            {
+                // If the operation isn't done, wait for it
+                AsyncWaitHandle.WaitOne();
+                AsyncWaitHandle.Close();
+                m_AsyncWaitHandle = null;  // Allow early GC
+            }
+
+            // Operation is done: if an exception occured, throw it
+            if (m_exception != null) throw m_exception;
+        }
+
+        #region Implementation of IAsyncResult
+        public Object AsyncState { get { return m_AsyncState; } }
+
+        public Boolean CompletedSynchronously
+        {
+            get
+            {
+                return Thread.VolatileRead(ref m_CompletedState) ==
+                    c_StateCompletedSynchronously;
+            }
+        }
+
+        public WaitHandle AsyncWaitHandle
+        {
+            get
+            {
+                if (m_AsyncWaitHandle == null)
+                {
+                    Boolean done = IsCompleted;
+                    ManualResetEvent mre = new ManualResetEvent(done);
+                    if (Interlocked.CompareExchange(ref m_AsyncWaitHandle,
+                       mre, null) != null)
+                    {
+                        // Another thread created this object's event; dispose 
+                        // the event we just created
+                        mre.Close();
+                    }
+                    else
+                    {
+                        if (!done && IsCompleted)
+                        {
+                            // If the operation wasn't done when we created 
+                            // the event but now it is done, set the event
+                            m_AsyncWaitHandle.Set();
+                        }
+                    }
+                }
+                return m_AsyncWaitHandle;
+            }
+        }
+
+        public Boolean IsCompleted
+        {
+            get
+            {
+                return Thread.VolatileRead(ref m_CompletedState) !=
+                    c_StatePending;
+            }
+        }
+        #endregion
+    }
+
+    internal class AsyncResult<TResult> : AsyncResultNoResult
+    {
+        // Field set when operation completes
+        private TResult m_result = default(TResult);
+
+        public AsyncResult(AsyncCallback asyncCallback, Object state) :
+            base(asyncCallback, state) { }
+
+        public void SetAsCompleted(TResult result,
+           Boolean completedSynchronously)
+        {
+            // Save the asynchronous operation's result
+            m_result = result;
+
+            // Tell the base class that the operation completed 
+            // sucessfully (no exception)
+            base.SetAsCompleted(null, completedSynchronously);
+        }
+
+        new public TResult EndInvoke()
+        {
+            base.EndInvoke(); // Wait until operation has completed 
+            return m_result;  // Return the result (if above didn't throw)
+        }
+    }
+}
