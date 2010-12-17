@@ -26,16 +26,21 @@ namespace Kayak
             return tcs.Task;
         }
 
-        public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication application)
+        public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, IErrorHandler errorHandler)
         {
-            return sockets.Invoke(application, new HttpSupport(), new HttpErrorHandler());
+            return sockets.Invoke(new ErrorHandlingMiddleware(application, errorHandler), new HttpSupport());
         }
 
-        public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication responder, IHttpSupport http, IHttpErrorHandler errorHandler)
+        public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication application)
+        {
+            return sockets.Invoke(application, new HttpSupport());
+        }
+
+        public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication application, IHttpSupport http)
         {
             return sockets.Subscribe(s => 
                 {
-                    s.Invoke(responder, http, errorHandler).ContinueWith(t =>
+                    s.Invoke(application, http).ContinueWith(t =>
                     {
                         if (t.IsFaulted)
                         {
@@ -46,24 +51,20 @@ namespace Kayak
                 });
         }
 
-        public static Task Invoke(this ISocket socket, IApplication application, IHttpSupport http, IHttpErrorHandler errorHandler)
+        public static Task Invoke(this ISocket socket, IApplication application, IHttpSupport http)
         {
-            return socket.InvokeInternal(application, http, errorHandler).AsCoroutine<Unit>();
+            return socket.InvokeInternal(application, http).AsCoroutine<Unit>();
         }
 
-        static IEnumerable<object> InvokeInternal(this ISocket socket, IApplication application, IHttpSupport http, IHttpErrorHandler errorHandler)
+        static IEnumerable<object> InvokeInternal(this ISocket socket, IApplication application, IHttpSupport http)
         {
-            IRequest request = null;
-
             var beginRequest = http.BeginRequest(socket);
             yield return beginRequest;
 
             if (beginRequest.IsFaulted)
                 throw beginRequest.Exception;
 
-            request = beginRequest.Result;
-
-            IResponse response = null;
+            IRequest request = beginRequest.Result;
 
             var invoke = application.InvokeAsync(request);
 
@@ -72,7 +73,7 @@ namespace Kayak
             if (invoke.IsFaulted)
                 throw invoke.Exception;
 
-            response = invoke.Result;
+            IResponse response = invoke.Result;
 
             yield return http.BeginResponse(socket, response);
 

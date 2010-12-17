@@ -2,17 +2,50 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Owin;
+using System.IO;
+using System.Text;
 
 namespace Kayak
 {
+    public interface IErrorHandler
+    {
+        // called if an exception occurs before the response has begun.
+        IResponse GetExceptionResponse(IApplication threw, Exception exception);
+
+        // called if an exception occurs after the response has begun.
+        string GetExceptionText(IApplication threw, Exception exception);
+    }
+
+    public class HttpErrorHandler : IErrorHandler
+    {
+        public IResponse GetExceptionResponse(IApplication threw, Exception e)
+        {
+            var sw = new StringWriter();
+            sw.WriteException(e);
+            Console.WriteLine("Exception while processing request.");
+            Console.Out.WriteException(e);
+            return new KayakResponse("503 Internal Server Error", new Dictionary<string, IEnumerable<string>>(), sw.ToString());
+        }
+
+        public string GetExceptionText(IApplication threw, Exception e)
+        {
+            var sw = new StringWriter();
+            sw.WriteException(e);
+            Console.WriteLine("Exception while processing request.");
+            Console.Out.WriteException(e);
+            return sw.ToString();
+        }
+    }
+
     public class ErrorHandlingMiddleware : IApplication
     {
-        IApplication wrap;
-        IResponse fiveOhThree;
-        public ErrorHandlingMiddleware(IApplication wrap, IResponse fiveOhThree)
+        IApplication wrapped;
+        IErrorHandler errorHandler;
+
+        public ErrorHandlingMiddleware(IApplication wrapped, IErrorHandler errorHandler)
         {
-            this.wrap = wrap;
-            this.fiveOhThree = fiveOhThree;
+            this.wrapped = wrapped;
+            this.errorHandler = errorHandler;
         }
 
         public IAsyncResult BeginInvoke(IRequest request, AsyncCallback callback, object state)
@@ -47,13 +80,13 @@ namespace Kayak
 
         IEnumerable<object> SafeInvoke(IRequest request)
         {
-            var invoke = wrap.InvokeAsync(request);
+            var invoke = wrapped.InvokeAsync(request);
 
             yield return invoke;
 
             if (invoke.IsFaulted)
             {
-                yield return fiveOhThree;
+                yield return errorHandler.GetExceptionResponse(wrapped, invoke.Exception);
                 yield break;
             }
 
@@ -72,7 +105,7 @@ namespace Kayak
 
             if (ex != null)
             {
-                yield return fiveOhThree;
+                yield return errorHandler.GetExceptionResponse(wrapped, invoke.Exception);
                 yield break;
             }
 
@@ -94,7 +127,7 @@ namespace Kayak
             if (ex != null)
             {
                 body.Dispose();
-                yield return fiveOhThree;
+                yield return errorHandler.GetExceptionResponse(wrapped, invoke.Exception);
                 yield break;
             }
 
@@ -110,7 +143,7 @@ namespace Kayak
 
                     if (task.IsFaulted)
                     {
-                        yield return fiveOhThree;
+                        yield return errorHandler.GetExceptionResponse(wrapped, invoke.Exception);
                         yield break;
                     }
 
@@ -129,9 +162,34 @@ namespace Kayak
             {
                 yield return first;
 
-                while (rest.MoveNext())
+                while (true)
                 {
+                    var continues = false;
+                    object current = null;
+                    Exception exception = null;
+
+                    try
+                    {
+                        continues = rest.MoveNext();
+
+                        if (continues)
+                            current = rest.Current;
+                    }
+                    catch (Exception e)
+                    {
+                        exception = e;
+                    }
+
+                    if (exception != null)
+                    {
+                        yield return Encoding.ASCII.GetBytes(errorHandler.GetExceptionText(wrapped, exception));
+                        break;
+                    }
+
                     yield return rest.Current;
+
+                    if (!continues)
+                        break;
                 }
             }
         }
