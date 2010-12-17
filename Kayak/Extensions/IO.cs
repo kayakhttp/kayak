@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Net.Sockets;
-using Owin;
 using System.Threading.Tasks;
 
 namespace Kayak

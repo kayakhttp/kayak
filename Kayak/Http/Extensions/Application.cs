@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using Kayak.Http;
-using Owin;
 using System.Threading.Tasks;
+using Owin;
 
 namespace Kayak
 {

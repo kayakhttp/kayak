@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using Owin;
 using System.Threading.Tasks;
+using Owin;
 
 namespace Kayak
 {
