@@ -187,6 +187,5 @@ namespace Kayak
                 headersWritten = true;
             }
         }
-
     }
 }

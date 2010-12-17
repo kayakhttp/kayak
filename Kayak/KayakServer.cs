@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Disposables;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using Owin;
 using System.Threading.Tasks;
+using System.Disposables;
 
 namespace Kayak
 {

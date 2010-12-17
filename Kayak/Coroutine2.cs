@@ -148,7 +148,7 @@ namespace Kayak
     public class Coroutine<T>
     {
         IEnumerator<object> continuation;
-        ProperAsyncResult<T> asyncResult;
+        AsyncResult<T> asyncResult;
         TaskScheduler scheduler;
 
         public Coroutine(IEnumerator<object> continuation, TaskScheduler scheduler)
@@ -159,7 +159,7 @@ namespace Kayak
 
         public IAsyncResult BeginInvoke(AsyncCallback cb, object state)
         {
-            asyncResult = new ProperAsyncResult<T>(cb, state);
+            asyncResult = new AsyncResult<T>(cb, state);
 
             Continue(true);
 
@@ -169,7 +169,7 @@ namespace Kayak
         public T EndInvoke(IAsyncResult result)
         {
             Console.WriteLine("Coroutine.EndInvoke");
-            ProperAsyncResult<T> ar = (ProperAsyncResult<T>)result;
+            AsyncResult<T> ar = (AsyncResult<T>)result;
             continuation.Dispose();
             return ar.EndInvoke();
         }
@@ -435,12 +435,12 @@ namespace Kayak
         #endregion
     }
 
-    internal class ProperAsyncResult<TResult> : AsyncResultNoResult
+    internal class AsyncResult<TResult> : AsyncResultNoResult
     {
         // Field set when operation completes
         private TResult m_result = default(TResult);
 
-        public ProperAsyncResult(AsyncCallback asyncCallback, Object state) :
+        public AsyncResult(AsyncCallback asyncCallback, Object state) :
             base(asyncCallback, state) { }
 
         public void SetAsCompleted(TResult result,
