@@ -123,6 +123,7 @@ namespace Kayak
             var tcs = new TaskCompletionSource<int>();
 
             request.BeginReadBody(buffer, offset, count, iasr => {
+                Console.WriteLine("Got asynccallback");
                 try
                 {
                     tcs.SetResult(request.EndReadBody(iasr));

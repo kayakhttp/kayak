@@ -5,12 +5,16 @@ using System.Text;
 using NUnit.Framework;
 using Kayak;
 using Moq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace KayakTests.Http
 {
     [TestFixture]
-    class KayakRequestTests
+    public class KayakRequestTests
     {
+        // TODO test when header chunk offset is non-zero
+
         [Test]
         public void ReadsBodyDataWithOneSocketChunk()
         {
@@ -20,6 +24,9 @@ namespace KayakTests.Http
             byte[] buffer = new byte[64];
             var task1 = request.ReadBodyAsync(buffer, 0, buffer.Length);
 
+            Console.WriteLine("will waitfor result.");
+            var result = task1.Result;
+            Console.WriteLine("done waiting.");
             Assert.AreEqual("First chunk", Encoding.UTF8.GetString(buffer, 0, task1.Result));
 
             var task2 = request.ReadBodyAsync(buffer, 0, buffer.Length);
@@ -51,6 +58,7 @@ namespace KayakTests.Http
         [Test]
         public void ReadsBodyDataWithHeaderChunk()
         {
+            Console.WriteLine("ass");
             var headerChunk = "header chunk.";
             var request = new KayakRequest(null, default(HttpRequestLine), null, null, new ArraySegment<byte>(Encoding.UTF8.GetBytes(headerChunk)));
 
@@ -109,7 +117,7 @@ namespace KayakTests.Http
             Assert.AreEqual(chunks[1], Encoding.UTF8.GetString(buffer, 0, task3.Result));
 
             var task4 = request.ReadBodyAsync(buffer, 0, buffer.Length);
-            Assert.AreEqual(0, task3.Result);
+            Assert.AreEqual(0, task4.Result);
         }
     }
 }

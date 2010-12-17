@@ -21,10 +21,19 @@ namespace Kayak.Framework
 
         public IAsyncResult BeginInvoke(IRequest request, AsyncCallback callback, object state)
         {
-            return InvokeInternal(request).AsCoroutine<IResponse>().ContinueWith(t =>
+            var tcs = new TaskCompletionSource<IResponse>();
+
+            InvokeInternal(request).AsCoroutine<IResponse>().ContinueWith(t =>
                 {
-                    callback(t);
+                    if (t.IsFaulted)
+                        tcs.SetException(t.Exception);
+                    else
+                        tcs.SetResult(t.Result);
+
+                    callback(tcs.Task);
                 });
+
+            return tcs.Task;
         }
 
         public IResponse EndInvoke(IAsyncResult result)

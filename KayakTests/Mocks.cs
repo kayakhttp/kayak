@@ -5,6 +5,7 @@ using Kayak;
 using Moq;
 using System.Threading.Tasks;
 using System.Text;
+using System.Threading.Tasks.Schedulers;
 
 namespace KayakTests
 {
@@ -28,7 +29,7 @@ namespace KayakTests
                     if (cs == null)
                         cs = chunks.GetEnumerator();
 
-                    var task = new Task<int>(() =>
+                    var task = Task.Factory.StartNew(() =>
                     {
                         if (!cs.MoveNext())
                             return 0;
@@ -37,7 +38,6 @@ namespace KayakTests
                         Buffer.BlockCopy(chunk.Array, chunk.Offset, b, o, chunk.Count);
                         return chunk.Count;
                     });
-
                     return task;
                 });
 

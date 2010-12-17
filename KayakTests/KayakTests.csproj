@@ -93,6 +93,7 @@
   <ItemGroup>
     <Compile Include="Coroutine2Tests.cs" />
     <Compile Include="CoroutineTests.cs" />
+    <Compile Include="CurrentThreadTaskScheduler.cs" />
     <Compile Include="Extensions\BufferTests.cs" />
     <Compile Include="Extensions\HttpTests.cs" />
     <Compile Include="Extensions\SocketTests.cs" />

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Owin;
+using Kayak.Http;
+using System.Threading.Tasks;
 
 namespace Kayak
 {
@@ -15,6 +17,7 @@ namespace Kayak
 
         ISocket socket;
         ArraySegment<byte> bodyDataReadWithHeaders;
+        IAsyncResult currentResult;
 
         public static IRequest CreateRequest(ISocket socket, LinkedList<ArraySegment<byte>> headerBuffers)
         {
@@ -44,18 +47,78 @@ namespace Kayak
 
         public IAsyncResult BeginReadBody(byte[] buffer, int offset, int count, AsyncCallback callback, object state)
         {
-            int bytesRead;
+            if (currentResult != null)
+                throw new InvalidOperationException("Async operation is already pending.");
+
+            if (callback == null)
+                throw new ArgumentNullException("callback");
+
             if (bodyDataReadWithHeaders.Count > 0)
             {
-                //Buffer.BlockCopy(bodyDataReadWithHeaders,
+                int bytesRead;
+                var result = new AsyncResult<int>(callback, state);
+
+                bytesRead = Math.Min(bodyDataReadWithHeaders.Count, count);
+                Buffer.BlockCopy(bodyDataReadWithHeaders.Array, bodyDataReadWithHeaders.Offset, buffer, offset, bytesRead);
+
+                if (bytesRead < bodyDataReadWithHeaders.Count)
+                    bodyDataReadWithHeaders =
+                        new ArraySegment<byte>(
+                            bodyDataReadWithHeaders.Array,
+                            bodyDataReadWithHeaders.Offset + bytesRead,
+                            bodyDataReadWithHeaders.Count - bytesRead);
+                else
+                    bodyDataReadWithHeaders = default(ArraySegment<byte>);
+
+                currentResult = result;
+                result.SetAsCompleted(bytesRead, true);
+            }
+            else if (socket != null)
+            {
+                var tcs = new TaskCompletionSource<int>();
+
+                currentResult = tcs.Task; 
+
+                socket.Read(buffer, offset, count).ContinueWith(t =>
+                {
+                    if (t.IsFaulted)
+                        tcs.SetException(t.Exception);
+                    else
+                        tcs.SetResult(t.Result);
+
+                    callback(tcs.Task);
+                });
+
+            }
+            else
+            {
+                var result = new AsyncResult<int>(callback, state);
+                currentResult = result;
+                result.SetAsCompleted(0, true);
             }
 
-            return null;
+            return currentResult;
         }
 
         public int EndReadBody(IAsyncResult result)
         {
-            return 0;
+            if (result == null)
+                throw new ArgumentNullException("result");
+            
+            if (currentResult == null)
+                throw new InvalidOperationException("No async operation pending.");
+
+            if (result != currentResult)
+                throw new ArgumentException("Invalid IAsyncResult");
+
+            currentResult = null;
+
+            if (result is AsyncResult<int>)
+                return (result as AsyncResult<int>).EndInvoke();
+            else if (result is Task<int>)
+                return (result as Task<int>).Result;
+            else
+                throw new ArgumentException("Invalid IAsyncResult");
         }
     }
 }
