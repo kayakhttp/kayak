@@ -104,21 +104,21 @@ namespace Kayak
 
         public Action<Action<int>, Action<Exception>> Write(byte[] buffer, int offset, int count)
         {
-            return Coroutine.Extensions.AsContinuation<int>(
+            return Continuation.FromAsync<int>(
                 (c, s) => socket.BeginSend(buffer, offset, count, SocketFlags.None, c, s), 
                 socket.EndSend);
         }
 
         public Action<Action, Action<Exception>> WriteFile(string file)
         {
-            return Coroutine.Extensions.AsContinuation(
+            return Continuation.FromAsync(
                 (c, s) => socket.BeginSendFile(file, c, s),
                 iasr => { socket.EndSendFile(iasr); });
         }
 
         public Action<Action<int>, Action<Exception>> Read(byte[] buffer, int offset, int count)
         {
-            return Coroutine.Extensions.AsContinuation<int>(
+            return Continuation.FromAsync<int>(
                 (c, s) => socket.BeginReceive(buffer, offset, count, SocketFlags.None, c, s),
                 socket.EndSend);
         }
