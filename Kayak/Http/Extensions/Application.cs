@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Coroutine;
-using Owin;
 
 namespace Kayak
 {
@@ -13,25 +11,6 @@ namespace Kayak
 
     public static partial class Extensions
     {
-
-        //public static void InvokeOnScheduler(this IApplication application, IRequest request, TaskScheduler scheduler)
-        //{
-        //    var task = new Task(() =>
-        //        {
-                    
-        //        });
-        //}
-
-        //public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, TaskScheduler scheduler)
-        //{
-        //    return sockets.InvokeWithErrorHandler(application, new ErrorHandler(), scheduler);
-        //}
-
-        //public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, IErrorHandler errorHandler, TaskScheduler scheduler))
-        //{
-        //    return sockets.Host(new ErrorHandlingMiddleware(application, errorHandler), scheduler);
-        //}
-
         public static void Host(this IKayakServer server, OwinApplication application)
         {
             server.Host(application, null);
