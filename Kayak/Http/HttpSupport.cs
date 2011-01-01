@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Threading.Tasks;
-using Owin;
 using System.Collections.Generic;
-using Coroutine;
 using System.IO;
+using Coroutine;
 
 namespace Kayak
 {
@@ -89,7 +87,7 @@ namespace Kayak
 
         public ContinuationState<Unit> BeginResponse(ISocket socket, string status, IDictionary<string, IEnumerable<string>> headers)
         {
-            return socket.WriteAll(new ArraySegment<byte>(Extensions.WriteStatusLineAndHeaders(status, headers)));
+            return socket.WriteChunk(new ArraySegment<byte>(Extensions.WriteStatusLineAndHeaders(status, headers)));
         }
     }
 }

@@ -26,7 +26,7 @@ namespace Kayak
         /// Returns an observable which, upon subscription, begins copying a file
         /// to the socket. When the copy operation completes, the observable completes.
         /// </summary>
-        Action<Action<Unit>, Action<Exception>> WriteFile(string file);
+        Action<Action, Action<Exception>> WriteFile(string file);
 
         /// <summary>
         /// Returns an observable which, upon subscription, begins an asynchronous read

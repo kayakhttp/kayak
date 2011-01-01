@@ -8,12 +8,12 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-        internal static ContinuationState<Unit> WriteObject(this ISocket socket, object obj)
+        internal static ContinuationState WriteFileOrData(this ISocket socket, object obj)
         {
             if (obj is FileInfo)
             {
                 var fileInfo = obj as FileInfo;
-                return new ContinuationState<Unit>(socket.WriteFile(fileInfo.Name));
+                return new ContinuationState(socket.WriteFile(fileInfo.Name));
             }
             else
             {
@@ -26,16 +26,16 @@ namespace Kayak
                 else
                     throw new ArgumentException("Invalid object of type " + obj.GetType() + " '" + obj.ToString() + "'");
 
-                return socket.WriteAll(chunk);
+                return socket.WriteChunk(chunk);
             }
         }
 
-        internal static ContinuationState<Unit> WriteAll(this ISocket socket, ArraySegment<byte> chunk)
+        internal static ContinuationState<Unit> WriteChunk(this ISocket socket, ArraySegment<byte> chunk)
         {
-            return socket.WriteAllInternal(chunk).AsCoroutine<Unit>();
+            return socket.WriteChunkInternal(chunk).AsCoroutine<Unit>();
         }
 
-        static IEnumerable<object> WriteAllInternal(this ISocket socket, ArraySegment<byte> chunk)
+        static IEnumerable<object> WriteChunkInternal(this ISocket socket, ArraySegment<byte> chunk)
         {
             int bytesWritten = 0;
 

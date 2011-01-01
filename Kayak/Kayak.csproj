@@ -66,19 +66,11 @@
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="System.CoreEx, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\rx4\System.CoreEx.dll</HintPath>
-    </Reference>
-    <Reference Include="System.Reactive, Version=1.0.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\rx4\System.Reactive.dll</HintPath>
-    </Reference>
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DotNetServer.cs" />
     <Compile Include="Extensions\Buffers.cs" />
-    <Compile Include="Extensions\IO.cs" />
     <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
     <Compile Include="Http\Extensions\Application.cs" />
@@ -86,8 +78,6 @@
     <Compile Include="Http\HttpSupport.cs" />
     <Compile Include="IKayakServer.cs" />
     <Compile Include="ISocket.cs" />
-    <Compile Include="KayakServer.cs" />
-    <Compile Include="Owin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

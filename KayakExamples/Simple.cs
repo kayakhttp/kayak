@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using Kayak;
-using Owin;
-using System.Text;
 using System.Net;
+using System.Text;
+using Kayak;
 
 namespace KayakExamples
 {
@@ -11,12 +10,11 @@ namespace KayakExamples
     {
         public static void Run()
         {
-            var server = new KayakServer2(new IPEndPoint(IPAddress.Any, 8080), 50);
+            var server = new DotNetServer(new IPEndPoint(IPAddress.Any, 8080), 50);
 
-            server.Start();
+            var pipe = server.Start();
 
             Console.WriteLine("Listening on " + server.ListenEndPoint);
-
             server.Host((env, respond, error) =>
                 {
                     respond(new Tuple<string, IDictionary<string, IEnumerable<string>>, IEnumerable<object>>(
@@ -30,7 +28,8 @@ namespace KayakExamples
                 });
             Console.WriteLine("Press enter to exit.");
             Console.ReadLine();
-            server.Stop();
+
+            pipe.Dispose();
         }
 
         //static IResponse Respond(IRequest request)

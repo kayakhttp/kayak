@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using Coroutine;
-using Owin;
+using System.IO;
 
 namespace Kayak
 {
@@ -13,25 +12,6 @@ namespace Kayak
 
     public static partial class Extensions
     {
-
-        //public static void InvokeOnScheduler(this IApplication application, IRequest request, TaskScheduler scheduler)
-        //{
-        //    var task = new Task(() =>
-        //        {
-                    
-        //        });
-        //}
-
-        //public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, TaskScheduler scheduler)
-        //{
-        //    return sockets.InvokeWithErrorHandler(application, new ErrorHandler(), scheduler);
-        //}
-
-        //public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, IErrorHandler errorHandler, TaskScheduler scheduler))
-        //{
-        //    return sockets.Host(new ErrorHandlingMiddleware(application, errorHandler), scheduler);
-        //}
-
         public static void Host(this IKayakServer server, OwinApplication application)
         {
             server.Host(application, null);
@@ -104,10 +84,15 @@ namespace Kayak
                     objectToWrite = cs.Result;
                 }
 
-                var write = socket.WriteObject(objectToWrite);
+                if (objectToWrite is FileInfo)
+                {
+                    yield return new ContinuationState(socket.WriteFile((objectToWrite as FileInfo).Name));
+                }
+                var write = socket.WriteFileOrData(objectToWrite);
                 yield return write;
 
-                var foo = write.Result;
+                if (write.Exception != null)
+                    throw write.Exception;
             }
 
             // HTTP/1.1 support might only close the connection if client wants to
