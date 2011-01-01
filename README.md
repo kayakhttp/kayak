@@ -10,20 +10,27 @@ MIT License. See LICENSE.txt.
 
 To run an OWIN app:
 
-    public static void Main(string[] args)
+    public static void Run()
     {
-        var server = new KayakServer();
-        var pipe = server.Invoke(new OwinApp());
+        var server = new DotNetServer();
+
+        var pipe = server.Start();
+
+        server.Host((env, respond, error) =>
+            {
+                respond(new Tuple<string, IDictionary<string, IEnumerable<string>>, IEnumerable<object>>(
+                        "200 OK",
+                        new Dictionary<string, IEnumerable<string>>() 
+                        {
+                            { "Content-Type",  new string[] { "text/html" } }
+                        },
+                        new object[] { Encoding.ASCII.GetBytes("Hello world.") }
+                    ));
+            });
+
+        Console.WriteLine("Listening on " + server.ListenEndPoint);
         Console.WriteLine("Press enter to exit.");
         Console.ReadLine();
+
         pipe.Dispose();
     }
-
-
-# Acknowledgements
-
-Kayak includes LitJSON, an excellent JSON library written by Leonardo Boshell 
-and graciously dedicated to the public domain.
-
-[http://litjson.sourceforge.net/](http://litjson.sourceforge.net/)
-

@@ -10,11 +10,10 @@ namespace KayakExamples
     {
         public static void Run()
         {
-            var server = new DotNetServer(new IPEndPoint(IPAddress.Any, 8080), 50);
+            var server = new DotNetServer();
 
             var pipe = server.Start();
 
-            Console.WriteLine("Listening on " + server.ListenEndPoint);
             server.Host((env, respond, error) =>
                 {
                     respond(new Tuple<string, IDictionary<string, IEnumerable<string>>, IEnumerable<object>>(
@@ -26,6 +25,8 @@ namespace KayakExamples
                             new object[] { Encoding.ASCII.GetBytes("Hello world.") }
                         ));
                 });
+
+            Console.WriteLine("Listening on " + server.ListenEndPoint);
             Console.WriteLine("Press enter to exit.");
             Console.ReadLine();
 
