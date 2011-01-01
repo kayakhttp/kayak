@@ -5,9 +5,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kayak", "Kayak\Kayak.csproj
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakExamples", "KayakExamples\KayakExamples.csproj", "{33318990-37F5-4B9D-B3F9-19E7736EE1DC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakTests", "KayakTests\KayakTests.csproj", "{DA201FE7-FDAF-4B9E-821D-589F93F7245F}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Kayak", "Kayak", "{865AB8B9-60B2-4EDA-AEF3-939CA14ECD80}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakTests", "KayakTests\KayakTests.csproj", "{DA201FE7-FDAF-4B9E-821D-589F93F7245F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -90,8 +90,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{DA201FE7-FDAF-4B9E-821D-589F93F7245F} = {865AB8B9-60B2-4EDA-AEF3-939CA14ECD80}
 		{79DDD0CE-6F79-4212-A972-8618AD6E405F} = {865AB8B9-60B2-4EDA-AEF3-939CA14ECD80}
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F} = {865AB8B9-60B2-4EDA-AEF3-939CA14ECD80}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = Kayak\Kayak.csproj
