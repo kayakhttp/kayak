@@ -28,16 +28,12 @@ namespace KayakTests
                     if (cs == null)
                         cs = chunks.GetEnumerator();
 
-                    var task = Task.Factory.StartNew(() =>
-                    {
-                        if (!cs.MoveNext())
-                            return 0;
+                    if (!cs.MoveNext())
+                        return (r, e) => r(0);
 
-                        var chunk = cs.Current;
-                        Buffer.BlockCopy(chunk.Array, chunk.Offset, b, o, chunk.Count);
-                        return chunk.Count;
-                    });
-                    return task;
+                    var chunk = cs.Current;
+                    Buffer.BlockCopy(chunk.Array, chunk.Offset, b, o, chunk.Count);
+                    return (r, e) => r(chunk.Count);
                 });
 
             return mockSocket;

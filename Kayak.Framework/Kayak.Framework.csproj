@@ -70,8 +70,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BindingAttributes.cs" />
-    <Compile Include="Extensions\Coerce.cs" />
-    <Compile Include="Extensions\Request.cs" />
     <Compile Include="Extensions\UseFramework.cs" />
     <Compile Include="HeaderBinder.cs" />
     <Compile Include="InvocationInfo.cs" />

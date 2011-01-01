@@ -125,6 +125,50 @@ namespace Kayak
         }
     }
 
+    public class KayakServer2 : IKayakServer
+    {
+        public IPEndPoint ListenEndPoint { get; private set; }
+        int backlog;
+
+        Socket listener;
+
+        public KayakServer2(IPEndPoint listenEndPoint, int backlog)
+        {
+            ListenEndPoint = listenEndPoint;
+            this.backlog = backlog;
+        }
+
+        public void Start()
+        {
+            listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
+            listener.Bind(ListenEndPoint);
+            listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 10000);
+            listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
+            listener.Listen(backlog);
+        }
+        public void Stop()
+        {
+            listener.Close();
+        }
+
+        public Action<Action<ISocket>> GetConnection()
+        {
+            return r => listener.BeginAccept(iasr =>
+            {
+                try
+                {
+                    r(new DotNetSocket(listener.EndAccept(iasr)));
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Exception while accepting connection.");
+                    Console.Out.WriteException(e);
+                }
+                
+            }, null);
+        }
+    }
+
     class DotNetSocket : ISocket
     {
         Socket socket;
@@ -146,19 +190,25 @@ namespace Kayak
 
         #region ISocket Members
 
-        public Task<int> Write(byte[] buffer, int offset, int count)
+        public Action<Action<int>, Action<Exception>> Write(byte[] buffer, int offset, int count)
         {
-            return socket.SendAsync(buffer, offset, count);
+            return Coroutine.Extensions.AsContinuation(
+                (c, s) => socket.BeginSend(buffer, offset, count, SocketFlags.None, c, s), 
+                socket.EndSend);
         }
 
-        public Task WriteFile(string file)
+        public Action<Action<Unit>, Action<Exception>> WriteFile(string file)
         {
-            return socket.SendFileAsync(file);
+            return Coroutine.Extensions.AsContinuation<Unit>(
+                (c, s) => socket.BeginSendFile(file, c, s),
+                iasr => { socket.EndSendFile(iasr); return default(Unit); });
         }
 
-        public Task<int> Read(byte[] buffer, int offset, int count)
+        public Action<Action<int>, Action<Exception>> Read(byte[] buffer, int offset, int count)
         {
-            return socket.ReceiveAsync(buffer, offset, count);
+            return Coroutine.Extensions.AsContinuation<int>(
+                (c, s) => socket.BeginReceive(buffer, offset, count, SocketFlags.None, c, s),
+                socket.EndSend);
         }
 
         #endregion

@@ -13,6 +13,14 @@ namespace KayakTests
         [TestFixture]
         public class BufferHeadersTests
         {
+            LinkedList<ArraySegment<byte>> result;
+
+            [SetUp]
+            public void SetUp()
+            {
+                result = null;
+            }
+
             string StringAtIndex(IEnumerable<ArraySegment<byte>> chunks, int index)
             {
                 var chunk = chunks.ElementAt(index);
@@ -27,7 +35,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsfasdf\r\n\r\n" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(2, result.Count);
                 Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
@@ -40,7 +48,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsf", "asdf\r\n\r\n" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(3, result.Count);
                 Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
@@ -54,7 +62,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsfasdf\r\n", "\r\n", "asdf" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(3, result.Count);
                 Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
@@ -68,7 +76,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsfasdf\r\n\r", "\n", "asdf" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(3, result.Count);
                 Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
@@ -82,7 +90,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsfasdf", "\r\n\r\n", "asdf" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(3, result.Count);
                 Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
@@ -96,7 +104,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsfasdf\r\n\r\nasdf", "asdf" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(2, result.Count);
                 Assert.AreEqual("adsfasdf\r\n\r\n", StringAtIndex(result, 0));
@@ -109,7 +117,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsf", "asdf\r\n\r\nasdf", "asdf" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(3, result.Count);
                 Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
@@ -123,7 +131,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsfasdf\r", "\n\r\nasdf", "asdf" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(3, result.Count);
                 Assert.AreEqual(chunks[0], StringAtIndex(result, 0));
@@ -137,7 +145,7 @@ namespace KayakTests
                 var chunks = new string[] { "adsfasdf\r\n", "\r\nasddddf", "asdf" };
                 var mockSocket = Mocks.MockSocket(chunks);
 
-                var result = mockSocket.Object.BufferHeaders().Result;
+                mockSocket.Object.BufferHeaders()(r => result = r, e => { });
 
                 Assert.AreEqual(3, result.Count);
                 Assert.AreEqual(chunks[0], StringAtIndex(result, 0));

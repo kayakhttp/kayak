@@ -91,18 +91,11 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Async\CoroutineTests.cs" />
     <Compile Include="Extensions\BuffersTests.cs" />
-    <Compile Include="Http\Extensions\ParsingTests.cs" />
+    <Compile Include="Extensions\ParsingTests.cs" />
     <Compile Include="Http\KayakRequestTests.cs" />
-    <Compile Include="KayakContextResponseTests.cs" />
-    <Compile Include="KayakContextRequestTests.cs" />
-    <Compile Include="KayakServerRequestTests.cs" />
-    <Compile Include="KayakServerResponseTests.cs" />
-    <Compile Include="KayakServerTests.cs" />
     <Compile Include="Mocks.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SynchronousMemoryStream.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Kayak.Oars\Kayak.Oars.csproj">

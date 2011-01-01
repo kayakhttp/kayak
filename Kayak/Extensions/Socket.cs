@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
+using Coroutine;
 
 namespace Kayak
 {
     public static partial class Extensions
     {
-        public static Task WriteObject(this ISocket socket, object obj)
+        internal static ContinuationState<Unit> WriteObject(this ISocket socket, object obj)
         {
             if (obj is FileInfo)
             {
                 var fileInfo = obj as FileInfo;
-                return socket.WriteFile(fileInfo.Name);
+                return new ContinuationState<Unit>(socket.WriteFile(fileInfo.Name));
             }
             else
             {
@@ -30,7 +30,7 @@ namespace Kayak
             }
         }
 
-        public static Task WriteAll(this ISocket socket, ArraySegment<byte> chunk)
+        internal static ContinuationState<Unit> WriteAll(this ISocket socket, ArraySegment<byte> chunk)
         {
             return socket.WriteAllInternal(chunk).AsCoroutine<Unit>();
         }
@@ -41,14 +41,13 @@ namespace Kayak
 
             while (bytesWritten < chunk.Count)
             {
-                var write = socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten);
+                var write = new ContinuationState<int>(socket.Write(chunk.Array, chunk.Offset + bytesWritten, chunk.Count - bytesWritten));
                 yield return write;
-
-                if (write.Exception != null)
-                    throw write.Exception;
 
                 bytesWritten += write.Result;
             }
+
+            yield return default(Unit);
         }
     }
 }

@@ -7,31 +7,65 @@ using Kayak;
 using Moq;
 using System.Threading;
 using System.Threading.Tasks;
+using Owin;
 
 namespace KayakTests.Http
 {
+    public static partial class Extensions
+    {
+        public static Task<int> ReadBodyAsync(this IRequest request, byte[] buffer, int offset, int count)
+        {
+            var tcs = new TaskCompletionSource<int>();
+
+            request.BeginReadBody(buffer, offset, count, iasr =>
+            {
+                try
+                {
+                    tcs.SetResult(request.EndReadBody(iasr));
+                }
+                catch (Exception e)
+                {
+                    tcs.SetException(e);
+                }
+            }, null);
+
+            return tcs.Task;
+        }
+    }
+
     [TestFixture]
     public class KayakRequestTests
     {
         // TODO test when header chunk offset is non-zero
 
+        int result;
+        Exception exception;
+        [SetUp]
+
+        public void SetUp()
+        {
+            result = 0;
+            exception = null;
+        }
+
         [Test]
         public void ReadsBodyDataWithOneSocketChunk()
         {
             var mockSocket = Mocks.MockSocket("First chunk");
-            var request = new KayakRequest(mockSocket.Object, default(HttpRequestLine), null, null, default(ArraySegment<byte>));
+
+            var request = new HttpSupport().CreateReadBody(mockSocket.Object, default(ArraySegment<byte>));
 
             byte[] buffer = new byte[64];
-            var task1 = request.ReadBodyAsync(buffer, 0, buffer.Length);
 
-            Console.WriteLine("will waitfor result.");
-            var result = task1.Result;
-            Console.WriteLine("done waiting.");
-            Assert.AreEqual("First chunk", Encoding.UTF8.GetString(buffer, 0, task1.Result));
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            var task2 = request.ReadBodyAsync(buffer, 0, buffer.Length);
+            Assert.AreEqual("First chunk", Encoding.UTF8.GetString(buffer, 0, result));
 
-            Assert.AreEqual(0, task2.Result);
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
+
+            Assert.AreEqual(0, result);
         }
 
         [Test]
@@ -39,20 +73,24 @@ namespace KayakTests.Http
         {
             var chunks = new string[] { "First chunk", "Second chunk" };
             var mockSocket = Mocks.MockSocket(chunks);
-            var request = new KayakRequest(mockSocket.Object, default(HttpRequestLine), null, null, default(ArraySegment<byte>));
+            var request = new HttpSupport().CreateReadBody(mockSocket.Object, default(ArraySegment<byte>));
 
             byte[] buffer = new byte[64];
-            var task1 = request.ReadBodyAsync(buffer, 0, buffer.Length);
 
-            Assert.AreEqual(chunks[0], Encoding.UTF8.GetString(buffer, 0, task1.Result));
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            var task2 = request.ReadBodyAsync(buffer, 0, buffer.Length);
+            Assert.AreEqual(chunks[0], Encoding.UTF8.GetString(buffer, 0, result));
 
-            Assert.AreEqual(chunks[1], Encoding.UTF8.GetString(buffer, 0, task2.Result));
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            var task3 = request.ReadBodyAsync(buffer, 0, buffer.Length);
+            Assert.AreEqual(chunks[1], Encoding.UTF8.GetString(buffer, 0, result));
 
-            Assert.AreEqual(0, task3.Result);
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
+
+            Assert.AreEqual(0, result);
         }
 
         [Test]
@@ -60,17 +98,20 @@ namespace KayakTests.Http
         {
             Console.WriteLine("ass");
             var headerChunk = "header chunk.";
-            var request = new KayakRequest(null, default(HttpRequestLine), null, null, new ArraySegment<byte>(Encoding.UTF8.GetBytes(headerChunk)));
 
+            var request = new HttpSupport().CreateReadBody(null, new ArraySegment<byte>(Encoding.UTF8.GetBytes(headerChunk)));
+            
             byte[] buffer = new byte[64];
 
-            var task1 = request.ReadBodyAsync(buffer, 0, buffer.Length);
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            Assert.AreEqual(headerChunk, Encoding.UTF8.GetString(buffer, 0, task1.Result));
+            Assert.AreEqual(headerChunk, Encoding.UTF8.GetString(buffer, 0, result));
 
-            var task2 = request.ReadBodyAsync(buffer, 0, buffer.Length);
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            Assert.AreEqual(0, task2.Result);
+            Assert.AreEqual(0, result);
         }
 
         [Test]
@@ -78,22 +119,26 @@ namespace KayakTests.Http
         {
             var headerChunk = "header chunk.";
 
-            var request = new KayakRequest(null, default(HttpRequestLine), null, null, new ArraySegment<byte>(Encoding.UTF8.GetBytes(headerChunk)));
+            var request = new HttpSupport().CreateReadBody(null, new ArraySegment<byte>(Encoding.UTF8.GetBytes(headerChunk)));
 
             byte[] buffer = new byte[10];
 
-            var task1 = request.ReadBodyAsync(buffer, 0, buffer.Length);
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            Assert.AreEqual(headerChunk.Substring(0, buffer.Length), Encoding.UTF8.GetString(buffer, 0, task1.Result));
+            Assert.AreEqual(headerChunk.Substring(0, buffer.Length), Encoding.UTF8.GetString(buffer, 0, result));
 
-            var task2 = request.ReadBodyAsync(buffer, 0, buffer.Length);
+            int result2 = 0;
+            request(buffer, 0, buffer.Length)
+                (r => result2 = r, e => exception = e);
 
-            Assert.AreEqual(headerChunk.Substring(task1.Result, headerChunk.Length - task1.Result), 
-                Encoding.UTF8.GetString(buffer, 0, task2.Result));
+            Assert.AreEqual(headerChunk.Substring(result, headerChunk.Length - result), 
+                Encoding.UTF8.GetString(buffer, 0, result2));
 
-            var task3 = request.ReadBodyAsync(buffer, 0, buffer.Length);
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            Assert.AreEqual(0, task3.Result);
+            Assert.AreEqual(0, result);
         }
 
         [Test]
@@ -103,21 +148,29 @@ namespace KayakTests.Http
             var chunks = new string[] { "First chunk", "Second chunk" };
             var mockSocket = Mocks.MockSocket(chunks);
 
-            var request = new KayakRequest(mockSocket.Object, default(HttpRequestLine), null, null, new ArraySegment<byte>(Encoding.UTF8.GetBytes(headerChunk)));
+            var request = new HttpSupport().CreateReadBody(mockSocket.Object, new ArraySegment<byte>(Encoding.UTF8.GetBytes(headerChunk)));
 
             byte[] buffer = new byte[64];
 
-            var task1 = request.ReadBodyAsync(buffer, 0, buffer.Length);
-            Assert.AreEqual(headerChunk, Encoding.UTF8.GetString(buffer, 0, task1.Result));
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            var task2 = request.ReadBodyAsync(buffer, 0, buffer.Length);
-            Assert.AreEqual(chunks[0], Encoding.UTF8.GetString(buffer, 0, task2.Result));
+            Assert.AreEqual(headerChunk, Encoding.UTF8.GetString(buffer, 0, result));
 
-            var task3 = request.ReadBodyAsync(buffer, 0, buffer.Length);
-            Assert.AreEqual(chunks[1], Encoding.UTF8.GetString(buffer, 0, task3.Result));
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
 
-            var task4 = request.ReadBodyAsync(buffer, 0, buffer.Length);
-            Assert.AreEqual(0, task4.Result);
+            Assert.AreEqual(chunks[0], Encoding.UTF8.GetString(buffer, 0, result));
+
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
+
+            Assert.AreEqual(chunks[1], Encoding.UTF8.GetString(buffer, 0, result));
+
+            request(buffer, 0, buffer.Length)
+                (r => result = r, e => exception = e);
+
+            Assert.AreEqual(0, result);
         }
     }
 }

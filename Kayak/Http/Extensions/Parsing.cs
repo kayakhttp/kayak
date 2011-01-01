@@ -30,109 +30,6 @@ namespace Kayak
 
     public static partial class Extensions
     {
-        /// <summary>
-        /// Returns the value of the Content-Length header, or -1 if there is no Content-Length header or its value 
-        /// can't be parsed.
-        /// </summary>
-        public static int GetContentLength(this IDictionary<string, IEnumerable<string>> headers)
-        {
-            int contentLength = -1;
-
-            var key = headers.Keys.FirstOrDefault(s => s.ToLowerInvariant() == "content-length");
-
-            if (key != null)
-            {
-                var value = headers[key].FirstOrDefault();
-
-                if (value != null)
-                    int.TryParse(value, out contentLength);
-            }
-
-            return contentLength;
-        }
-
-        public static void SetContentLength(this IDictionary<string, IEnumerable<string>> headers, int value)
-        {
-            headers["Content-Length"] = new string[] { value.ToString() };
-        }
-
-        public static string GetPath(this IRequest request)
-        {
-            return GetPath(request.Uri);
-        }
-
-        public static string GetPath(string uri)
-        {
-            int question = uri.IndexOf('?');
-            return HttpUtility.UrlDecode(question >= 0 ? uri.Substring(0, question) : uri);
-        }
-
-        public static IDictionary<string, string> GetQueryString(this IRequest request)
-        {
-            return GetQueryString(request.Uri);
-        }
-
-        public static IDictionary<string, string> GetQueryString(string uri)
-        {
-            int question = uri.IndexOf('?');
-            return question >= 0 ?
-                uri.ParseQueryString(question + 1, uri.Length - question - 1) :
-                new Dictionary<string, string>();
-        }
-
-        const char EqualsChar = '=';
-        const char AmpersandChar = '&';
-
-        internal static IDictionary<string, string> ParseQueryString(this string encodedString)
-        {
-            return ParseQueryString(encodedString, 0, encodedString.Length);
-        }
-
-        internal static IDictionary<string, string> ParseQueryString(this string encodedString,
-            int charIndex, int charCount)
-        {
-            var result = new Dictionary<string, string>();
-            var name = new StringBuilder();
-            var value = new StringBuilder();
-            var hasValue = false;
-            var encounteredEqualsChar = false;
-
-            for (int i = charIndex; i < charIndex + charCount; i++)
-            {
-                char c = encodedString[i];
-                switch (c)
-                {
-                    case EqualsChar:
-                        encounteredEqualsChar = true;
-                        hasValue = true;
-                        break;
-                    case AmpersandChar:
-                        // end of pair
-                        AddNameValuePair(result, name, value, hasValue);
-
-                        // reset
-                        name.Length = value.Length = 0;
-                        hasValue = false;
-                        break;
-                    default:
-                        if (!hasValue) name.Append(c); else value.Append(c);
-                        break;
-                }
-            }
-
-            if (encounteredEqualsChar)
-                // last pair
-                AddNameValuePair(result, name, value, hasValue);
-
-            return result;
-        }
-
-        static void AddNameValuePair(IDictionary<string, string> dict, StringBuilder name, StringBuilder value, bool hasValue)
-        {
-            if (name.Length > 0)
-                dict.Add(HttpUtility.UrlDecode(name.ToString()), hasValue ? HttpUtility.UrlDecode(value.ToString()) : null);
-        }
-
         internal static HttpRequestLine ReadRequestLine(this TextReader reader)
         {
             string statusLine = reader.ReadLine();
@@ -167,13 +64,11 @@ namespace Kayak
             return headers;
         }
 
-        public static byte[] WriteStatusLineAndHeaders(this IResponse response)
+        public static byte[] WriteStatusLineAndHeaders(string status, IDictionary<string, IEnumerable<string>> headers)
         {
             var sb = new StringBuilder();
 
-            sb.AppendFormat("HTTP/1.0 {0}\r\n", response.Status);
-
-            var headers = response.Headers;
+            sb.AppendFormat("HTTP/1.0 {0}\r\n", status);
 
             if (!headers.ContainsKey("Server"))
                 headers["Server"] = new string[] { "Kayak" };

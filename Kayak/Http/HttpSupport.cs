@@ -1,25 +1,95 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Owin;
+using System.Collections.Generic;
+using Coroutine;
+using System.IO;
 
 namespace Kayak
 {
     public interface IHttpSupport
     {
-        Task<IRequest> BeginRequest(ISocket socket);
-        Task BeginResponse(ISocket socket, IResponse response);
+        ContinuationState<IDictionary<string, object>> BeginRequest(ISocket socket);
+        ContinuationState<Unit> BeginResponse(ISocket socket, string status, IDictionary<string, IEnumerable<string>> response);
     }
 
     class HttpSupport : IHttpSupport
     {
-        public Task<IRequest> BeginRequest(ISocket socket)
+        public ContinuationState<IDictionary<string, object>> BeginRequest(ISocket socket)
         {
-            return socket.BufferHeaders().ContinueWith(t => KayakRequest.CreateRequest(socket, t.Result));
+            return BeginRequestInternal(socket).AsCoroutine<IDictionary<string, object>>();
         }
 
-        public Task BeginResponse(ISocket socket, IResponse response)
+        public IEnumerable<object> BeginRequestInternal(ISocket socket)
         {
-            return socket.WriteAll(new ArraySegment<byte>(response.WriteStatusLineAndHeaders()));
+            var bufferHeaders = new ContinuationState<LinkedList<ArraySegment<byte>>>(socket.BufferHeaders());
+            yield return bufferHeaders;
+
+            var headerBuffers = bufferHeaders.Result;
+
+            Dictionary<string, object> env = new Dictionary<string, object>();
+
+            var bodyDataReadWithHeaders = headerBuffers.Last.Value;
+            headerBuffers.RemoveLast();
+
+            var headersString = headerBuffers.GetString();
+            var reader = new StringReader(headersString);
+            var requestLine = reader.ReadRequestLine();
+            var headers = reader.ReadHeaders();
+
+            env["Owin.RequestMethod"] = requestLine.Verb;
+            env["Owin.RequestUri"] = requestLine.RequestUri;
+            env["Owin.RequestHeaders"] = headers;
+            env["Owin.BaseUri"] = "";
+            env["Owin.RemoteEndPoint"] = socket.RemoteEndPoint;
+
+            // TODO provide better values
+            env["Owin.ServerName"] = "";
+            env["Owin.ServerPort"] = 0;
+            env["Owin.UriScheme"] = "http";
+            env["Owin.RequestBody"] = CreateReadBody(socket, bodyDataReadWithHeaders);
+
+            yield return env;
+        }
+
+        public Func<byte[], int, int, Action<Action<int>, Action<Exception>>> CreateReadBody(
+            ISocket socket,
+            ArraySegment<byte> bodyDataReadWithHeaders)
+        {
+            return (buffer, offset, count) =>
+                {
+                    if (bodyDataReadWithHeaders.Count > 0)
+                    {
+                        int bytesRead;
+
+                        bytesRead = Math.Min(bodyDataReadWithHeaders.Count, count);
+                        Buffer.BlockCopy(bodyDataReadWithHeaders.Array, bodyDataReadWithHeaders.Offset, buffer, offset, bytesRead);
+
+                        if (bytesRead < bodyDataReadWithHeaders.Count)
+                            bodyDataReadWithHeaders =
+                                new ArraySegment<byte>(
+                                    bodyDataReadWithHeaders.Array,
+                                    bodyDataReadWithHeaders.Offset + bytesRead,
+                                    bodyDataReadWithHeaders.Count - bytesRead);
+                        else
+                            bodyDataReadWithHeaders = default(ArraySegment<byte>);
+
+                        return (r, e) => r(bytesRead);
+                    }
+                    else if (socket != null)
+                    {
+                        return socket.Read(buffer, offset, count);
+                    }
+                    else
+                    {
+                        return (r, e) => r(0);
+                    }
+                };
+        }
+
+        public ContinuationState<Unit> BeginResponse(ISocket socket, string status, IDictionary<string, IEnumerable<string>> headers)
+        {
+            return socket.WriteAll(new ArraySegment<byte>(Extensions.WriteStatusLineAndHeaders(status, headers)));
         }
     }
 }

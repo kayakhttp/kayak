@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using LitJson;
+using System.Threading.Tasks;
 
 namespace Kayak.Framework
 {
@@ -24,7 +25,7 @@ namespace Kayak.Framework
 
         public static IDisposable UseFramework(this IObservable<ISocket> server, IEnumerable<Type> types)
         {
-            return server.InvokeWithErrorHandler(CreateFramework(types));
+            return server.Host(new ErrorHandlingMiddleware(CreateFramework(types), new ErrorHandler()), TaskScheduler.Default);
         }
     }
 }

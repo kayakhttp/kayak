@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Owin;
+using Coroutine;
 
 namespace Kayak
 {
@@ -16,9 +17,9 @@ namespace Kayak
         /// Buffers HTTP headers from a socket. The last ArraySegment in the list is any
         /// data beyond headers which was read, which may be of zero length.
         /// </summary>
-        static internal Task<LinkedList<ArraySegment<byte>>> BufferHeaders(this ISocket socket)
+        static internal Action<Action<LinkedList<ArraySegment<byte>>>, Action<Exception>> BufferHeaders(this ISocket socket)
         {
-            return BufferHeadersInternal(socket).AsCoroutine<LinkedList<ArraySegment<byte>>>();
+            return BufferHeadersInternal(socket).AsContinuation<LinkedList<ArraySegment<byte>>>();
         }
 
         static IEnumerable<object> BufferHeadersInternal(ISocket socket)
@@ -38,16 +39,13 @@ namespace Kayak
 
                 int bytesRead = 0;
 
-                Trace.Write("About to read header chunk.");
-                var read = socket.Read(buffer, bufferPosition, buffer.Length - bufferPosition);
+                //Trace.Write("About to read header chunk.");
+                var read = new ContinuationState<int>(socket.Read(buffer, bufferPosition, buffer.Length - bufferPosition));
                 yield return read;
-
-                if (read.Exception != null)
-                    throw read.Exception;
 
                 bytesRead = read.Result;
 
-                Trace.Write("Read {0} bytes.", bytesRead);
+                //Trace.Write("Read {0} bytes.", bytesRead);
 
                 result.AddLast(new ArraySegment<byte>(buffer, bufferPosition, bytesRead));
 
@@ -63,7 +61,6 @@ namespace Kayak
 
                 if (bodyDataPosition != -1)
                 {
-                    Console.WriteLine("Read " + totalBytesRead + ", body starts at " + bodyDataPosition);
                     var last = result.Last.Value;
                     result.RemoveLast();
                     var overlapLength = totalBytesRead - bodyDataPosition;
@@ -102,44 +99,21 @@ namespace Kayak
             return -1;
         }
 
-        public static Task<IEnumerable<ArraySegment<byte>>> BufferRequestBody(this IRequest request)
+        internal static IEnumerable<byte> GetBytes(this IEnumerable<ArraySegment<byte>> buffers)
         {
-            return BufferRequestBodyInternal(request).AsCoroutine<IEnumerable<ArraySegment<byte>>>();
+            foreach (var seg in buffers)
+                for (int i = seg.Offset; i < seg.Offset + seg.Count; i++)
+                    yield return seg.Array[i];
         }
 
-        static IEnumerable<object> BufferRequestBodyInternal(this IRequest request)
-        {
-            var result = new LinkedList<ArraySegment<byte>>();
-            var buffer = new byte[2048];
-            var totalBytesRead = 0;
-            var bytesRead = 0;
-
-            do
-            {
-                var read = request.ReadBodyAsync(buffer, 0, buffer.Length);
-                yield return read;
-
-                if (read.Exception != null)
-                    throw read.Exception;
-
-                bytesRead = read.Result;
-
-                result.AddLast(new ArraySegment<byte>(buffer, 0, bytesRead));
-                totalBytesRead += bytesRead;
-            }
-            while (bytesRead != 0);
-
-            yield return result;
-        }
-
-        public static string GetString(this IEnumerable<ArraySegment<byte>> buffers)
+        internal static string GetString(this IEnumerable<ArraySegment<byte>> buffers)
         {
             return buffers.GetString(Encoding.UTF8);
         }
 
-        public static string GetString(this IEnumerable<ArraySegment<byte>> buffers, Encoding encoding)
-        {
-            var sb = new StringBuilder(buffers.Sum(s => s.Count));
+        internal static string GetString(this IEnumerable<ArraySegment<byte>> buffers, Encoding encoding)
+        { 
+            var sb = new StringBuilder();
 
             foreach (var b in buffers)
                 sb.Append(encoding.GetString(b.Array, b.Offset, b.Count));
@@ -147,21 +121,14 @@ namespace Kayak
             return sb.ToString();
         }
 
-        public static string GetString(this ArraySegment<byte> b)
+        internal static string GetString(this ArraySegment<byte> b)
         {
             return b.GetString(Encoding.UTF8);
         }
 
-        public static string GetString(this ArraySegment<byte> b, Encoding encoding)
+        internal static string GetString(this ArraySegment<byte> b, Encoding encoding)
         {
             return encoding.GetString(b.Array, b.Offset, b.Count);
-        }
-
-        internal static IEnumerable<byte> GetBytes(this IEnumerable<ArraySegment<byte>> buffers)
-        {
-            foreach (var seg in buffers)
-                for (int i = seg.Offset; i < seg.Offset + seg.Count; i++)
-                    yield return seg.Array[i];
         }
     }
 }

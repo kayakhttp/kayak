@@ -3,9 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace KayakTests
+namespace Kayak
 {
-    class KayakServerResponseTests
+    public interface IKayakServer
     {
+        Action<Action<ISocket>> GetConnection();
     }
 }

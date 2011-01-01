@@ -58,9 +58,9 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="owin, Version=1.0.3993.35516, Culture=neutral, processorArchitecture=MSIL">
+    <Reference Include="Coroutine, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\owin.dll</HintPath>
+      <HintPath>..\lib\Coroutine.dll</HintPath>
     </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
@@ -77,22 +77,17 @@
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Async\AsyncResult.cs" />
-    <Compile Include="Async\Coroutine.cs" />
-    <Compile Include="Async\SingleThreadedTaskScheduler.cs" />
     <Compile Include="Extensions\Buffers.cs" />
     <Compile Include="Extensions\IO.cs" />
     <Compile Include="Extensions\Socket.cs" />
     <Compile Include="Extensions\Trace.cs" />
     <Compile Include="Http\Extensions\Application.cs" />
-    <Compile Include="Http\Extensions\ErrorHandlingMiddleware.cs" />
     <Compile Include="Http\Extensions\Parsing.cs" />
-    <Compile Include="Http\Extensions\Request.cs" />
     <Compile Include="Http\HttpSupport.cs" />
-    <Compile Include="Http\KayakRequest.cs" />
-    <Compile Include="Http\KayakResponse.cs" />
+    <Compile Include="IKayakServer.cs" />
     <Compile Include="ISocket.cs" />
     <Compile Include="KayakServer.cs" />
+    <Compile Include="Owin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

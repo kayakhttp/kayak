@@ -1,104 +1,113 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Coroutine;
 using Owin;
 
 namespace Kayak
 {
+    public delegate void
+        OwinApplication(IDictionary<string, object> env,
+        Action<Tuple<string, IDictionary<string, IEnumerable<string>>, IEnumerable<object>>> completed,
+        Action<Exception> faulted); 
+
     public static partial class Extensions
     {
-        public static Task<IResponse> InvokeAsync(this IApplication application, IRequest request)
+
+        //public static void InvokeOnScheduler(this IApplication application, IRequest request, TaskScheduler scheduler)
+        //{
+        //    var task = new Task(() =>
+        //        {
+                    
+        //        });
+        //}
+
+        //public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, TaskScheduler scheduler)
+        //{
+        //    return sockets.InvokeWithErrorHandler(application, new ErrorHandler(), scheduler);
+        //}
+
+        //public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, IErrorHandler errorHandler, TaskScheduler scheduler))
+        //{
+        //    return sockets.Host(new ErrorHandlingMiddleware(application, errorHandler), scheduler);
+        //}
+
+        public static void Host(this IKayakServer server, OwinApplication application)
         {
-            var tcs = new TaskCompletionSource<IResponse>();
-
-            application.BeginInvoke(request, iasr => 
-            {
-                try
-                {
-                    tcs.SetResult(application.EndInvoke(iasr));
-                }
-                catch (Exception e)
-                {
-                    tcs.SetException(e);
-                }
-            }, null);
-
-            return tcs.Task;
+            server.Host(application, null);
         }
 
-        public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application)
+        public static void Host(this IKayakServer server, OwinApplication application, Action<Action> trampoline)
         {
-            return sockets.InvokeWithErrorHandler(application, new ErrorHandler());
+            server.Host(new HttpSupport(), application, trampoline);
         }
 
-        public static IDisposable InvokeWithErrorHandler(this IObservable<ISocket> sockets, IApplication application, IErrorHandler errorHandler)
+        public static void Host(this IKayakServer server, IHttpSupport http, OwinApplication application, Action<Action> trampoline)
         {
-            return sockets.Invoke(new ErrorHandlingMiddleware(application, errorHandler));
-        }
-
-        public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication application)
-        {
-            return sockets.Invoke(application, new HttpSupport());
-        }
-
-        public static IDisposable Invoke(this IObservable<ISocket> sockets, IApplication application, IHttpSupport http)
-        {
-            return sockets.Subscribe(s => 
-                {
-                    s.Invoke(application, http).ContinueWith(t =>
-                    {
-                        if (t.IsFaulted)
-                        {
-                            Console.WriteLine("Error while processing request.");
-                            Console.Out.WriteException(t.Exception);
-                        }
-                    });
+            server.HostInternal(http, application, trampoline).AsContinuation<object>(trampoline)
+                (_ => { }, e => {
+                    Console.WriteLine("Error while hosting application.");
+                    Console.Out.WriteException(e);
                 });
         }
 
-        public static Task Invoke(this ISocket socket, IApplication application, IHttpSupport http)
+        static IEnumerable<object> HostInternal(this IKayakServer server, IHttpSupport http, OwinApplication application, Action<Action> trampoline)
         {
-            return socket.InvokeInternal(application, http).AsCoroutine<Unit>();
+            while (true)
+            {
+                var accept = new ContinuationState<ISocket>((r, e) => server.GetConnection()(r));
+                yield return accept;
+
+                if (accept.Result == null)
+                    break;
+
+                accept.Result.ProcessSocket(http, application, trampoline);
+            }
         }
 
-        static IEnumerable<object> InvokeInternal(this ISocket socket, IApplication application, IHttpSupport http)
+        public static void ProcessSocket(this ISocket socket, IHttpSupport http, OwinApplication application, Action<Action> trampoline)
+        {
+            socket.ProcessSocketInternal(http, application).AsContinuation<object>(trampoline)
+                (_ => { }, e =>
+                {
+                    Console.WriteLine("Error while processing request.");
+                    Console.Out.WriteException(e);
+                });
+        }
+
+        static IEnumerable<object> ProcessSocketInternal(this ISocket socket, IHttpSupport http, OwinApplication application)
         {
             var beginRequest = http.BeginRequest(socket);
             yield return beginRequest;
 
-            if (beginRequest.IsFaulted)
-                throw beginRequest.Exception;
+            var request = beginRequest.Result;
 
-            IRequest request = beginRequest.Result;
-
-            var invoke = application.InvokeAsync(request);
+            var invoke = new ContinuationState<Tuple<string, IDictionary<string, IEnumerable<string>>, IEnumerable<object>>>
+                ((r, e) => application(request, r, e));
 
             yield return invoke;
 
-            if (invoke.IsFaulted)
-                throw invoke.Exception;
+            var response = invoke.Result;
 
-            IResponse response = invoke.Result;
+            yield return http.BeginResponse(socket, response.Item1, response.Item2);
 
-            yield return http.BeginResponse(socket, response);
-
-            foreach (var obj in response.GetBody())
+            foreach (var obj in response.Item3)
             {
                 var objectToWrite = obj;
 
-                if (obj is Task)
+                if (obj is Action<Action<object>, Action<Exception>>)
                 {
-                    var task = (obj as Task).AsTaskWithValue();
+                    var cs = new ContinuationState<object>(obj as Action<Action<object>, Action<Exception>>);
 
-                    yield return task;
+                    yield return cs;
 
-                    if (task.IsFaulted)
-                        throw task.Exception;
-
-                    objectToWrite = task.Result;
+                    objectToWrite = cs.Result;
                 }
 
-                socket.WriteObject(objectToWrite);
+                var write = socket.WriteObject(objectToWrite);
+                yield return write;
+
+                var foo = write.Result;
             }
 
             // HTTP/1.1 support might only close the connection if client wants to
