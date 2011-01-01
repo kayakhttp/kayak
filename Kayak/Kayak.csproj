@@ -87,7 +87,6 @@
     <Compile Include="IKayakServer.cs" />
     <Compile Include="ISocket.cs" />
     <Compile Include="KayakServer.cs" />
-    <Compile Include="Owin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
