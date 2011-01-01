@@ -2,27 +2,14 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kayak", "Kayak\Kayak.csproj", "{79DDD0CE-6F79-4212-A972-8618AD6E405F}"
-	ProjectSection(ProjectDependencies) = postProject
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9} = {C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}
-	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kayak.Oars", "Kayak.Oars\Kayak.Oars.csproj", "{AEDCAE89-F0C1-41FA-820D-DF96D79BCB3C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakExamples", "KayakExamples\KayakExamples.csproj", "{33318990-37F5-4B9D-B3F9-19E7736EE1DC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakDocs", "tools\KayakDocs\KayakDocs.csproj", "{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KayakTests", "KayakTests\KayakTests.csproj", "{DA201FE7-FDAF-4B9E-821D-589F93F7245F}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Kayak", "Kayak", "{865AB8B9-60B2-4EDA-AEF3-939CA14ECD80}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Kayak.Framework", "Kayak.Framework", "{4EFE9168-CE62-4A8F-A83D-EBA3EBB60EB7}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9D8025B4-D391-46D5-9686-1573640815C2}"
-	ProjectSection(SolutionItems) = preProject
-		Performance1.psess = Performance1.psess
-		Performance2.psess = Performance2.psess
-	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -100,26 +87,6 @@ Global
 		{33318990-37F5-4B9D-B3F9-19E7736EE1DC}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{33318990-37F5-4B9D-B3F9-19E7736EE1DC}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{33318990-37F5-4B9D-B3F9-19E7736EE1DC}.Release|x86.ActiveCfg = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug 4.0|Any CPU.ActiveCfg = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug 4.0|Any CPU.Build.0 = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug 4.0|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug 4.0|Mixed Platforms.Build.0 = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug 4.0|x86.ActiveCfg = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release 4.0|Any CPU.ActiveCfg = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release 4.0|Any CPU.Build.0 = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release 4.0|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release 4.0|Mixed Platforms.Build.0 = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release 4.0|x86.ActiveCfg = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{C7975722-C5BC-4E2F-A1B5-38D66BBE3DA9}.Release|x86.ActiveCfg = Release|Any CPU
 		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug 4.0|Any CPU.ActiveCfg = Debug|Any CPU
 		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug 4.0|Any CPU.Build.0 = Debug|Any CPU
 		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug 4.0|Mixed Platforms.ActiveCfg = Debug|Any CPU

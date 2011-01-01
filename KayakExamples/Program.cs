@@ -6,7 +6,6 @@ namespace KayakExamples
         static void Main(string[] args)
         {
             Simple.Run();
-            //Framework.Run();
         }
     }
 }
