@@ -8,7 +8,7 @@ namespace Kayak
     public interface IHttpSupport
     {
         ContinuationState<IDictionary<string, object>> BeginRequest(ISocket socket);
-        ContinuationState<Unit> BeginResponse(ISocket socket, string status, IDictionary<string, IEnumerable<string>> response);
+        ContinuationState<Unit> BeginResponse(ISocket socket, string status, IDictionary<string, IList<string>> response);
     }
 
     class HttpSupport : IHttpSupport
@@ -40,12 +40,12 @@ namespace Kayak
             env["Owin.RequestHeaders"] = headers;
             env["Owin.BaseUri"] = "";
             env["Owin.RemoteEndPoint"] = socket.RemoteEndPoint;
+            env["Owin.RequestBody"] = CreateReadBody(socket, bodyDataReadWithHeaders);
 
             // TODO provide better values
             env["Owin.ServerName"] = "";
             env["Owin.ServerPort"] = 0;
             env["Owin.UriScheme"] = "http";
-            env["Owin.RequestBody"] = CreateReadBody(socket, bodyDataReadWithHeaders);
 
             yield return env;
         }
@@ -85,7 +85,7 @@ namespace Kayak
                 };
         }
 
-        public ContinuationState<Unit> BeginResponse(ISocket socket, string status, IDictionary<string, IEnumerable<string>> headers)
+        public ContinuationState<Unit> BeginResponse(ISocket socket, string status, IDictionary<string, IList<string>> headers)
         {
             return socket.WriteChunk(new ArraySegment<byte>(Extensions.WriteStatusLineAndHeaders(status, headers)));
         }

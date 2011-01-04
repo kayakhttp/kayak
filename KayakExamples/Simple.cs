@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Net;
 using System.Text;
 using Kayak;
 
 namespace KayakExamples
 {
+    public delegate void
+        OwinApplication(IDictionary<string, object> env,
+        Action<string, IDictionary<string, IList<string>>, IEnumerable<object>> completed,
+        Action<Exception> faulted); 
+
     class Simple
     {
         public static void Run()
@@ -16,14 +20,14 @@ namespace KayakExamples
 
             server.Host((env, respond, error) =>
                 {
-                    respond(new Tuple<string, IDictionary<string, IEnumerable<string>>, IEnumerable<object>>(
+                    respond(
                             "200 OK",
-                            new Dictionary<string, IEnumerable<string>>() 
+                            new Dictionary<string, IList<string>>() 
                             {
                                 { "Content-Type",  new string[] { "text/html" } }
                             },
                             new object[] { Encoding.ASCII.GetBytes("Hello world.") }
-                        ));
+                        );
                 });
 
             Console.WriteLine("Listening on " + server.ListenEndPoint);

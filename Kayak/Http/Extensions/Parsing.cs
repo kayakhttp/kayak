@@ -150,7 +150,7 @@ namespace Kayak
             return headers;
         }
 
-        public static byte[] WriteStatusLineAndHeaders(string status, IDictionary<string, IEnumerable<string>> headers)
+        public static byte[] WriteStatusLineAndHeaders(string status, IDictionary<string, IList<string>> headers)
         {
             var sb = new StringBuilder();
 

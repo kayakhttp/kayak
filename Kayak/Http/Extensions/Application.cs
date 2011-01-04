@@ -7,7 +7,7 @@ namespace Kayak
 {
     public delegate void
         OwinApplication(IDictionary<string, object> env,
-        Action<Tuple<string, IDictionary<string, IEnumerable<string>>, IEnumerable<object>>> completed,
+        Action<string, IDictionary<string, IList<string>>, IEnumerable<object>> completed,
         Action<Exception> faulted); 
 
     public static partial class Extensions
@@ -62,8 +62,12 @@ namespace Kayak
 
             var request = beginRequest.Result;
 
-            var invoke = new ContinuationState<Tuple<string, IDictionary<string, IEnumerable<string>>, IEnumerable<object>>>
-                ((r, e) => application(request, r, e));
+            var invoke = new ContinuationState<Tuple<string, IDictionary<string, IList<string>>, IEnumerable<object>>>
+                ((r, e) => 
+                    application(request, 
+                                (s,h,b) => 
+                                    r(new Tuple<string,IDictionary<string,IList<string>>,IEnumerable<object>>(s, h, b)), 
+                                e));
 
             yield return invoke;
 
