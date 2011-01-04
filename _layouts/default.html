@@ -1,0 +1,51 @@
+﻿<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+<head>
+<title>
+    {% if page.title_full %}{{ page.title_full }}{% else %}{{ page.title }} – Kayak{% endif %}
+</title>
+<link rel="stylesheet" href="/style.css" type="text/css">
+</head>
+<body>
+<img id="logo" src="/kayak.png">
+<p><span id="kayak"><a href="/">Kayak</a></span></p>
+
+<ul id="nav">
+<li><a href="/start">Overview</a></li>
+<li><a href="/downloads">Downloads</a></li>
+<li><a href="http://groups.google.com/group/kayak-http">Discussion</a></li>
+<li><a href="http://twitter.com/kayakhttp">Updates</a></li>
+<li><a href="http://github.com/kayak/kayak">Source</a></li>
+</ul>
+
+<table>
+<tr>
+<td valign="top">
+
+{% if sidebar %}
+<div id="sidebar">{{ sidebar }}</div>
+{% endif %}
+
+</td>
+<td valign="top">
+
+{{ content }}
+
+</td>
+</tr>
+</table>
+
+<p id="footer">Kayak is copyright &copy; 2010 <a href="http://bvanderveen.com">Benjamin van der Veen</a>.</p>
+
+<script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+try {
+var pageTracker = _gat._getTracker("UA-12015186-1");
+pageTracker._trackPageview();
+} catch(err) {}</script>
+
+</body>
+</html>

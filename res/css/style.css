@@ -1,0 +1,82 @@
+/* @override http://bvanderveen.com/kayak/style.css */
+
+body { 
+	font-family: Helvetica, sans-serif;
+	margin: 20px 90px 0;
+	text-align: justify;
+}
+body.home
+{
+	width: 680px;
+	margin: 100px auto 0;
+}
+
+body.home p 
+{
+	text-align: justify;
+	margin: 20px 0;
+}
+#tagline 
+{
+	
+	font-weight: bold;
+}
+
+body.home h2 body.home #footer,
+{
+	text-align: center;
+}
+body.home h2 a
+{
+	color: #47b7ff;
+}
+#kayak, #kayak a, h1.kayak a
+{
+	color: #ffb13a;
+	font-size: 50px;
+	font-weight: bold;
+	text-decoration: none;
+}
+h1.kayak {
+	padding: 45px 0 0px 90px;
+	margin: 0 0 40px -93px;
+	background: url(/res/img/kayak.png) 35px 0px no-repeat;
+}
+#sidebar
+{
+	float: left;
+}
+#nav li
+{
+	display: inline;
+}
+
+h1, h2, h3
+{
+	color: #47b7ff;
+}
+h1.title
+{
+	font-size: 30px;
+}
+p {
+	font-weight: regular;
+	color: #3c3c3c;
+	line-height: 30px;
+}
+a { 
+	color: #88ac06;
+}
+
+li { 
+	margin: 10px;
+	color: #3c3c3c;
+}
+p#footer {
+	margin-top: 50px;
+	font-size: 11px;
+	color: #b3b3b3;
+}
+p#footer a {
+	color: #b3b3b3;
+}
