@@ -18,12 +18,16 @@ namespace KayakTests.Http
 
         int result;
         Exception exception;
-        [SetUp]
+        Action<int> resultCb;
+        Action<Exception> exceptionCb;
 
+        [SetUp]
         public void SetUp()
         {
             result = 0;
             exception = null;
+            resultCb = r => result = r;
+            exceptionCb = e => exception = e;
         }
 
         [Test]
@@ -35,13 +39,11 @@ namespace KayakTests.Http
 
             byte[] buffer = new byte[64];
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual("First chunk", Encoding.UTF8.GetString(buffer, 0, result));
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, r => result = r, e => exception = e);
 
             Assert.AreEqual(0, result);
         }
@@ -55,18 +57,15 @@ namespace KayakTests.Http
 
             byte[] buffer = new byte[64];
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(chunks[0], Encoding.UTF8.GetString(buffer, 0, result));
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(chunks[1], Encoding.UTF8.GetString(buffer, 0, result));
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(0, result);
         }
@@ -81,13 +80,11 @@ namespace KayakTests.Http
             
             byte[] buffer = new byte[64];
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(headerChunk, Encoding.UTF8.GetString(buffer, 0, result));
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(0, result);
         }
@@ -101,20 +98,17 @@ namespace KayakTests.Http
 
             byte[] buffer = new byte[10];
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(headerChunk.Substring(0, buffer.Length), Encoding.UTF8.GetString(buffer, 0, result));
 
             int result2 = 0;
-            request(buffer, 0, buffer.Length)
-                (r => result2 = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(headerChunk.Substring(result, headerChunk.Length - result), 
                 Encoding.UTF8.GetString(buffer, 0, result2));
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(0, result);
         }
@@ -130,23 +124,19 @@ namespace KayakTests.Http
 
             byte[] buffer = new byte[64];
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(headerChunk, Encoding.UTF8.GetString(buffer, 0, result));
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(chunks[0], Encoding.UTF8.GetString(buffer, 0, result));
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(chunks[1], Encoding.UTF8.GetString(buffer, 0, result));
 
-            request(buffer, 0, buffer.Length)
-                (r => result = r, e => exception = e);
+            request(buffer, 0, buffer.Length, resultCb, exceptionCb);
 
             Assert.AreEqual(0, result);
         }

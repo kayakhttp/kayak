@@ -50,11 +50,11 @@ namespace Kayak
             yield return env;
         }
 
-        public Func<byte[], int, int, Action<Action<int>, Action<Exception>>> CreateReadBody(
+        public Action<byte[], int, int, Action<int>, Action<Exception>> CreateReadBody(
             ISocket socket,
             ArraySegment<byte> bodyDataReadWithHeaders)
         {
-            return (buffer, offset, count) =>
+            return (buffer, offset, count, r, e) =>
                 {
                     if (bodyDataReadWithHeaders.Count > 0)
                     {
@@ -72,15 +72,15 @@ namespace Kayak
                         else
                             bodyDataReadWithHeaders = default(ArraySegment<byte>);
 
-                        return (r, e) => r(bytesRead);
+                        r(bytesRead);
                     }
                     else if (socket != null)
                     {
-                        return socket.Read(buffer, offset, count);
+                        socket.Read(buffer, offset, count)(r, e);
                     }
                     else
                     {
-                        return (r, e) => r(0);
+                        r(0);
                     }
                 };
         }
