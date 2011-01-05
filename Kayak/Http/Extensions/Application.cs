@@ -19,19 +19,14 @@ namespace Kayak
 
         public static void Host(this IKayakServer server, OwinApplication application, Action<Action> trampoline)
         {
-            server.Host(new HttpSupport(), application, trampoline);
-        }
-
-        public static void Host(this IKayakServer server, IHttpSupport http, OwinApplication application, Action<Action> trampoline)
-        {
-            server.HostInternal(http, application, trampoline).AsContinuation<object>(trampoline)
+            server.HostInternal(application, trampoline).AsContinuation<object>(trampoline)
                 (_ => { }, e => {
                     Console.WriteLine("Error while hosting application.");
                     Console.Out.WriteException(e);
                 });
         }
 
-        static IEnumerable<object> HostInternal(this IKayakServer server, IHttpSupport http, OwinApplication application, Action<Action> trampoline)
+        static IEnumerable<object> HostInternal(this IKayakServer server, OwinApplication application, Action<Action> trampoline)
         {
             while (true)
             {
@@ -41,7 +36,7 @@ namespace Kayak
                 if (accept.Result == null)
                     break;
 
-                accept.Result.ProcessSocket(http, application, trampoline);
+                accept.Result.ProcessSocket(new HttpSupport(), application, trampoline);
             }
         }
 
@@ -91,16 +86,27 @@ namespace Kayak
                 if (objectToWrite is FileInfo)
                 {
                     yield return new ContinuationState(socket.WriteFile((objectToWrite as FileInfo).Name));
+                    continue;
                 }
-                var write = socket.WriteFileOrData(objectToWrite);
+
+                var chunk = default(ArraySegment<byte>);
+
+                if (obj is ArraySegment<byte>)
+                    chunk = (ArraySegment<byte>)obj;
+                else if (obj is byte[])
+                    chunk = new ArraySegment<byte>(obj as byte[]);
+                else
+                    continue;
+                    //throw new ArgumentException("Invalid object of type " + obj.GetType() + " '" + obj.ToString() + "'");
+
+                var write = socket.WriteChunk(chunk);
                 yield return write;
 
+                // TODO enumerate to completion
                 if (write.Exception != null)
                     throw write.Exception;
             }
 
-            // HTTP/1.1 support might only close the connection if client wants to
-            //Trace.Write("Closed connection.");
             socket.Dispose();
         }
     }
