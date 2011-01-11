@@ -7,7 +7,6 @@ using Kayak;
 using Moq;
 using System.Threading;
 using System.Threading.Tasks;
-using Owin;
 
 namespace KayakTests.Http
 {
