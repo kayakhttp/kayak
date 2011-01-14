@@ -136,9 +136,9 @@ namespace Kayak
                 };
         }
 
-        public static IDictionary<string, IEnumerable<string>> ReadHeaders(this TextReader reader)
+        public static IDictionary<string, IList<string>> ReadHeaders(this TextReader reader)
         {
-            var headers = new Dictionary<string, IEnumerable<string>>();
+            var headers = new Dictionary<string, IList<string>>();
             string line = null;
 
             while (!string.IsNullOrEmpty(line = reader.ReadLine()))

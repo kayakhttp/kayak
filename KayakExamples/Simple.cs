@@ -37,6 +37,11 @@ namespace KayakExamples
                     {
                         StreamingApp(env, respond, error);
                     }
+                    else if (path == "/bufferedecho")
+                    {
+                        BufferedEcho(env, respond, error);
+                    }
+
                 });
 
             Console.WriteLine("Listening on " + server.ListenEndPoint);
@@ -91,5 +96,50 @@ namespace KayakExamples
                 yield return continuation;
             }
         }
+
+        public static void BufferedEcho(IDictionary<string, object> env,
+            Action<string, IDictionary<string, IList<string>>, IEnumerable<object>> respond,
+            Action<Exception> error)
+        {
+            var requestBody = env["Owin.RequestBody"] as Action<byte[], int, int, Action<int>, Action<Exception>>;
+            var contentLength = int.Parse(((IDictionary<string, IList<string>>)env["Owin.RequestHeaders"])["Content-Length"][0]);
+            var buffer = new byte[1024];
+            var sb = new StringBuilder();
+
+            BufferRequestBody(requestBody, buffer, sb, 0, contentLength)(
+                result => respond("200 OK",
+                            new Dictionary<string, IList<string>>()
+                            {
+                                { "Content-Type", new string[] { "text/plain" } },
+                                { "Content-Length", new string[] { result.Length.ToString() } }
+                            },
+                            new object[] { Encoding.UTF8.GetBytes(sb.ToString()) }), 
+                exception => error(exception));
+        }
+
+        static Action<Action<string>, Action<Exception>> BufferRequestBody(Action<byte[], int, int, Action<int>, Action<Exception>> requestBody, byte[] buffer, StringBuilder sb, int totalBytesRead, int contentLength)
+        {
+            return (r, e) =>
+                requestBody(buffer, 0, buffer.Length, bytesRead =>
+                {
+                    if (bytesRead > 0)
+                    {
+                        sb.Append(Encoding.UTF8.GetString(buffer, 0, bytesRead));
+                        totalBytesRead += bytesRead;
+                    }
+
+                    if (totalBytesRead == contentLength)
+                        r(sb.ToString());
+                    else
+                    {
+                        BufferRequestBody(requestBody, buffer, sb, totalBytesRead, contentLength)(r, e);
+                    }
+                },
+                exception =>
+                {
+                    e(new Exception("Error reading request body."));
+                });
+        }
+
     }
 }
