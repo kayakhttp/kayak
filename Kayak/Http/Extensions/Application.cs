@@ -91,10 +91,10 @@ namespace Kayak
 
                 var chunk = default(ArraySegment<byte>);
 
-                if (obj is ArraySegment<byte>)
-                    chunk = (ArraySegment<byte>)obj;
-                else if (obj is byte[])
-                    chunk = new ArraySegment<byte>(obj as byte[]);
+                if (objectToWrite is ArraySegment<byte>)
+                    chunk = (ArraySegment<byte>)objectToWrite;
+                else if (objectToWrite is byte[])
+                    chunk = new ArraySegment<byte>(objectToWrite as byte[]);
                 else
                     continue;
                     //throw new ArgumentException("Invalid object of type " + obj.GetType() + " '" + obj.ToString() + "'");
