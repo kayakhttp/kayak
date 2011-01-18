@@ -6,6 +6,9 @@ MIT License. See LICENSE.txt.
 [http://kayakhttp.com](http://kayakhttp.com)<br>
 [http://bvanderveen.com](http://bvanderveen.com)
 
+# Dependencies
+
+Kayak depends on [Coroutine](http://github.com/bvanderveen/coroutine).
 
 # Example
 
