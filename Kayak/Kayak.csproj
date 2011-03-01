@@ -58,10 +58,6 @@
     <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Coroutine, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\lib\Coroutine.dll</HintPath>
-    </Reference>
     <Reference Include="System.Core">
       <RequiredTargetFramework>3.5</RequiredTargetFramework>
     </Reference>
@@ -69,15 +65,23 @@
     <Reference Include="System.Web" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DotNetServer.cs" />
-    <Compile Include="Extensions\Buffers.cs" />
-    <Compile Include="Extensions\Socket.cs" />
-    <Compile Include="Extensions\Trace.cs" />
-    <Compile Include="Http\Extensions\Application.cs" />
-    <Compile Include="Http\Extensions\Parsing.cs" />
-    <Compile Include="Http\HttpSupport.cs" />
-    <Compile Include="IKayakServer.cs" />
+    <Compile Include="Extensions\Trace.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Http\Extensions\Request.cs" />
+    <Compile Include="Http\Extensions\Server.cs" />
+    <Compile Include="Http\Owin\Extensions\Application.cs" />
+    <Compile Include="Http\Owin\Extensions\Environment.cs" />
+    <Compile Include="Http\Http.cs" />
+    <Compile Include="Http\Owin\OwinDelegate.cs" />
+    <Compile Include="Http\RequestEventSource.cs" />
+    <Compile Include="Http\Response.cs" />
+    <Compile Include="Http\ParserHandler.cs" />
+    <Compile Include="Http\Transaction.cs" />
+    <Compile Include="Http\Transaction2.cs" />
     <Compile Include="ISocket.cs" />
+    <Compile Include="KayakServer.cs" />
+    <Compile Include="KayakSocket.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
@@ -106,6 +110,16 @@
       <ProductName>.NET Framework 3.5 SP1</ProductName>
       <Install>false</Install>
     </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\lib\coroutine\src\Coroutine\Coroutine.csproj">
+      <Project>{FD3EBCCF-F96F-405E-9EE9-BC88C38F778C}</Project>
+      <Name>Coroutine</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\lib\httpmachine\HttpMachine\HttpMachine.csproj">
+      <Project>{76FB25C5-15B1-4541-8D19-D78790257C95}</Project>
+      <Name>HttpMachine</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

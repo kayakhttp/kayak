@@ -2,38 +2,64 @@
 using System.Net;
 using System.Threading.Tasks;
 using Coroutine;
+using System.Collections.Generic;
 
 namespace Kayak
 {
-    /// <summary>
-    /// Represents a socket which supports asynchronous IO operations.
-    /// </summary>
-    public interface ISocket : IDisposable
+    public interface IServer
     {
-        /// <summary>
-        /// The IP end point of the connected peer.
-        /// </summary>
-        IPEndPoint RemoteEndPoint { get; }
+        IServerDelegate Delegate { get; set; }
 
-        /// <summary>
-        /// Returns an observable which, upon subscription, begins an asynchronous write
-        /// operation. When the operation completes, the observable yields the number of
-        /// bytes written and completes.
-        /// </summary>
-        Action<Action<int>, Action<Exception>> Write(byte[] buffer, int offset, int count);
-
-        /// <summary>
-        /// Returns an observable which, upon subscription, begins copying a file
-        /// to the socket. When the copy operation completes, the observable completes.
-        /// </summary>
-        Action<Action, Action<Exception>> WriteFile(string file);
-
-        /// <summary>
-        /// Returns an observable which, upon subscription, begins an asynchronous read
-        /// operation. When the operation completes, the observable yields the number of
-        /// bytes read and completes.
-        /// </summary>
-        Action<Action<int>, Action<Exception>> Read(byte[] buffer, int offset, int count);
+        void Listen(IPEndPoint ep);
+        IPEndPoint ListenEndPoint { get; }
+        void Close();
     }
 
+    public interface IServerDelegate
+    {
+        void OnConnection(IServer server, ISocket socket);
+        void OnClose(IServer server);
+    }
+
+    public interface ISocket : IDisposable
+    {
+        ISocketDelegate Delegate { get; set; }
+
+        IPEndPoint RemoteEndPoint { get; }
+        void SetNoDelay(bool noDelay);
+        //void SetKeepAlive(bool keepAlive, int delay);
+
+        //void Connect(IPEndPoint ep, Action callback);
+        bool Write(ArraySegment<byte> data, Action continuation);
+        void End(); // send FIN
+    }
+
+    public interface ISocketDelegate
+    {
+        void OnConnected(ISocket socket);
+        bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation);
+        void OnEnd(ISocket socket); // received FIN
+        void OnTimeout(ISocket socket);
+        void OnError(ISocket socket, Exception e);
+        void OnClose(ISocket socket);
+    }
+
+    public interface IStream : IDisposable
+    {
+        IStreamDelegate Delegate { get; set; }
+
+        bool CanRead { get; }
+        bool CanWrite { get; }
+
+        void End(); 
+        bool Write(ArraySegment<byte> data, Action continuation);
+    }
+
+    public interface IStreamDelegate
+    {
+        bool OnData(IStream stream, ArraySegment<byte> data, Action continuation);
+        void OnEnd(IStream stream);
+        void OnError(IStream stream, Exception exception);
+        void OnClose(IStream stream);
+    }
 }

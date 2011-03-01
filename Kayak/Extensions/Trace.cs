@@ -1,27 +1,33 @@
 ﻿using System;
-using System.IO;
-using System.Reflection;
+using System.Diagnostics;
+using System.Text;
 
 namespace Kayak
 {
     public static partial class Extensions
     {
-        public static void WriteException(this TextWriter writer, Exception exception)
+        public static void PrintStacktrace(this Exception exception)
         {
+#if DEBUG
+            var sb = new StringBuilder();
+
             int i = 0;
             for (Exception e = exception.InnerException; e != null; e = e.InnerException)
             {
                 //if (e is TargetInvocationException || e is AggregateException) continue;
 
                 if (i++ == 0)
-                    writer.WriteLine("____________________________________________________________________________");
+                    sb.AppendLine("____________________________________________________________________________");
                 else
-                    writer.WriteLine("Caused by:");
+                    sb.AppendLine("Caused by:");
 
-                writer.WriteLine("[{0}] {1}", e.GetType().Name, e.Message);
-                writer.WriteLine(e.StackTrace);
-                writer.WriteLine();
+                sb.AppendLine(string.Format("[{0}] {1}", e.GetType().Name, e.Message));
+                sb.AppendLine(e.StackTrace);
+                sb.AppendLine();
             }
+
+            Debug.WriteLine(sb.ToString());
+#endif
         }
     }
 
