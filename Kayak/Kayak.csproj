@@ -70,10 +70,7 @@
     </Compile>
     <Compile Include="Http\Extensions\Request.cs" />
     <Compile Include="Http\Extensions\Server.cs" />
-    <Compile Include="Http\Owin\Extensions\Application.cs" />
-    <Compile Include="Http\Owin\Extensions\Environment.cs" />
     <Compile Include="Http\Http.cs" />
-    <Compile Include="Http\Owin\OwinDelegate.cs" />
     <Compile Include="Http\RequestEventSource.cs" />
     <Compile Include="Http\Response.cs" />
     <Compile Include="Http\ParserHandler.cs" />

@@ -4,3 +4,6 @@
 [submodule "lib/httpmachine"]
 	path = lib/httpmachine
 	url = git@github.com:bvanderveen/httpmachine.git
+[submodule "lib/oars"]
+	path = lib/oars
+	url = git@github.com:kayak/oars.git
