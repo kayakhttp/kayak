@@ -17,42 +17,21 @@ namespace KayakExamples
 
     class Simple
     {
-        class SimpleRequestDelegate : IRequestDelegate
+        class SimpleRequestDelegate : IHttpServerDelegate
         {
-            IResponse response;
-
-            public void OnStart(IRequest request, IResponse response)
+            public void OnRequest(IRequest request, IResponse response)
             {
                 Debug.WriteLine("OnStart");
-                this.response = response;
-
-                if (request.GetIsContinueExpected())
-                    response.WriteContinue();
 
                 response.WriteHeaders("200 OK",
                                 new Dictionary<string, string>() 
                                 {
                                     { "Content-Type", "text/plain" },
-                                    { "Content-Length", "24" },
+                                    { "Content-Length", "20" },
                                 });
-                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.")), null);
-                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.")), null);
+                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\n")), null);
+                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello.")), null);
                 response.End();
-            }
-
-            public bool OnBody(ArraySegment<byte> data, Action continuation)
-            {
-                Debug.WriteLine("OnBody");
-                return false;
-            }
-
-            public void OnError(Exception e)
-            {
-            }
-
-            public void OnEnd()
-            {
-                Debug.WriteLine("OnEnd");
             }
         }
 

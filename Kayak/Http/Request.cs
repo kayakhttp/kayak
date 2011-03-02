@@ -9,5 +9,7 @@ namespace Kayak.Http
         public string Uri { get; internal set; }
         public IDictionary<string, string> Headers { get; internal set; }
         public Version Version { get; internal set; }
+
+        public IRequestDelegate Delegate { get; set; }
     }
 }

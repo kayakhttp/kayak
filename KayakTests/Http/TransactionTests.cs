@@ -6,10 +6,11 @@ using NUnit.Framework;
 namespace KayakTests
 {
     [TestFixture]
-    public class TransactionTests2
+    public class TransactionTests
     {
-        IEnumerable<HttpRequestEvent> events;
-        MockRequestDelegate requestDelegate;
+        Transaction tx;
+
+        MockHttpServerDelegate serverDelegate;
         Func<Version, bool, IResponse> makeResponse;
         bool sync;
 
@@ -18,8 +19,9 @@ namespace KayakTests
         {
             //Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
             //Debug.AutoFlush = true;
-            requestDelegate = new MockRequestDelegate();
+            serverDelegate = new MockHttpServerDelegate();
             makeResponse = (v, k) => new MockResponse();
+            tx = new Transaction(serverDelegate, makeResponse);
             sync = false;
         }
 
@@ -32,8 +34,6 @@ namespace KayakTests
         [Test]
         public void HeadersEnd()
         {
-            var tx = new Transaction2(requestDelegate, makeResponse);
-
             sync = tx.Execute(new HttpRequestEvent()
             {
                 Type = HttpRequestEventType.RequestHeaders,
@@ -42,19 +42,17 @@ namespace KayakTests
             }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(1, requestDelegate.StartCalled);
+            Assert.AreEqual(1, serverDelegate.StartCalled);
 
             sync = tx.Execute(new HttpRequestEvent() { Type = HttpRequestEventType.RequestEnded }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(1, requestDelegate.EndCalled);
+            Assert.AreEqual(1, serverDelegate.RequestDelegate.EndCalled);
         }
 
         [Test]
         public void HeadersBodyEnd()
         {
-            var tx = new Transaction2(requestDelegate, makeResponse);
-
             sync = tx.Execute(new HttpRequestEvent()
             {
                 Type = HttpRequestEventType.RequestHeaders,
@@ -63,23 +61,23 @@ namespace KayakTests
             }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(1, requestDelegate.StartCalled);
+            Assert.AreEqual(1, serverDelegate.StartCalled);
 
             Action c = () =>
                 {
                     sync = tx.Execute(new HttpRequestEvent() { Type = HttpRequestEventType.RequestEnded }, null);
 
                     Assert.IsTrue(sync);
-                    Assert.AreEqual(1, requestDelegate.EndCalled);
+                    Assert.AreEqual(1, serverDelegate.RequestDelegate.EndCalled);
                 };
 
             sync = tx.Execute(new HttpRequestEvent() { Type = HttpRequestEventType.RequestBody }, c);
 
             Assert.IsFalse(sync);
-            Assert.AreEqual(1, requestDelegate.BodyCalled);
-            Assert.IsNotNull(requestDelegate.BodyContinuation);
+            Assert.AreEqual(1, serverDelegate.RequestDelegate.BodyCalled);
+            Assert.IsNotNull(serverDelegate.RequestDelegate.BodyContinuation);
 
-            requestDelegate.BodyContinuation();
+            serverDelegate.RequestDelegate.BodyContinuation();
 
             Assert.IsTrue(sync);
         }
@@ -87,8 +85,6 @@ namespace KayakTests
         [Test]
         public void HeadersEndHeadersEnd()
         {
-            var tx = new Transaction2(requestDelegate, makeResponse);
-
             sync = tx.Execute(new HttpRequestEvent()
             {
                 Type = HttpRequestEventType.RequestHeaders,
@@ -97,12 +93,12 @@ namespace KayakTests
             }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(1, requestDelegate.StartCalled);
+            Assert.AreEqual(1, serverDelegate.StartCalled);
 
             sync = tx.Execute(new HttpRequestEvent() { Type = HttpRequestEventType.RequestEnded }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(1, requestDelegate.EndCalled);
+            Assert.AreEqual(1, serverDelegate.RequestDelegate.EndCalled);
 
             sync = tx.Execute(new HttpRequestEvent()
             {
@@ -112,19 +108,17 @@ namespace KayakTests
             }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(2, requestDelegate.StartCalled);
+            Assert.AreEqual(2, serverDelegate.StartCalled);
 
             sync = tx.Execute(new HttpRequestEvent() { Type = HttpRequestEventType.RequestEnded }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(2, requestDelegate.EndCalled);
+            Assert.AreEqual(2, serverDelegate.RequestDelegate.EndCalled);
         }
 
         [Test]
         public void HeadersEndHeadersBodyEnd()
         {
-            var tx = new Transaction2(requestDelegate, makeResponse);
-
             sync = tx.Execute(new HttpRequestEvent()
             {
                 Type = HttpRequestEventType.RequestHeaders,
@@ -133,12 +127,12 @@ namespace KayakTests
             }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(1, requestDelegate.StartCalled);
+            Assert.AreEqual(1, serverDelegate.StartCalled);
 
             sync = tx.Execute(new HttpRequestEvent() { Type = HttpRequestEventType.RequestEnded }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(1, requestDelegate.EndCalled);
+            Assert.AreEqual(1, serverDelegate.RequestDelegate.EndCalled);
 
             sync = tx.Execute(new HttpRequestEvent()
             {
@@ -148,23 +142,23 @@ namespace KayakTests
             }, null);
 
             Assert.IsTrue(sync);
-            Assert.AreEqual(2, requestDelegate.StartCalled);
+            Assert.AreEqual(2, serverDelegate.StartCalled);
 
             Action c = () =>
             {
                 sync = tx.Execute(new HttpRequestEvent() { Type = HttpRequestEventType.RequestEnded }, null);
 
                 Assert.IsTrue(sync);
-                Assert.AreEqual(2, requestDelegate.EndCalled);
+                Assert.AreEqual(2, serverDelegate.RequestDelegate.EndCalled);
             };
 
             sync = tx.Execute(new HttpRequestEvent() { Type = HttpRequestEventType.RequestBody }, c);
 
             Assert.IsFalse(sync);
-            Assert.AreEqual(1, requestDelegate.BodyCalled);
-            Assert.IsNotNull(requestDelegate.BodyContinuation);
+            Assert.AreEqual(1, serverDelegate.RequestDelegate.BodyCalled);
+            Assert.IsNotNull(serverDelegate.RequestDelegate.BodyContinuation);
 
-            requestDelegate.BodyContinuation();
+            serverDelegate.RequestDelegate.BodyContinuation();
 
             Assert.IsTrue(sync);
         }

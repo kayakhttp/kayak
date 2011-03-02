@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Kayak
 {
@@ -15,9 +16,11 @@ namespace Kayak
         bool closed;
         Socket listener;
 
+
         public void Listen(IPEndPoint ep)
         {
             ListenEndPoint = ep;
+
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
             listener.Bind(ListenEndPoint);
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 10000);

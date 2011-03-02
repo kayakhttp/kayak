@@ -3,16 +3,22 @@ using System.Collections.Generic;
 
 namespace Kayak.Http
 {
+    public interface IHttpServerDelegate
+    {
+        void OnRequest(IRequest request, IResponse response);
+        //void OnUpgrade(IRequest request, ISocket socket, ArraySegment<byte> head);
+    }
+
     public interface IRequestDelegate
     {
-        void OnStart(IRequest request, IResponse response);
         bool OnBody(ArraySegment<byte> data, Action continuation);
-        void OnError(Exception exception);
         void OnEnd();
     }
 
     public interface IRequest
     {
+        IRequestDelegate Delegate { get; set; }
+
         string Method { get; }
         string Uri { get; }
         Version Version { get; }
@@ -23,7 +29,7 @@ namespace Kayak.Http
     {
         void WriteContinue();
         void WriteHeaders(string status, IDictionary<string, string> headers);
-        void WriteBody(ArraySegment<byte> data, Action continuation);
+        bool WriteBody(ArraySegment<byte> data, Action continuation);
         void End();
     }
 }

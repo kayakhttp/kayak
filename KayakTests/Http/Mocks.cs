@@ -11,7 +11,7 @@ namespace KayakTests
     {
         public Action OnWriteContinue;
         public Action<string, IDictionary<string, string>> OnWriteHeaders;
-        public Action<ArraySegment<byte>, Action> OnWriteBody;
+        public Func<ArraySegment<byte>, Action, bool> OnWriteBody;
         public Action OnEnd;
 
         public void WriteContinue()
@@ -26,10 +26,11 @@ namespace KayakTests
                 OnWriteHeaders(status, headers);
         }
 
-        public void WriteBody(ArraySegment<byte> data, Action complete)
+        public bool WriteBody(ArraySegment<byte> data, Action complete)
         {
             if (OnWriteBody != null)
-                OnWriteBody(data, complete);
+                return OnWriteBody(data, complete);
+            return false;
         }
 
         public void End()
@@ -39,26 +40,38 @@ namespace KayakTests
         }
     }
 
-    class MockRequestDelegate : IRequestDelegate
+    class MockHttpServerDelegate : IHttpServerDelegate
     {
         public int StartCalled;
+        public Action<IRequest, IResponse> Start;
+
+        public MockRequestDelegate RequestDelegate { get; private set; }
+
+        public MockHttpServerDelegate()
+        {
+            RequestDelegate = new MockRequestDelegate();
+        }
+
+        public void OnRequest(IRequest request, IResponse response)
+        {
+            request.Delegate = RequestDelegate;
+            StartCalled++;
+            if (Start != null)
+                Start(request, response);
+        }
+    }
+
+    class MockRequestDelegate : IRequestDelegate
+    {
         public int BodyCalled;
         public int ExceptionCalled;
         public int EndCalled;
 
         public Action BodyContinuation;
 
-        public Action<IRequest, IResponse> Start;
         public Func<ArraySegment<byte>, Action, bool> Body;
         public Action End;
         public Action<Exception> Error;
-
-        public void OnStart(IRequest request, IResponse response)
-        {
-            StartCalled++;
-            if (Start != null)
-                Start(request, response);
-        }
 
         public bool OnBody(ArraySegment<byte> data, Action complete)
         {

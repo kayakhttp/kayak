@@ -7,33 +7,14 @@ using System.Diagnostics;
 
 namespace Kayak.Http
 {
-    class HttpServerDelegate : IServerDelegate
-    {
-        Func<IRequestDelegate> delegateFactory;
-
-        public HttpServerDelegate(Func<IRequestDelegate> delegateFactory)
-        {
-            this.delegateFactory = delegateFactory;
-        }
-
-        public void OnConnection(IServer server, ISocket socket)
-        {
-            socket.Delegate = new HttpSocketDelegate(socket, new Transaction2(delegateFactory(), (v, k) => new Response(socket, v, k)));
-        }
-
-        public void OnClose(IServer server)
-        {
-        }
-    }
-
     class HttpSocketDelegate : ISocketDelegate
     {
         HttpParser parser;
         ParserHandler handler;
         ISocket socket;
-        Transaction2 eventHandler;
+        Transaction eventHandler;
 
-        public HttpSocketDelegate(ISocket socket, Transaction2 eventHandler)
+        public HttpSocketDelegate(ISocket socket, Transaction eventHandler)
         {
             this.socket = socket;
             this.eventHandler = eventHandler;
@@ -79,7 +60,7 @@ namespace Kayak.Http
         public void OnConnected(ISocket socket) { }
     }
 
-    class Transaction2
+    class Transaction
     {
         enum TransactionState
         {
@@ -94,11 +75,11 @@ namespace Kayak.Http
         Func<Version, bool, IResponse> responseFactory;
         TransactionState state;
         IRequest request;
-        IRequestDelegate requestDelegate;
+        IHttpServerDelegate serverDelegate;
 
-        public Transaction2(IRequestDelegate requestDelegate, Func<Version, bool, IResponse> responseFactory)
+        public Transaction(IHttpServerDelegate serverDelegate, Func<Version, bool, IResponse> responseFactory)
         {
-            this.requestDelegate = requestDelegate;
+            this.serverDelegate = serverDelegate;
             this.responseFactory = responseFactory;
             keepAlive = true;
         }
@@ -121,7 +102,7 @@ namespace Kayak.Http
 
                         var response = responseFactory(httpEvent.Request.Version, keepAlive);
 
-                        requestDelegate.OnStart(httpEvent.Request, response);
+                        serverDelegate.OnRequest(httpEvent.Request, response);
 
                         state = TransactionState.MessageBegan;
 
@@ -147,7 +128,10 @@ namespace Kayak.Http
                 case TransactionState.MessageBody:
                     if (httpEvent.Type == HttpRequestEventType.RequestBody)
                     {
-                        requestDelegate.OnBody(httpEvent.Data, continuation);
+                        if (request.Delegate == null)
+                            return false;
+
+                        return request.Delegate.OnBody(httpEvent.Data, continuation);
 
                         // XXX for now this logic is deferred to the request delegate:
                         // if 
@@ -156,7 +140,6 @@ namespace Kayak.Http
                         // - "request includes request body"
                         // then 
                         //   read and discard remainder of incoming message and goto PreRequest
-                        return false;
                     }
                     else if (httpEvent.Type == HttpRequestEventType.RequestEnded)
                     {
@@ -170,8 +153,13 @@ namespace Kayak.Http
                     Debug.WriteLine("Entering TransactionState.MessageFinishing");
                     if (httpEvent.Type == HttpRequestEventType.RequestEnded)
                     {
-                        requestDelegate.OnEnd();
+                        if (request.Delegate != null)
+                            request.Delegate.OnEnd();
 
+                        // XXX state should be influenced by connection header sent by user.
+                        // also state should not advance to NewMessage until client reads
+                        // response (ensure that they're not just blasting us with requests
+                        // and then closing the connection without reading)
                         state = keepAlive ? TransactionState.NewMessage : TransactionState.Dead;
                         break;
                     }

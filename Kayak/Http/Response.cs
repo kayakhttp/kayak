@@ -10,7 +10,11 @@ namespace Kayak.Http
         ISocket socket;
         Version version;
         bool keepAlive;
-        StringBuilder headerBuffer;
+
+        bool wroteHeaders;
+        bool ended;
+        string status;
+        IDictionary<string, string> headers;
 
         public Response(ISocket socket, Version version, bool keepAlive)
         {
@@ -27,9 +31,50 @@ namespace Kayak.Http
 
         public void WriteHeaders(string status, IDictionary<string, string> headers)
         {
-            headerBuffer = new StringBuilder();
+            if (this.status != null)
+                throw new InvalidOperationException("WriteHeaders was already called.");
 
-            headerBuffer.AppendFormat("HTTP/{0}.{1} {2}\r\n", version.Major, version.Minor, status);
+            if (ended)
+                throw new InvalidOperationException("Response was ended.");
+
+            if (string.IsNullOrEmpty(status))
+                throw new ArgumentException("status");
+
+            this.status = status;
+            this.headers = headers;
+        }
+
+        public bool WriteBody(ArraySegment<byte> data, Action continuation)
+        {
+            if (status == null)
+                throw new Exception("Must call WriteHeaders before calling WriteBody");
+
+            if (ended)
+                throw new InvalidOperationException("Response was ended.");
+
+            if (!wroteHeaders)
+            {
+                wroteHeaders = true;
+                // XXX want to make sure these go out in same packet
+                var head = WriteHead();
+                socket.Write(new ArraySegment<byte>(head), null);
+                return socket.Write(data, continuation);
+            }
+            else
+                return socket.Write(data, continuation);
+        }
+
+        byte[] WriteHead()
+        {
+            // XXX don't reallocate every time
+            var sb = new StringBuilder();
+
+            sb.AppendFormat("HTTP/{0}.{1} {2}\r\n", version.Major, version.Minor, status);
+
+            status = null;
+
+            if (headers == null)
+                headers = new Dictionary<string, string>();
 
             if (!headers.ContainsKey("Server"))
                 headers["Server"] = "Kayak";
@@ -37,6 +82,7 @@ namespace Kayak.Http
             if (!headers.ContainsKey("Date"))
                 headers["Date"] = DateTime.UtcNow.ToString();
 
+            // XXX allow user to modify connection behavior?
             if (version.Minor == 1 && !keepAlive)
                 headers["Connection"] = "close";
 
@@ -45,49 +91,31 @@ namespace Kayak.Http
 
             foreach (var pair in headers)
                 foreach (var line in pair.Value.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
-                    headerBuffer.AppendFormat("{0}: {1}\r\n", pair.Key, line);
+                    sb.AppendFormat("{0}: {1}\r\n", pair.Key, line);
 
-            headerBuffer.Append("\r\n");
-        }
+            headers = null;
 
-        public void WriteBody(ArraySegment<byte> data, Action continuation)
-        {
-            if (headerBuffer == null)
-                throw new Exception("Must call WriteHeaders before calling WriteBody");
+            sb.Append("\r\n");
 
-            if (headerBuffer.Length > 0)
-            {
-                var buf = new byte[data.Count];
-                Buffer.BlockCopy(data.Array, data.Offset, buf, 0, data.Count);
-
-                WriteHead();
-                Write(new ArraySegment<byte>(buf), continuation);
-            }
-            else
-                Write(data, continuation);
-        }
-
-        void WriteHead()
-        {
-            var headerBuf = Encoding.UTF8.GetBytes(headerBuffer.ToString());
-            headerBuffer.Length = 0; // XXX reclaim this memory?
-            Debug.WriteLine("Writing headers");
-            Write(new ArraySegment<byte>(headerBuf), null);
-        }
-
-        void Write(ArraySegment<byte> data, Action continuation)
-        {
-            Debug.WriteLine("Writing " + data.Count + " bytes");
-            socket.Write(data, continuation);
+            return Encoding.ASCII.GetBytes(sb.ToString());
         }
 
         public void End()
         {
-            if (headerBuffer == null)
-                throw new Exception("Must call WriteHeaders before calling WriteBody");
+            if (ended)
+                throw new InvalidOperationException("Response was ended.");
 
-            if (headerBuffer.Length > 0)
-                WriteHead();
+            if (status != null && !wroteHeaders)
+            {
+                wroteHeaders = true;
+                var head = WriteHead();
+                socket.Write(new ArraySegment<byte>(head), null);
+            }
+
+            // XXX if user calls end before calling anything else, what then? 
+            // need to somehow return control to transaction. dovetails
+            // with pipelining. transaction should not continue until
+            // client reads last response.
         }
     }
 }

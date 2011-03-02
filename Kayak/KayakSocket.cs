@@ -10,31 +10,53 @@ namespace Kayak
 {
     class SocketBuffer
     {
-        LinkedList<byte[]> buf;
+        public List<ArraySegment<byte>> Data;
         public int Size;
 
         public SocketBuffer()
         {
-            buf = new LinkedList<byte[]>();
+            Data = new List<ArraySegment<byte>>();
         }
 
         public void Add(ArraySegment<byte> data)
         {
-            Size += data.Count;
             var d = new byte[data.Count];
             Buffer.BlockCopy(data.Array, data.Offset, d, 0, d.Length);
-            buf.AddLast(d);
+
+            lock (this)
+            {
+                Size += data.Count;
+                Data.Add(new ArraySegment<byte>(d));
+            }
         }
 
-        public byte[] Remove()
+        public void Remove(int howmuch)
         {
-            if (buf.Count == 0)
-                return null;
+            lock (this)
+            {
+                if (howmuch > Size) throw new ArgumentOutOfRangeException("howmuch > size");
 
-            var b = buf.First.Value;
-            buf.RemoveFirst();
-            Size -= b.Length;
-            return b;
+                Size -= howmuch;
+
+                int remaining = howmuch;
+
+                while (remaining > 0)
+                {
+                    var first = Data[0];
+
+                    int count = first.Count;
+                    if (count <= remaining)
+                    {
+                        remaining -= count;
+                        Data.RemoveAt(0);
+                    }
+                    else
+                    {
+                        Data[0] = new ArraySegment<byte>(first.Array, first.Offset + remaining, count - remaining);
+                        remaining = 0;
+                    }
+                }
+            }
         }
     }
 
@@ -58,22 +80,22 @@ namespace Kayak
 
         public IPEndPoint RemoteEndPoint { get; private set; }
 
-        SocketBuffer buf;
-        ArraySegment<byte> sending;
+        SocketBuffer buffer;
 
         byte[] inputBuffer;
         Socket socket;
         bool gotDel;
         bool closed;
         bool noDelay;
-        KayakServer server;
         Action continuation;
+        KayakServer server;
+
 
         internal KayakSocket(Socket socket, KayakServer server)
         {
             this.socket = socket;
             this.server = server;
-            buf = new SocketBuffer();
+            buffer = new SocketBuffer();
         }
 
         public void SetNoDelay(bool noDelay)
@@ -83,9 +105,6 @@ namespace Kayak
 
         public bool Write(ArraySegment<byte> data, Action continuation)
         {
-            if (continuation == null)
-                throw new NotSupportedException("Buffered writes are not supported right now.");
-
             if (closed) 
                 throw new InvalidOperationException("Socket is closed."); 
             
@@ -94,27 +113,41 @@ namespace Kayak
 
             if (data.Count == 0) return false;
 
-            sending = data;
 
-            return DoWrite(continuation);
+            this.continuation = continuation;
+
+            // XXX copy! could optimize here?
+            buffer.Add(data);
+
+            if (buffer.Size > 0)
+            {
+                if (this.continuation != null)
+                    return true;
+                else
+                    return false;
+            }
+            else
+            {
+                return DoWrite();
+            }
         }
 
-        bool DoWrite(Action continuation)
+        bool DoWrite()
         {
+            if (buffer.Size == 0)
+            {
+                return false;
+            }
+
             try
             {
-                var ar0 = socket.BeginSend(sending.Array, sending.Offset, sending.Count, SocketFlags.None, ar =>
+                var ar0 = socket.BeginSend(buffer.Data, SocketFlags.None, ar =>
                 {
                     if (ar.CompletedSynchronously) return;
 
                     CompleteWrite(ar);
 
-                    if (sending.Count > 0)
-                    {
-                        if (!DoWrite(continuation))
-                            continuation();
-                    }
-                    else
+                    if (!DoWrite() && continuation != null)
                         continuation();
 
                 }, null);
@@ -123,12 +156,7 @@ namespace Kayak
                 {
                     CompleteWrite(ar0);
 
-                    if (sending.Count > 0)
-                    {
-                        return DoWrite(continuation);
-                    }
-                    else
-                        return false;
+                    return DoWrite();
                 }
 
                 return true;
@@ -147,8 +175,7 @@ namespace Kayak
             {
                 var written = socket.EndSend(ar);
                 Debug.WriteLine("Wrote " + written);
-
-                sending = new ArraySegment<byte>(sending.Array, sending.Offset + written, sending.Count - written);
+                buffer.Remove(written);
             }
             catch (Exception e)
             {
