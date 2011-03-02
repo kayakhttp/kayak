@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Net;
 using System.Threading.Tasks;
-using Coroutine;
 using System.Collections.Generic;
 
 namespace Kayak

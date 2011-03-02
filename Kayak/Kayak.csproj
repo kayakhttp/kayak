@@ -109,10 +109,6 @@
     </BootstrapperPackage>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\lib\coroutine\src\Coroutine\Coroutine.csproj">
-      <Project>{FD3EBCCF-F96F-405E-9EE9-BC88C38F778C}</Project>
-      <Name>Coroutine</Name>
-    </ProjectReference>
     <ProjectReference Include="..\lib\httpmachine\HttpMachine\HttpMachine.csproj">
       <Project>{76FB25C5-15B1-4541-8D19-D78790257C95}</Project>
       <Name>HttpMachine</Name>
