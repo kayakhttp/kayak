@@ -49,7 +49,7 @@ namespace KayakTests
         public Action BodyContinuation;
 
         public Action<IRequest, IResponse> Start;
-        public Action<ArraySegment<byte>, Action> Body;
+        public Func<ArraySegment<byte>, Action, bool> Body;
         public Action End;
         public Action<Exception> Error;
 
@@ -60,12 +60,13 @@ namespace KayakTests
                 Start(request, response);
         }
 
-        public void OnBody(IRequest request, ArraySegment<byte> data, Action complete)
+        public bool OnBody(IRequest request, ArraySegment<byte> data, Action complete)
         {
             BodyCalled++;
             BodyContinuation = complete;
             if (Body != null)
-                Body(data, complete);
+                return Body(data, complete);
+            return false;
         }
 
         public void OnError(IRequest request, Exception e)

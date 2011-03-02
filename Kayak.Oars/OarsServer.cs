@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Net;
-using Oars.Core;
+using Oars;
 
 namespace Kayak.Oars
 {
@@ -14,7 +14,7 @@ namespace Kayak.Oars
         public IPEndPoint ListenEndPoint { get; private set; }
 
         EventBase eventBase;
-        EVConnListener listener;
+        ConnectionListener listener;
         int connections;
         bool closed;
 
@@ -26,12 +26,12 @@ namespace Kayak.Oars
 
         public void Listen(IPEndPoint ep)
         {
-            listener = new EVConnListener(eventBase, ep, Backlog);
+            listener = new ConnectionListener(eventBase, ep, Backlog);
             listener.Enable();
             listener.ConnectionAccepted = (fd, remoteEp) =>
                 {
                     connections++;
-                    var ev = new EVEvent(eventBase, fd, Events.EV_WRITE | Events.EV_READ);
+                    var ev = new Event(eventBase, fd, Events.EV_WRITE | Events.EV_READ);
                     Delegate.OnConnection(this, new OarsSocket2(ev, remoteEp, this));
                 };
         }

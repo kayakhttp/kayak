@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Net;
-using Oars.Core;
+using Oars;
 using System.Runtime.InteropServices;
 
 namespace Kayak.Oars
@@ -14,7 +14,7 @@ namespace Kayak.Oars
 
         public IPEndPoint RemoteEndPoint { get; private set; }
 
-        public OarsSocket2(EVEvent ev, IPEndPoint remoteEp, OarsServer server)
+        public OarsSocket2(Event ev, IPEndPoint remoteEp, OarsServer server)
         {
 
         }
