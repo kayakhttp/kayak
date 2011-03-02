@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace Kayak.Http
 {
@@ -11,6 +9,5 @@ namespace Kayak.Http
         public string Uri { get; internal set; }
         public IDictionary<string, string> Headers { get; internal set; }
         public Version Version { get; internal set; }
-        public IObservable<Tuple<ArraySegment<byte>, Action>> Body { get; internal set; }
     }
 }

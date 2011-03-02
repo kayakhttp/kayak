@@ -40,17 +40,17 @@ namespace KayakExamples
                 response.End();
             }
 
-            public bool OnBody(IRequest request, ArraySegment<byte> data, Action continuation)
+            public bool OnBody(ArraySegment<byte> data, Action continuation)
             {
                 Debug.WriteLine("OnBody");
                 return false;
             }
 
-            public void OnError(IRequest request, Exception e)
+            public void OnError(Exception e)
             {
             }
 
-            public void OnEnd(IRequest request)
+            public void OnEnd()
             {
                 Debug.WriteLine("OnEnd");
             }

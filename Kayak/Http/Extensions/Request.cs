@@ -6,13 +6,13 @@ namespace Kayak.Http
         public static bool GetIsContinueExpected(this IRequest request)
         {
             return (request.Version.Major == 1 && request.Version.Minor == 1) &&
-                                request.Headers.ContainsKey("expect") && request.Headers["expect"] == "100-continue";
+                request.Headers.ContainsKey("expect") && request.Headers["expect"] == "100-continue";
         }
 
         public static bool GetIsContinueProhibited(this IRequest request)
         {
             return (request.Version.Major == 1 && request.Version.Minor == 0) ||
-                                !request.Headers.ContainsKey("expect") || request.Headers["expect"] != "100-continue";
+                !request.Headers.ContainsKey("expect") || request.Headers["expect"] != "100-continue";
         }
     }
 }

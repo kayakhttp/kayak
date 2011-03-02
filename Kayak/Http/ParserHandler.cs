@@ -5,6 +5,21 @@ using System.Diagnostics;
 
 namespace Kayak.Http
 {
+    struct HttpRequestEvent
+    {
+        public HttpRequestEventType Type;
+        public IRequest Request;
+        public bool KeepAlive;
+        public ArraySegment<byte> Data;
+    }
+
+    enum HttpRequestEventType
+    {
+        RequestHeaders,
+        RequestBody,
+        RequestEnded
+    }
+
     class ParserHandler : IHttpParserHandler
     {
         string method, requestUri, fragment, queryString, headerName, headerValue;
@@ -118,13 +133,5 @@ namespace Kayak.Http
                 KeepAlive = parser.ShouldKeepAlive
             });
         }
-    }
-
-    class Request : IRequest
-    {
-        public string Method { get; internal set; }
-        public string Uri { get; internal set; }
-        public IDictionary<string, string> Headers { get; internal set; }
-        public Version Version { get; internal set; }
     }
 }

@@ -6,9 +6,9 @@ namespace Kayak.Http
     public interface IRequestDelegate
     {
         void OnStart(IRequest request, IResponse response);
-        bool OnBody(IRequest request, ArraySegment<byte> data, Action continuation);
-        void OnError(IRequest request, Exception exception);
-        void OnEnd(IRequest request);
+        bool OnBody(ArraySegment<byte> data, Action continuation);
+        void OnError(Exception exception);
+        void OnEnd();
     }
 
     public interface IRequest

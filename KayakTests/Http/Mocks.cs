@@ -60,7 +60,7 @@ namespace KayakTests
                 Start(request, response);
         }
 
-        public bool OnBody(IRequest request, ArraySegment<byte> data, Action complete)
+        public bool OnBody(ArraySegment<byte> data, Action complete)
         {
             BodyCalled++;
             BodyContinuation = complete;
@@ -69,99 +69,18 @@ namespace KayakTests
             return false;
         }
 
-        public void OnError(IRequest request, Exception e)
+        public void OnError(Exception e)
         {
             ExceptionCalled++;
             if (Error != null)
                 Error(e);
         }
 
-        public void OnEnd(IRequest request)
+        public void OnEnd()
         {
             EndCalled++;
             if (End != null)
                 End();
-        }
-    }
-
-    class MockRequestEventSource : IHttpRequestEventSource
-    {
-        IEnumerator<HttpRequestEvent> states;
-
-        public static MockRequestEventSource FromRequests(params TestRequest[] requests)
-        {
-            return FromRequests((IEnumerable<TestRequest>)requests);
-        }
-
-        public static MockRequestEventSource FromRequests(IEnumerable<TestRequest> requests)
-        {
-            return new MockRequestEventSource(GetEvents(requests));
-        }
-
-        public static IEnumerable<HttpRequestEvent> GetEvents(params TestRequest[] requests)
-        {
-            return GetEvents((IEnumerable<TestRequest>)requests);
-        }
-
-        public static IEnumerable<HttpRequestEvent> GetEvents(IEnumerable<TestRequest> requests)
-        {
-            foreach (var request in requests)
-            {
-                var start = new HttpRequestEvent()
-                {
-                    Type = HttpRequestEventType.RequestHeaders,
-                    Request = new Request()
-                    {
-                        Method = request.Method,
-                        Uri = request.Uri,
-                        Version = request.Version,
-                        Headers = request.Headers
-                    },
-                    KeepAlive = request.KeepAlive,
-                };
-
-                yield return start;
-
-                // TODO fuzz
-                if (request.Body != null)
-                    yield return new HttpRequestEvent()
-                    {
-                        Type = HttpRequestEventType.RequestBody,
-                        Data = new ArraySegment<byte>(request.Body)
-                    };
-
-                yield return new HttpRequestEvent()
-                {
-                    Type = HttpRequestEventType.RequestEnded
-                };
-            }
-        }
-
-        MockRequestEventSource(IEnumerable<HttpRequestEvent> states)
-        {
-            this.states = states.GetEnumerator();
-        }
-
-        public void GetNextEvent(Action<HttpRequestEvent> c, Action<Exception> f)
-        {
-            Console.WriteLine("GetNext");
-            try
-            {
-                if (!states.MoveNext())
-                {
-                    states.Dispose();
-                    c(new HttpRequestEvent() { Type = HttpRequestEventType.EndOfFile });
-                }
-                else
-                {
-                    Console.WriteLine("states.Current = " + states.Current);
-                    c(states.Current);
-                }
-            }
-            catch (Exception e)
-            {
-                f(e);
-            }
         }
     }
 }

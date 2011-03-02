@@ -8,7 +8,6 @@ namespace KayakTests
     [TestFixture]
     public class TransactionTests2
     {
-        MockRequestEventSource eventSource;
         IEnumerable<HttpRequestEvent> events;
         MockRequestDelegate requestDelegate;
         Func<Version, bool, IResponse> makeResponse;

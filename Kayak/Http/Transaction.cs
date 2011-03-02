@@ -81,6 +81,15 @@ namespace Kayak.Http
 
     class Transaction2
     {
+        enum TransactionState
+        {
+            NewMessage,
+            MessageBegan,
+            MessageBody,
+            MessageFinishing,
+            Dead
+        }
+
         bool keepAlive;
         Func<Version, bool, IResponse> responseFactory;
         TransactionState state;
@@ -138,7 +147,7 @@ namespace Kayak.Http
                 case TransactionState.MessageBody:
                     if (httpEvent.Type == HttpRequestEventType.RequestBody)
                     {
-                        requestDelegate.OnBody(request, httpEvent.Data, continuation);
+                        requestDelegate.OnBody(httpEvent.Data, continuation);
 
                         // XXX for now this logic is deferred to the request delegate:
                         // if 
@@ -161,7 +170,7 @@ namespace Kayak.Http
                     Debug.WriteLine("Entering TransactionState.MessageFinishing");
                     if (httpEvent.Type == HttpRequestEventType.RequestEnded)
                     {
-                        requestDelegate.OnEnd(request);
+                        requestDelegate.OnEnd();
 
                         state = keepAlive ? TransactionState.NewMessage : TransactionState.Dead;
                         break;
