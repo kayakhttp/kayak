@@ -8,9 +8,9 @@ namespace Kayak
     public interface IServer
     {
         IServerDelegate Delegate { get; set; }
+        IPEndPoint ListenEndPoint { get; }
 
         void Listen(IPEndPoint ep);
-        IPEndPoint ListenEndPoint { get; }
         void Close();
     }
 
