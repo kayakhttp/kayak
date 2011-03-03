@@ -26,7 +26,6 @@ namespace Kayak.Http
 
             public void OnClose(IServer server)
             {
-                throw new NotImplementedException();
             }
         }
     }

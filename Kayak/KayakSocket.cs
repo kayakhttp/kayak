@@ -23,38 +23,32 @@ namespace Kayak
             var d = new byte[data.Count];
             Buffer.BlockCopy(data.Array, data.Offset, d, 0, d.Length);
 
-            lock (this)
-            {
-                Size += data.Count;
-                Data.Add(new ArraySegment<byte>(d));
-            }
+            Size += data.Count;
+            Data.Add(new ArraySegment<byte>(d));
         }
 
         public void Remove(int howmuch)
         {
-            lock (this)
+            if (howmuch > Size) throw new ArgumentOutOfRangeException("howmuch > size");
+
+            Size -= howmuch;
+
+            int remaining = howmuch;
+
+            while (remaining > 0)
             {
-                if (howmuch > Size) throw new ArgumentOutOfRangeException("howmuch > size");
+                var first = Data[0];
 
-                Size -= howmuch;
-
-                int remaining = howmuch;
-
-                while (remaining > 0)
+                int count = first.Count;
+                if (count <= remaining)
                 {
-                    var first = Data[0];
-
-                    int count = first.Count;
-                    if (count <= remaining)
-                    {
-                        remaining -= count;
-                        Data.RemoveAt(0);
-                    }
-                    else
-                    {
-                        Data[0] = new ArraySegment<byte>(first.Array, first.Offset + remaining, count - remaining);
-                        remaining = 0;
-                    }
+                    remaining -= count;
+                    Data.RemoveAt(0);
+                }
+                else
+                {
+                    Data[0] = new ArraySegment<byte>(first.Array, first.Offset + remaining, count - remaining);
+                    remaining = 0;
                 }
             }
         }
@@ -86,13 +80,15 @@ namespace Kayak
         Socket socket;
         bool gotDel;
         bool closed;
-        bool noDelay;
+        bool ended;
+        bool aborted;
         Action continuation;
         KayakServer server;
 
 
         internal KayakSocket(Socket socket, KayakServer server)
         {
+            socket.SendTimeout = socket.ReceiveTimeout = 1000;
             this.socket = socket;
             this.server = server;
             buffer = new SocketBuffer();
@@ -105,8 +101,11 @@ namespace Kayak
 
         public bool Write(ArraySegment<byte> data, Action continuation)
         {
+            if (ended)
+                throw new InvalidOperationException("The socket was ended.");
+
             if (closed) 
-                throw new InvalidOperationException("Socket is closed."); 
+                throw new InvalidOperationException("The socket was closed."); 
             
             if (this.continuation != null) 
                 throw new InvalidOperationException("Write was pending.");
@@ -115,11 +114,12 @@ namespace Kayak
 
 
             this.continuation = continuation;
+            var size = buffer.Size;
 
             // XXX copy! could optimize here?
             buffer.Add(data);
 
-            if (buffer.Size > 0)
+            if (size > 0)
             {
                 if (this.continuation != null)
                     return true;
@@ -134,8 +134,9 @@ namespace Kayak
 
         bool DoWrite()
         {
-            if (buffer.Size == 0)
+            if (buffer.Size == 0 || closed || aborted)
             {
+                Console.WriteLine("Writing finished.");
                 return false;
             }
 
@@ -143,13 +144,15 @@ namespace Kayak
             {
                 var ar0 = socket.BeginSend(buffer.Data, SocketFlags.None, ar =>
                 {
-                    if (ar.CompletedSynchronously) return;
+                    server.Scheduler.Post(() =>
+                    {
+                        if (ar.CompletedSynchronously) return;
 
-                    CompleteWrite(ar);
+                        CompleteWrite(ar);
 
-                    if (!DoWrite() && continuation != null)
-                        continuation();
-
+                        if (!DoWrite() && continuation != null)
+                            continuation();
+                    });
                 }, null);
 
                 if (ar0.CompletedSynchronously)
@@ -161,10 +164,14 @@ namespace Kayak
 
                 return true;
             }
+            catch (SocketException e)
+            {
+                HandleSocketException(e);
+                return false;
+            }
             catch (Exception e)
             {
                 Delegate.OnError(this, new Exception("Exception on write. ", e));
-                Dispose();
                 return false;
             }
         }
@@ -173,14 +180,19 @@ namespace Kayak
         {
             try
             {
+                if (closed) return;
+
                 var written = socket.EndSend(ar);
-                Debug.WriteLine("Wrote " + written);
                 buffer.Remove(written);
+
+                Debug.WriteLine("Wrote " + written + " " + (ar.CompletedSynchronously ? "" : "a") + "sync, buffer size is " + buffer.Size);
+
+                if (ended)
+                    ShutdownIfBufferIsEmpty();
             }
             catch (Exception e)
             {
-                Delegate.OnError(this, new Exception("Exception during write callback.", e));
-                Dispose();
+                del.OnError(this, new Exception("Exception during write callback.", e));
             }
         }
 
@@ -194,36 +206,77 @@ namespace Kayak
                 Debug.WriteLine("Reading.");
                 socket.BeginReceive(inputBuffer, 0, inputBuffer.Length, SocketFlags.None, ar =>
                 {
-                    try
+                    server.Scheduler.Post(() =>
                     {
-                        var read = socket.EndReceive(ar);
-                        Debug.WriteLine("Read " + read);
+                        if (closed)
+                        {
+                            Debug.WriteLine("Got Receive callback after object disposed.");
+                            return;
+                        }
+                        int read = 0;
+                        try
+                        {
+                            read = socket.EndReceive(ar);
+                            Debug.WriteLine("Read " + read);
+                        }
+                        catch (Exception e)
+                        {
+                            del.OnError(this, new Exception("Error while reading.", e));
+                            return;
+                        }
+
                         if (read == 0)
+                        {
                             del.OnEnd(this);
+                        }
                         else
                         {
                             if (!del.OnData(this, new ArraySegment<byte>(inputBuffer, 0, read), DoRead))
                                 DoRead();
                         }
-                    }
-                    catch (Exception e)
-                    {
-                        del.OnError(this, new Exception("Error while reading.", e));
-                        Dispose();
-                    }
+                    });
                 }, null);
+            }
+            catch (SocketException e)
+            {
+                HandleSocketException(e);
             }
             catch (Exception e)
             {
                 del.OnError(this, new Exception("Error while reading.", e));
-                Dispose();
             }
         }
 
         public void End()
         {
-            closed = true;
-            socket.Shutdown(SocketShutdown.Send);
+            if (closed)
+                throw new InvalidOperationException("The socket was closed.");
+            if (ended) return;
+
+            ended = true;
+            ShutdownIfBufferIsEmpty();
+        }
+
+        void HandleSocketException(SocketException e)
+        {
+            if (e.ErrorCode == 10053 || e.ErrorCode == 10054)
+            {
+                aborted = true;
+                Debug.WriteLine("Connection aborted/reset.");
+                del.OnEnd(this);
+                return;
+            }
+
+            del.OnError(this, new Exception("SocketException while reading.", e));
+        }
+
+        void ShutdownIfBufferIsEmpty()
+        {
+            if (buffer.Size == 0)
+            {
+                socket.Shutdown(SocketShutdown.Send);
+                Debug.WriteLine("Shut down socket outgoing.");
+            }
         }
 
         public void Dispose()

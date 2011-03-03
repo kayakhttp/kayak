@@ -75,6 +75,7 @@
     <Compile Include="Http\ParserHandler.cs" />
     <Compile Include="Http\Transaction.cs" />
     <Compile Include="ISocket.cs" />
+    <Compile Include="KayakScheduler.cs" />
     <Compile Include="KayakServer.cs" />
     <Compile Include="KayakSocket.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

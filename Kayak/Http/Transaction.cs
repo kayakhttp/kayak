@@ -169,7 +169,7 @@ namespace Kayak.Http
                     throw new Exception("Unhandled state " + httpEvent.Type);
             }
 
-            return true;
+            return false;
         }
     }
 }

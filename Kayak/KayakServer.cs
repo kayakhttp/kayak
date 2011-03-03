@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Threading;
 
 namespace Kayak
 {
@@ -11,11 +10,16 @@ namespace Kayak
         public short Backlog;
         public IServerDelegate Delegate { get; set; }
         public IPEndPoint ListenEndPoint { get; private set; }
+        public KayakScheduler Scheduler { get; private set; }
 
         int connections;
         bool closed;
         Socket listener;
 
+        public KayakServer()
+        {
+            Scheduler = new KayakScheduler();
+        }
 
         public void Listen(IPEndPoint ep)
         {
@@ -27,15 +31,19 @@ namespace Kayak
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
             listener.Listen(Backlog);
 
-            AcceptNext();
+            Scheduler.Post(AcceptNext);
+            Scheduler.Start();
         }
 
         public void Close()
         {
-            listener.Close();
+            Scheduler.Post(() =>
+            {
+                listener.Close();
 
-            if (connections == 0)
-                Delegate.OnClose(this);
+                if (connections == 0)
+                    Delegate.OnClose(this);
+            });
         }
 
         internal void SocketClosed()
@@ -53,18 +61,21 @@ namespace Kayak
             {
                 listener.BeginAccept(iasr =>
                 {
-                    try
-                    {
-                        connections++;
-                        Delegate.OnConnection(this, new KayakSocket(listener.EndAccept(iasr), this));
-                    }
-                    catch (Exception e)
-                    {
-                        connections--;
-                        Debug.WriteLine("Error while accepting connection.");
-                        e.PrintStacktrace();
-                    }
-                    AcceptNext();
+                    Scheduler.Post(() =>
+                        {
+                            try
+                            {
+                                connections++;
+                                Delegate.OnConnection(this, new KayakSocket(listener.EndAccept(iasr), this));
+                            }
+                            catch (Exception e)
+                            {
+                                connections--;
+                                Debug.WriteLine("Error while accepting connection.");
+                                e.PrintStacktrace();
+                            }
+                            AcceptNext();
+                        });
                 }, null);
             }
             catch (Exception e)
@@ -76,5 +87,4 @@ namespace Kayak
             }
         }
     }
-
 }

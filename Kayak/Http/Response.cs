@@ -46,7 +46,7 @@ namespace Kayak.Http
 
         public bool WriteBody(ArraySegment<byte> data, Action continuation)
         {
-            if (status == null)
+            if (status == null && !wroteHeaders)
                 throw new Exception("Must call WriteHeaders before calling WriteBody");
 
             if (ended)
@@ -116,6 +116,9 @@ namespace Kayak.Http
             // need to somehow return control to transaction. dovetails
             // with pipelining. transaction should not continue until
             // client reads last response.
+
+            if (!keepAlive)
+                socket.End();
         }
     }
 }

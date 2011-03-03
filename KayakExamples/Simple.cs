@@ -45,7 +45,7 @@ namespace KayakExamples
             Console.WriteLine("Press enter to exit.");
             Console.ReadLine();
 
-            //pipe.Dispose();
+            server.Close();
         }
 
 
