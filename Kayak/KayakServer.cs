@@ -18,7 +18,6 @@ namespace Kayak
 
         public KayakServer()
         {
-            Scheduler = new KayakScheduler();
         }
 
         public void Listen(IPEndPoint ep)
@@ -31,6 +30,7 @@ namespace Kayak
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
             listener.Listen(Backlog);
 
+            Scheduler = new KayakScheduler();
             Scheduler.Post(AcceptNext);
             Scheduler.Start();
         }
@@ -40,17 +40,25 @@ namespace Kayak
             Scheduler.Post(() =>
             {
                 listener.Close();
-
-                if (connections == 0)
-                    Delegate.OnClose(this);
+                Debug.WriteLine("Closed listener.");
+                StopIfNoConnections();
             });
         }
 
         internal void SocketClosed()
         {
             connections--;
-            if (closed && connections == 0)
+            Debug.WriteLine("Socket closed");
+            if (closed)
+                StopIfNoConnections();
+        }
+
+        void StopIfNoConnections()
+        {
+            Debug.WriteLine(connections + " active connections.");
+            if (connections == 0)
             {
+                Scheduler.Stop();
                 Delegate.OnClose(this);
             }
         }
@@ -68,6 +76,10 @@ namespace Kayak
                                 connections++;
                                 Delegate.OnConnection(this, new KayakSocket(listener.EndAccept(iasr), this));
                             }
+                            catch (ObjectDisposedException e)
+                            {
+                                return;
+                            }
                             catch (Exception e)
                             {
                                 connections--;
@@ -77,6 +89,10 @@ namespace Kayak
                             AcceptNext();
                         });
                 }, null);
+            }
+            catch (ObjectDisposedException e)
+            {
+                return;
             }
             catch (Exception e)
             {

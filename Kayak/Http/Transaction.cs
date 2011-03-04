@@ -52,11 +52,17 @@ namespace Kayak.Http
             socket.Dispose();
         }
 
-        public void OnEnd(ISocket socket) {
+        public void OnEnd(ISocket socket) 
+        {
+            Debug.WriteLine("Socket OnEnd.");
             OnData(socket, default(ArraySegment<byte>), null);
-            socket.End();
         }
-        public void OnClose(ISocket socket) { }
+
+        public void OnClose(ISocket socket) 
+        {
+            Debug.WriteLine("Socket OnClose.");
+            socket.Dispose();
+        }
         public void OnConnected(ISocket socket) { }
     }
 
@@ -108,7 +114,9 @@ namespace Kayak.Http
 
                         break;
                     }
-                    throw new Exception("Got unexpected state: " + httpEvent.Type);
+                    Debug.WriteLine("Got unexpected state: " + httpEvent.Type);
+                    state = TransactionState.Dead;
+                    break;
 
                 case TransactionState.MessageBegan:
                     Debug.WriteLine("Entering TransactionState.MessageBegan");
@@ -123,7 +131,9 @@ namespace Kayak.Http
                         state = TransactionState.MessageFinishing;
                         goto case TransactionState.MessageFinishing;
                     }
-                    throw new Exception("Got unexpected state: " + httpEvent.Type);
+                    Debug.WriteLine("Got unexpected state: " + httpEvent.Type);
+                    state = TransactionState.Dead;
+                    break;
 
                 case TransactionState.MessageBody:
                     if (httpEvent.Type == HttpRequestEventType.RequestBody)
@@ -146,8 +156,10 @@ namespace Kayak.Http
                         state = TransactionState.MessageFinishing;
                         goto case TransactionState.MessageFinishing;
                     }
-
-                    throw new Exception("Got unexpected state: " + httpEvent.Type);
+                    
+                    Debug.WriteLine("Got unexpected state: " + httpEvent.Type);
+                    state = TransactionState.Dead;
+                    break;
 
                 case TransactionState.MessageFinishing:
                     Debug.WriteLine("Entering TransactionState.MessageFinishing");
@@ -163,7 +175,9 @@ namespace Kayak.Http
                         state = keepAlive ? TransactionState.NewMessage : TransactionState.Dead;
                         break;
                     }
-                    throw new Exception("Got unexpected state: " + httpEvent.Type);
+                    Debug.WriteLine("Got unexpected state: " + httpEvent.Type);
+                    state = TransactionState.Dead;
+                    break;
 
                 default:
                     throw new Exception("Unhandled state " + httpEvent.Type);

@@ -39,6 +39,7 @@ namespace Kayak
         bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation);
         void OnEnd(ISocket socket); // received FIN
         void OnTimeout(ISocket socket);
+
         void OnError(ISocket socket, Exception e);
         void OnClose(ISocket socket);
     }

@@ -5,10 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Kayak
 {
-    public class KayakScheduler : TaskScheduler, IDisposable
+    public class KayakScheduler : TaskScheduler
     {
         Thread dispatch;
         ManualResetEventSlim wh;
@@ -22,13 +23,7 @@ namespace Kayak
 
         public KayakScheduler()
         {
-            wh = new ManualResetEventSlim();
             queue = new ConcurrentQueue<Task>();
-        }
-
-        public void Dispose()
-        {
-            wh.Dispose();
         }
 
         public void Start()
@@ -40,13 +35,14 @@ namespace Kayak
             dispatch.Start();
         }
 
-        void Stop()
+        public void Stop()
         {
-            Post(() => stopped = true);
+            Post(() => { Debug.WriteLine("Stopped."); stopped = true; });
         }
 
         void Dispatch()
         {
+            wh = new ManualResetEventSlim();
 
             while (true)
             {
@@ -54,6 +50,7 @@ namespace Kayak
 
                 if (queue.TryDequeue(out outTask))
                 {
+                    Debug.WriteLine("---");
                     TryExecuteTask(outTask);
                     if (stopped) break;
                 }
@@ -66,6 +63,7 @@ namespace Kayak
 
             stopped = false;
             dispatch = null;
+            wh.Dispose();
             wh = null;
         }
 
@@ -79,7 +77,8 @@ namespace Kayak
         protected override void QueueTask(Task task)
         {
             queue.Enqueue(task);
-            wh.Set();
+            if (wh != null)
+                wh.Set();
         }
 
         protected override bool TryDequeue(Task task)

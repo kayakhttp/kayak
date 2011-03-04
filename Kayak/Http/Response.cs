@@ -55,10 +55,17 @@ namespace Kayak.Http
             if (!wroteHeaders)
             {
                 wroteHeaders = true;
-                // XXX want to make sure these go out in same packet
+
+                // want to make sure these go out in same packet
+                // XXX can we do this better?
+
                 var head = WriteHead();
-                socket.Write(new ArraySegment<byte>(head), null);
-                return socket.Write(data, continuation);
+                var headPlusBody = new byte[head.Length + data.Count];
+                Buffer.BlockCopy(head, 0, headPlusBody, 0, head.Length);
+                Buffer.BlockCopy(data.Array, data.Offset, headPlusBody, head.Length, data.Count);
+
+                
+                return socket.Write(new ArraySegment<byte>(headPlusBody), continuation);
             }
             else
                 return socket.Write(data, continuation);

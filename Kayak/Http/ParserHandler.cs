@@ -114,6 +114,7 @@ namespace Kayak.Http
 
         public void OnBody(HttpParser parser, ArraySegment<byte> data)
         {
+            Debug.WriteLine("OnBody");
             // XXX can we defer this check to the parser?
             if (data.Count > 0)
             {
@@ -127,6 +128,7 @@ namespace Kayak.Http
 
         public void OnMessageEnd(HttpParser parser)
         {
+            Debug.WriteLine("OnMessageEnd");
             events.Enqueue(new HttpRequestEvent()
             {
                 Type = HttpRequestEventType.RequestEnded,

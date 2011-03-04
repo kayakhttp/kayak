@@ -29,8 +29,7 @@ namespace KayakExamples
                                     { "Content-Type", "text/plain" },
                                     { "Content-Length", "20" },
                                 });
-                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\n")), null);
-                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello.")), null);
+                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\nHello.")), null);
                 response.End();
             }
         }
