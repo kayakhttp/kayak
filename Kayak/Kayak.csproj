@@ -70,6 +70,7 @@
     <Compile Include="Http\Extensions\Request.cs" />
     <Compile Include="Http\Extensions\Server.cs" />
     <Compile Include="Http\Http.cs" />
+    <Compile Include="Http\ParserEventQueue.cs" />
     <Compile Include="Http\Request.cs" />
     <Compile Include="Http\Response.cs" />
     <Compile Include="Http\ParserHandler.cs" />

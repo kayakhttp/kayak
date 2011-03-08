@@ -21,7 +21,7 @@ namespace Kayak.Http
 
             public void OnConnection(IServer server, ISocket socket)
             {
-                socket.Delegate = new HttpSocketDelegate(socket, new Transaction(del(), (v, k) => new Response(socket, v, k)));
+                socket.Delegate = new HttpSocketDelegate(socket, del());
             }
 
             public void OnClose(IServer server)

@@ -5,42 +5,22 @@ using System.Diagnostics;
 
 namespace Kayak.Http
 {
-    struct HttpRequestEvent
+    interface IParserDelegate
     {
-        public HttpRequestEventType Type;
-        public IRequest Request;
-        public bool KeepAlive;
-        public ArraySegment<byte> Data;
-    }
-
-    enum HttpRequestEventType
-    {
-        RequestHeaders,
-        RequestBody,
-        RequestEnded
+        void OnRequestBegan(IRequest request, bool shouldKeepAlive);
+        void OnRequestBody(ArraySegment<byte> data);
+        void OnRequestEnded();
     }
 
     class ParserHandler : IHttpParserHandler
     {
         string method, requestUri, fragment, queryString, headerName, headerValue;
         IDictionary<string, string> headers;
-        Queue<HttpRequestEvent> events;
 
-        public ParserHandler()
-        {
-            events = new Queue<HttpRequestEvent>();
-        }
-
-        public bool HasEvents { get { return events.Count > 0; } }
-
-        public HttpRequestEvent GetNextEvent()
-        {
-            return events.Dequeue();
-        }
+        public IParserDelegate Delegate;
 
         public void OnMessageBegin(HttpParser parser)
         {
-            //states.Enqueue(new HttpState() { Kind = HttpStateKind.RequestBegan });
             method = requestUri = fragment = queryString = headerName = headerValue = null;
             headers = null;
         }
@@ -91,19 +71,16 @@ namespace Kayak.Http
             if (!string.IsNullOrEmpty(headerValue))
                 CommitHeader();
 
-            events.Enqueue(new HttpRequestEvent()
-            {
-                Type = HttpRequestEventType.RequestHeaders,
-                KeepAlive = parser.ShouldKeepAlive,
-                Request = new Request()
+            var request = new Request()
                 {
                     // TODO path, query, fragment?
                     Method = method,
                     Uri = requestUri,
                     Headers = headers,
                     Version = new Version(parser.MajorVersion, parser.MinorVersion)
-                },
-            });
+                };
+
+            Delegate.OnRequestBegan(request, parser.ShouldKeepAlive);
         }
 
         void CommitHeader()
@@ -118,22 +95,14 @@ namespace Kayak.Http
             // XXX can we defer this check to the parser?
             if (data.Count > 0)
             {
-                events.Enqueue(new HttpRequestEvent()
-                {
-                    Type = HttpRequestEventType.RequestBody,
-                    Data = data
-                });
+                Delegate.OnRequestBody(data);
             }
         }
 
         public void OnMessageEnd(HttpParser parser)
         {
             Debug.WriteLine("OnMessageEnd");
-            events.Enqueue(new HttpRequestEvent()
-            {
-                Type = HttpRequestEventType.RequestEnded,
-                KeepAlive = parser.ShouldKeepAlive
-            });
+            Delegate.OnRequestEnded();
         }
     }
 }

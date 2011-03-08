@@ -84,7 +84,6 @@ namespace Kayak
         Action continuation;
         KayakServer server;
 
-
         internal KayakSocket(Socket socket, KayakServer server)
         {
             this.socket = socket;
@@ -163,7 +162,7 @@ namespace Kayak
             }
             catch (Exception e)
             {
-                Delegate.OnError(this, new Exception("Exception on write. ", e));
+                del.OnError(this, new Exception("Exception on write. ", e));
                 return false;
             }
         }
@@ -189,7 +188,9 @@ namespace Kayak
                 del.OnError(this, new Exception("Exception during write callback.", e));
             }
         }
-
+        bool readZero;
+        int reads;
+        int readsCompleted;
         void DoRead()
         {
             if (inputBuffer == null)
@@ -198,9 +199,10 @@ namespace Kayak
             try
             {
                 Debug.WriteLine("Reading.");
+                reads++;
                 socket.BeginReceive(inputBuffer, 0, inputBuffer.Length, SocketFlags.None, ar =>
                 {
-                    if (ar.CompletedSynchronously) return;
+                    readsCompleted++;
                     Debug.WriteLine("Read callback.");
                     server.Scheduler.Post(() =>
                     {
@@ -221,6 +223,7 @@ namespace Kayak
 
                         if (read == 0)
                         {
+                            readZero = true;
                             RaiseEnd();
                         }
                         else
@@ -246,17 +249,19 @@ namespace Kayak
             if (disposed)
                 throw new ObjectDisposedException("socket");
 
-            if (writeEnded)
-                throw new InvalidOperationException("The socket was previously ended.");
+            //if (writeEnded)
+            //    throw new InvalidOperationException("The socket was previously ended.");
 
             writeEnded = true;
             ShutdownIfBufferIsEmpty();
         }
 
+        bool gotSocketException;
         void HandleSocketException(SocketException e)
         {
             if (e.ErrorCode == 10053 || e.ErrorCode == 10054)
             {
+                gotSocketException = true;
                 Debug.WriteLine("Connection aborted/reset.");
                 RaiseEnd();
                 return;
@@ -296,7 +301,10 @@ namespace Kayak
             if (disposed)
                 throw new ObjectDisposedException("socket");
 
-            Debug.WriteLine("Closing socket.");
+            if (reads == 0 || readsCompleted == 0 || !readZero && !gotSocketException)
+                Debug.WriteLine("Probably resetting the connection");
+
+            Debug.WriteLine("Closing socket ");
             disposed = true;
             socket.Dispose();
             server.SocketClosed();

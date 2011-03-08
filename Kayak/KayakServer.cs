@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Kayak
 {
@@ -31,8 +32,8 @@ namespace Kayak
             listener.Listen(Backlog);
 
             Scheduler = new KayakScheduler();
-            Scheduler.Post(AcceptNext);
             Scheduler.Start();
+            Scheduler.Post(AcceptNext);
         }
 
         public void Close()
@@ -69,16 +70,25 @@ namespace Kayak
             {
                 listener.BeginAccept(iasr =>
                 {
+                    Socket socket = null;
+
+                    try
+                    {
+                        socket = listener.EndAccept(iasr);
+                        AcceptNext();
+                    }
+                    catch (ObjectDisposedException e)
+                    {
+                        return;
+                    }
+
                     Scheduler.Post(() =>
                         {
                             try
                             {
                                 connections++;
-                                Delegate.OnConnection(this, new KayakSocket(listener.EndAccept(iasr), this));
-                            }
-                            catch (ObjectDisposedException e)
-                            {
-                                return;
+                                Debug.WriteLine("Accepted connection.");
+                                Delegate.OnConnection(this, new KayakSocket(socket, this));
                             }
                             catch (Exception e)
                             {
@@ -86,8 +96,8 @@ namespace Kayak
                                 Debug.WriteLine("Error while accepting connection.");
                                 e.PrintStacktrace();
                             }
-                            AcceptNext();
                         });
+
                 }, null);
             }
             catch (ObjectDisposedException e)
