@@ -23,13 +23,49 @@ namespace KayakExamples
             {
                 Debug.WriteLine("OnStart");
 
-                response.WriteHeaders("200 OK",
-                                new Dictionary<string, string>() 
+                if (request.Uri == "/") 
+                {
+                    response.WriteHeaders("200 OK",
+                                    new Dictionary<string, string>() 
                                 {
                                     { "Content-Type", "text/plain" },
                                     { "Content-Length", "20" },
                                 });
-                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\nHello.")), null);
+                    response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\nHello.")), null);
+                    response.End();
+                }
+                else if (request.Uri == "/echo")
+                {
+                    response.WriteHeaders("200 OK",
+                        new Dictionary<string, string>()
+                        {
+                            { "Content-Type", "text/plain" },
+                            { "Connection", "close" }
+                        });
+                    if (request.GetIsContinueExpected())
+                        response.WriteContinue();
+
+                    request.Delegate = new EchoRequestDelegate(response);
+                }
+            }
+        }
+
+        class EchoRequestDelegate : IRequestDelegate
+        {
+            IResponse response;
+
+            public EchoRequestDelegate(IResponse response)
+            {
+                this.response = response;
+            }
+
+            public bool OnBody(ArraySegment<byte> data, Action continuation)
+            {
+                return response.WriteBody(data, continuation);
+            }
+
+            public void OnEnd()
+            {
                 response.End();
             }
         }

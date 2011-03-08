@@ -56,6 +56,9 @@ namespace Kayak
 
     class KayakSocket : ISocket
     {
+        public int id;
+        static int nextId;
+
         ISocketDelegate del;
         
         public ISocketDelegate Delegate
@@ -86,6 +89,7 @@ namespace Kayak
 
         internal KayakSocket(Socket socket, KayakServer server)
         {
+            this.id = nextId++;
             this.socket = socket;
             this.server = server;
             buffer = new SocketBuffer();
@@ -124,7 +128,14 @@ namespace Kayak
             }
             else
             {
-                return DoWrite();
+                var result = DoWrite();
+
+                if (!result)
+                {
+                    continuation = null;
+                }
+
+                return result;
             }
         }
 
@@ -147,7 +158,11 @@ namespace Kayak
                         CompleteWrite(ar);
 
                         if (!DoWrite() && continuation != null)
-                            continuation();
+                        {
+                            var c = continuation;
+                            continuation = null;
+                            c();
+                        }
                     });
                 }, null);
 
@@ -256,13 +271,11 @@ namespace Kayak
             ShutdownIfBufferIsEmpty();
         }
 
-        bool gotSocketException;
         void HandleSocketException(SocketException e)
         {
             if (e.ErrorCode == 10053 || e.ErrorCode == 10054)
             {
-                gotSocketException = true;
-                Debug.WriteLine("Connection aborted/reset.");
+                //Console.WriteLine("Connection " + id + ": peer reset (" + e.ErrorCode + ")");
                 RaiseEnd();
                 return;
             }
@@ -301,13 +314,13 @@ namespace Kayak
             if (disposed)
                 throw new ObjectDisposedException("socket");
 
-            if (reads == 0 || readsCompleted == 0 || !readZero && !gotSocketException)
-                Debug.WriteLine("Probably resetting the connection");
+            //if (reads == 0 || readsCompleted == 0 || !readZero)
+            //    Console.WriteLine("Connection " + id + ": reset");
 
             Debug.WriteLine("Closing socket ");
             disposed = true;
             socket.Dispose();
-            server.SocketClosed();
+            server.SocketClosed(this);
             server = null;
         }
     }

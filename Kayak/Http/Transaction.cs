@@ -9,6 +9,9 @@ namespace Kayak.Http
 {
     class HttpSocketDelegate : ISocketDelegate
     {
+        int numRequests;
+        int numResponses;
+
         HttpParser parser;
         ParserEventQueue eventQueue;
 
@@ -52,6 +55,7 @@ namespace Kayak.Http
                 switch (e.Type)
                 {
                     case ParserEventType.RequestHeaders:
+                        numRequests++;
                         var request = e.Request;
                         var shouldKeepAlive = e.KeepAlive;
 
@@ -111,11 +115,13 @@ namespace Kayak.Http
         public void OnClose(ISocket socket) 
         {
             Debug.WriteLine("Socket OnClose.");
+            //Console.WriteLine("Connection " + (socket as KayakSocket).id + ": Transaction finished. " + numRequests + " req, " + numResponses + " res");
             socket.Dispose();
         }
 
         void OnResponseFinished()
         {
+            numResponses++;
             Debug.WriteLine("OnResponseFinished.");
             activeResponse.Socket = null;
             var last = activeResponse.IsLast;
@@ -154,130 +160,4 @@ namespace Kayak.Http
 
         public void OnConnected(ISocket socket) { }
     }
-
-    /*
-    
-    class Transaction
-    {
-        enum TransactionState
-        {
-            NewMessage,
-            MessageBegan,
-            MessageBody,
-            MessageFinishing,
-            Dead
-        }
-
-        bool keepAlive;
-        TransactionState state;
-        IRequest request;
-        IHttpServerDelegate serverDelegate;
-
-
-        LinkedList<Response> responses;
-
-        public Transaction(IHttpServerDelegate serverDelegate)
-        {
-            this.serverDelegate = serverDelegate;
-            keepAlive = true;
-        }
-
-        public bool Execute(ParserEvent httpEvent, Action continuation)
-        {
-            if (state == TransactionState.Dead)
-            {
-                throw new Exception("Transaction is dead, expected no more events.");
-            }
-
-            switch (state)
-            {
-                case TransactionState.NewMessage:
-                    Debug.WriteLine("Entering TransactionState.NewMessage");
-                    if (httpEvent.Type == ParserEventType.RequestHeaders)
-                    {
-                        keepAlive = httpEvent.KeepAlive;
-                        request = httpEvent.Request;
-
-                        var response = responseFactory(httpEvent.Request.Version, keepAlive, ResponseEnded);
-
-                        serverDelegate.OnRequest(httpEvent.Request, response);
-
-                        state = TransactionState.MessageBegan;
-
-                        break;
-                    }
-                    Debug.WriteLine("Got unexpected state: " + httpEvent.Type);
-                    state = TransactionState.Dead;
-                    break;
-
-                case TransactionState.MessageBegan:
-                    Debug.WriteLine("Entering TransactionState.MessageBegan");
-                    if (httpEvent.Type == ParserEventType.RequestBody)
-                    {
-                        state = TransactionState.MessageBody;
-                        goto case TransactionState.MessageBody;
-                    }
-
-                    if (httpEvent.Type == ParserEventType.RequestEnded)
-                    {
-                        state = TransactionState.MessageFinishing;
-                        goto case TransactionState.MessageFinishing;
-                    }
-                    Debug.WriteLine("Got unexpected state: " + httpEvent.Type);
-                    state = TransactionState.Dead;
-                    break;
-
-                case TransactionState.MessageBody:
-                    if (httpEvent.Type == ParserEventType.RequestBody)
-                    {
-                        if (request.Delegate == null)
-                            return false;
-
-                        return request.Delegate.OnBody(httpEvent.Data, continuation);
-
-                        // XXX for now this logic is deferred to the request delegate:
-                        // if 
-                        // - no expect-continue
-                        // - application ended response
-                        // - "request includes request body"
-                        // then 
-                        //   read and discard remainder of incoming message and goto PreRequest
-                    }
-                    else if (httpEvent.Type == ParserEventType.RequestEnded)
-                    {
-                        state = TransactionState.MessageFinishing;
-                        goto case TransactionState.MessageFinishing;
-                    }
-                    
-                    Debug.WriteLine("Got unexpected state: " + httpEvent.Type);
-                    state = TransactionState.Dead;
-                    break;
-
-                case TransactionState.MessageFinishing:
-                    Debug.WriteLine("Entering TransactionState.MessageFinishing");
-                    if (httpEvent.Type == ParserEventType.RequestEnded)
-                    {
-                        if (request.Delegate != null)
-                            request.Delegate.OnEnd();
-
-                        // XXX state should be influenced by connection header sent by user.
-                        // also state should not advance to NewMessage until client reads
-                        // response (ensure that they're not just blasting us with requests
-                        // and then closing the connection without reading)
-                        state = keepAlive ? TransactionState.NewMessage : TransactionState.Dead;
-                        break;
-                    }
-                    Debug.WriteLine("Got unexpected state: " + httpEvent.Type);
-                    state = TransactionState.Dead;
-                    break;
-
-                default:
-                    throw new Exception("Unhandled state " + httpEvent.Type);
-            }
-
-            return false;
-        }
-    }
-
-    */
 }

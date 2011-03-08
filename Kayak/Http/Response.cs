@@ -91,6 +91,7 @@ namespace Kayak.Http
 
                 if (continuation != null)
                 {
+                    Console.WriteLine("weird.");
                     sendContinuation = continuation;
                     return true;
                 }
@@ -172,10 +173,10 @@ namespace Kayak.Http
             this.status = status;
             this.headers = headers;
 
-            if (headers.ContainsKey("connection"))
+            if (headers.ContainsKey("Connection"))
             {
                 sentConnectionHeader = true;
-                if (headers["connection"] == "close")
+                if (headers["Connection"] == "close")
                     IsLast = true;
                 else
                     keepAlive = true;

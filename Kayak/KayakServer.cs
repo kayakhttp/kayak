@@ -46,10 +46,10 @@ namespace Kayak
             });
         }
 
-        internal void SocketClosed()
+        internal void SocketClosed(KayakSocket socket)
         {
             connections--;
-            Debug.WriteLine("Socket closed");
+            //Console.WriteLine("Connection " + socket.id + ": closed (" + connections + " active connections)");
             if (closed)
                 StopIfNoConnections();
         }
@@ -87,8 +87,9 @@ namespace Kayak
                             try
                             {
                                 connections++;
-                                Debug.WriteLine("Accepted connection.");
-                                Delegate.OnConnection(this, new KayakSocket(socket, this));
+                                var s = new KayakSocket(socket, this);
+                                //Console.WriteLine("Connection " + s.id + ": accepted (" + connections + " active connections)");
+                                Delegate.OnConnection(this, s);
                             }
                             catch (Exception e)
                             {
