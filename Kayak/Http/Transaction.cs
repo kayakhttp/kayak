@@ -7,8 +7,9 @@ using System.Diagnostics;
 
 namespace Kayak.Http
 {
-    class HttpSocketDelegate : ISocketDelegate
+    class HttpSocketDelegate
     {
+   
         int numRequests;
         int numResponses;
 
@@ -16,31 +17,52 @@ namespace Kayak.Http
         ParserEventQueue eventQueue;
 
         ISocket socket;
-        IHttpServerDelegate del;
         Action socketContinuation;
-
-        IRequest activeRequest;
+        Action<IRequest, IResponse> onRequest;
+        Request activeRequest;
         Response activeResponse;
         LinkedList<Response> responses;
 
-        public HttpSocketDelegate(ISocket socket, IHttpServerDelegate del)
+        public HttpSocketDelegate(Action<IRequest, IResponse> onRequest)
         {
-            this.socket = socket;
-            this.del = del;
+            this.onRequest = onRequest;
             var handler = new ParserHandler();
             handler.Delegate = eventQueue = new ParserEventQueue();
             parser = new HttpParser(handler);
             responses = new LinkedList<Response>();
         }
 
-        public bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation)
+        public void Attach(ISocket socket)
+        {
+            this.socket = socket;
+            socket.OnData += socket_OnData;
+            socket.OnEnd += socket_OnEnd;
+            socket.OnError += socket_OnError;
+            socket.OnTimeout += socket_OnTimeout;
+            socket.OnClose += socket_OnClose;
+        }
+
+        public void Detach(ISocket socket)
+        {
+            if (socket != this.socket) throw new Exception("Socket was not attached");
+
+            socket.OnData -= socket_OnData;
+            socket.OnEnd -= socket_OnEnd;
+            socket.OnError -= socket_OnError;
+            socket.OnTimeout -= socket_OnTimeout;
+            socket.OnClose -= socket_OnClose;
+            socket.Dispose();
+            this.socket = null;
+        }
+
+        bool OnData(ArraySegment<byte> data, Action continuation)
         {
             socketContinuation = continuation;
 
             if (parser.Execute(data) != data.Count)
             {
                 Trace.Write("Error while parsing request.");
-                socket.Dispose();
+                Detach(socket);
             }
 
             return ProcessEvents(continuation);
@@ -73,17 +95,25 @@ namespace Kayak.Http
                             response.Socket = socket;
                         }
 
-                        del.OnRequest(request, response);
+                        try
+                        {
+                            onRequest(request, response);
+                        }
+                        catch (Exception)
+                        {
+                            // XXX send 503?
+                            Detach(socket);
+                        }
                         break;
                     case ParserEventType.RequestBody:
-                        if (activeRequest.Delegate != null)
+                        if (activeRequest != null)
                         {
                             Action c = () =>
                                 {
                                     if (!ProcessEvents(continuation))
                                         continuation();
                                 };
-                            if (activeRequest.Delegate.OnBody(e.Data, c))
+                            if (activeRequest.RaiseOnBody(e.Data, c))
                             {
                                 eventQueue.RebufferQueuedData();
                                 return true;
@@ -91,8 +121,7 @@ namespace Kayak.Http
                         }
                         break;
                     case ParserEventType.RequestEnded:
-                        if (activeRequest.Delegate != null)
-                            activeRequest.Delegate.OnEnd();
+                        activeRequest.RaiseOnEnd();
                         activeRequest = null;
                         break;
                 }
@@ -101,10 +130,10 @@ namespace Kayak.Http
             return false;
         }
 
-        public void OnEnd(ISocket socket) 
+        public void OnEnd() 
         {
             Debug.WriteLine("Socket OnEnd.");
-            OnData(socket, default(ArraySegment<byte>), null);
+            OnData(default(ArraySegment<byte>), null);
 
             if (responses.Count > 0)
                 responses.Last.Value.IsLast = true;
@@ -112,11 +141,11 @@ namespace Kayak.Http
                 socket.End();
         }
 
-        public void OnClose(ISocket socket) 
+        public void OnClose() 
         {
             Debug.WriteLine("Socket OnClose.");
             //Console.WriteLine("Connection " + (socket as KayakSocket).id + ": Transaction finished. " + numRequests + " req, " + numResponses + " res");
-            socket.Dispose();
+            Detach(socket);
         }
 
         void OnResponseFinished()
@@ -145,19 +174,47 @@ namespace Kayak.Http
             }
         }
 
-        public void OnTimeout(ISocket socket)
+        public void OnTimeout()
         {
-            OnError(socket, new Exception("Socket timeout"));
+            OnError(new Exception("Socket timeout"));
         }
 
-        public void OnError(ISocket socket, Exception e)
+        public void OnError(Exception e)
         {
             //requestDelegate.OnError(request, e);
             Debug.WriteLine("Error on socket.");
             e.PrintStacktrace();
-            socket.Dispose();
+            Detach(socket);
         }
 
-        public void OnConnected(ISocket socket) { }
+
+        #region Socket Event Boilerplate
+
+        void socket_OnClose(object sender, EventArgs e)
+        {
+            OnClose();
+        }
+
+        void socket_OnTimeout(object sender, EventArgs e)
+        {
+            OnTimeout();
+        }
+
+        void socket_OnError(object sender, ExceptionEventArgs e)
+        {
+            OnError(e.Exception);
+        }
+
+        void socket_OnEnd(object sender, EventArgs e)
+        {
+            OnEnd();
+        }
+
+        void socket_OnData(object sender, DataEventArgs e)
+        {
+            e.WillInvokeContinuation = OnData(e.Data, e.Continuation);
+        }
+
+        #endregion
     }
 }

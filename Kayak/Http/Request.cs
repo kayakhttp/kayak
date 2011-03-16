@@ -10,6 +10,17 @@ namespace Kayak.Http
         public IDictionary<string, string> Headers { get; internal set; }
         public Version Version { get; internal set; }
 
-        public IRequestDelegate Delegate { get; set; }
+        public event EventHandler<DataEventArgs> OnBody;
+        public event EventHandler OnEnd;
+
+        internal bool RaiseOnBody(ArraySegment<byte> data, Action continuation)
+        {
+            return false;
+        }
+
+        internal void RaiseOnEnd()
+        {
+
+        }
     }
 }

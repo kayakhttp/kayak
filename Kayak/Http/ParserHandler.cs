@@ -7,7 +7,7 @@ namespace Kayak.Http
 {
     interface IParserDelegate
     {
-        void OnRequestBegan(IRequest request, bool shouldKeepAlive);
+        void OnRequestBegan(Request request, bool shouldKeepAlive);
         void OnRequestBody(ArraySegment<byte> data);
         void OnRequestEnded();
     }

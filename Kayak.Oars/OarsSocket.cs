@@ -10,6 +10,11 @@ namespace Kayak.Oars
 {
     class OarsSocket2 : ISocket
     {
+        public void Connect(IPEndPoint ep)
+        {
+
+        }
+
         public ISocketDelegate Delegate { get; set; }
 
         public IPEndPoint RemoteEndPoint { get; private set; }

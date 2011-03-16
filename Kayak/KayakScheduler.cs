@@ -11,6 +11,8 @@ namespace Kayak
 {
     public class KayakScheduler : TaskScheduler
     {
+        public static KayakScheduler Current;
+
         Thread dispatch;
         ManualResetEventSlim wh;
         ConcurrentQueue<Task> queue;

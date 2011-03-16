@@ -5,10 +5,19 @@ using System.Collections.Generic;
 
 namespace Kayak
 {
+    // (do not retain, impl could have global instance)
+    public class ConnectionEventArgs : EventArgs
+    {
+        public ISocket Socket { get; internal set; }
+    }
+
     public interface IServer
     {
         IServerDelegate Delegate { get; set; }
         IPEndPoint ListenEndPoint { get; }
+
+        event EventHandler<ConnectionEventArgs> OnConnection;
+        event EventHandler OnClose;
 
         void Listen(IPEndPoint ep);
         void Close();
@@ -20,15 +29,34 @@ namespace Kayak
         void OnClose(IServer server);
     }
 
+    public class DataEventArgs : EventArgs
+    {
+        public ArraySegment<byte> Data;
+        public Action Continuation;
+
+        // someone must *always* set this var when a dataevent is handled
+        public bool WillInvokeContinuation;
+    }
+
+    public class ExceptionEventArgs : EventArgs
+    {
+        public Exception Exception { get; internal set; }
+    }
+
     public interface ISocket : IDisposable
     {
-        ISocketDelegate Delegate { get; set; }
+        event EventHandler OnConnected;
+        event EventHandler<DataEventArgs> OnData;
+        event EventHandler OnEnd;
+        event EventHandler OnTimeout;
+        event EventHandler<ExceptionEventArgs> OnError;
+        event EventHandler OnClose;
 
         IPEndPoint RemoteEndPoint { get; }
         void SetNoDelay(bool noDelay);
         //void SetKeepAlive(bool keepAlive, int delay);
 
-        //void Connect(IPEndPoint ep, Action callback);
+        void Connect(IPEndPoint ep);
         bool Write(ArraySegment<byte> data, Action continuation);
         void End(); // send FIN
     }

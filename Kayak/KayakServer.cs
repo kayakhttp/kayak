@@ -8,6 +8,9 @@ namespace Kayak
 {
     public class KayakServer : IServer
     {
+        public event EventHandler<ConnectionEventArgs> OnConnection;
+        public event EventHandler OnClose;
+
         public short Backlog;
         public IServerDelegate Delegate { get; set; }
         public IPEndPoint ListenEndPoint { get; private set; }

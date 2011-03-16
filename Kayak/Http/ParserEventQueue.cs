@@ -8,7 +8,7 @@ namespace Kayak.Http
     struct ParserEvent
     {
         public ParserEventType Type;
-        public IRequest Request;
+        public Request Request;
         public bool KeepAlive;
         public bool Rebuffered;
         public ArraySegment<byte> Data;
@@ -58,7 +58,7 @@ namespace Kayak.Http
             events = new List<ParserEvent>();
         }
 
-        public void OnRequestBegan(IRequest request, bool shouldKeepAlive)
+        public void OnRequestBegan(Request request, bool shouldKeepAlive)
         {
             events.Add(new ParserEvent()
             {

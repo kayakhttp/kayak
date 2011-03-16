@@ -3,21 +3,27 @@ using System.Collections.Generic;
 
 namespace Kayak.Http
 {
+    public class HttpRequestEventArgs : EventArgs
+    {
+        public IRequest Request { get; internal set; }
+        public IResponse Response { get; internal set; }
+    }
+
+    public interface IHttpServer
+    {
+        event EventHandler<HttpRequestEventArgs> OnRequest;
+    }
+
     public interface IHttpServerDelegate
     {
         void OnRequest(IRequest request, IResponse response);
         //void OnUpgrade(IRequest request, ISocket socket, ArraySegment<byte> head);
     }
 
-    public interface IRequestDelegate
-    {
-        bool OnBody(ArraySegment<byte> data, Action continuation);
-        void OnEnd();
-    }
-
     public interface IRequest
     {
-        IRequestDelegate Delegate { get; set; }
+        event EventHandler<DataEventArgs> OnBody;
+        event EventHandler OnEnd;
 
         string Method { get; }
         string Uri { get; }
