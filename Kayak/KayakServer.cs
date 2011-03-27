@@ -50,8 +50,7 @@ namespace Kayak
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
             listener.Listen(1000);
 
-            scheduler = KayakScheduler.Current;
-            scheduler.Post(AcceptNext);
+            AcceptNext();
             listening = true;
             closed = false;
         }
@@ -109,7 +108,7 @@ namespace Kayak
                 listener.BeginAccept(iasr =>
                 {
                     Socket socket = null;
-
+                    if (listener == null) return;
                     try
                     {
                         Debug.WriteLine("EndAccept");
@@ -127,7 +126,7 @@ namespace Kayak
                             {
                                 connections++;
                                 var s = new KayakSocket(socket, this);
-                                Console.WriteLine("Connection " + s.id + ": accepted (" + connections + " active connections)");
+                                Debug.WriteLine("Connection " + s.id + ": accepted (" + connections + " active connections)");
                                 if (OnConnection != null)
                                     OnConnection(this, new ConnectionEventArgs(s));
                                 s.DoRead();

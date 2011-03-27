@@ -12,7 +12,7 @@ namespace Kayak
             var sb = new StringBuilder();
 
             int i = 0;
-            for (Exception e = exception.InnerException; e != null; e = e.InnerException)
+            for (Exception e = exception; e != null; e = e.InnerException)
             {
                 //if (e is TargetInvocationException || e is AggregateException) continue;
 

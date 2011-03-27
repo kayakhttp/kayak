@@ -37,7 +37,14 @@ namespace Kayak
         public void Post(Action action)
         {
             Debug.WriteLine("Posting action " + action);
-            Task.Factory.StartNew(action, CancellationToken.None, TaskCreationOptions.None, this);
+            
+            var task = new Task(action);
+            task.ContinueWith(t => { 
+                Debug.WriteLine("Error on scheduler.");
+                t.Exception.PrintStacktrace(); 
+                Thread.CurrentThread.Abort();
+            }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, this);
+            task.Start(this);
         }
 
         public KayakScheduler()
@@ -49,7 +56,7 @@ namespace Kayak
         public void Start()
         {
             if (dispatch != null)
-                throw new InvalidOperationException();
+                throw new InvalidOperationException("Scheduler was already started.");
 
             dispatch = new Thread(Dispatch);
             dispatch.Start();
@@ -64,6 +71,8 @@ namespace Kayak
         void Dispatch()
         {
             KayakScheduler.Current = this;
+            KayakSocket.InitEvents();
+
             wh = new ManualResetEventSlim();
 
             Debug.WriteLine("OnStarted...");

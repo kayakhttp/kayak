@@ -45,11 +45,14 @@ namespace Kayak.Http
                 // XXX freelist
                 var del = new HttpSocketDelegate((req, res) =>
                 {
-                    if (onRequest == null)
+                    if (onRequest != null)
                         onRequest(this, new HttpRequestEventArgs() { Request = req, Response = res });
                     else
-                        socket.End();
+                    {
+                        res.End();
+                    }
                 });
+                del.Attach(socket);
 
             }
         }

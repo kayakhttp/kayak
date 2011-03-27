@@ -64,10 +64,16 @@ namespace Kayak
         public event EventHandler OnClose;
 
         [ThreadStatic]
-        static readonly ExceptionEventArgs ExceptionEventArgs = new ExceptionEventArgs();
+        static ExceptionEventArgs ExceptionEventArgs;
 
         [ThreadStatic]
-        static readonly DataEventArgs DataEventArgs = new DataEventArgs();
+        static DataEventArgs DataEventArgs;
+
+        internal static void InitEvents()
+        {
+            DataEventArgs = new DataEventArgs();
+            ExceptionEventArgs = new ExceptionEventArgs();
+        }
 
         public int id;
         static int nextId;
@@ -97,7 +103,6 @@ namespace Kayak
             this.socket = socket;
             this.server = server;
             this.scheduler = KayakScheduler.Current;
-            buffer = new SocketBuffer();
             DoRead();
         }
 
@@ -157,6 +162,10 @@ namespace Kayak
             if (data.Count == 0) return false;
 
             this.continuation = continuation;
+
+            if (buffer == null)
+                buffer = new SocketBuffer();
+
             var size = buffer.Size;
 
             // XXX copy! could optimize here?
@@ -221,7 +230,9 @@ namespace Kayak
             catch (Exception e)
             {
                 ExceptionEventArgs.Exception = new Exception("Exception on write.", e);
-                OnError(this, ExceptionEventArgs);
+
+                if (OnError != null)
+                    OnError(this, ExceptionEventArgs);
                 return false;
             }
         }
@@ -245,7 +256,8 @@ namespace Kayak
             catch (Exception e)
             {
                 ExceptionEventArgs.Exception = new Exception("Exception during write callback.", e);
-                OnError(this, ExceptionEventArgs);
+                if (OnError != null)
+                    OnError(this, ExceptionEventArgs);
             }
         }
         int reads;
@@ -277,7 +289,8 @@ namespace Kayak
                         catch (Exception e)
                         {
                             ExceptionEventArgs.Exception = new Exception("Error while reading.", e);
-                            OnError(this, ExceptionEventArgs);
+                            if (OnError != null)
+                                OnError(this, ExceptionEventArgs);
                             return;
                         }
 
@@ -290,7 +303,8 @@ namespace Kayak
                             DataEventArgs.Data = new ArraySegment<byte>(inputBuffer, 0, read);
                             DataEventArgs.Continuation = DoRead;
 
-                            OnData(this, DataEventArgs);
+                            if (OnData != null)
+                                OnData(this, DataEventArgs);
 
                             if (!DataEventArgs.WillInvokeContinuation)
                                 DoRead();
@@ -305,7 +319,9 @@ namespace Kayak
             catch (Exception e)
             {
                 ExceptionEventArgs.Exception = new Exception("Error while reading.", e);
-                OnError(this, ExceptionEventArgs);
+
+                if (OnError != null)
+                    OnError(this, ExceptionEventArgs);
             }
         }
 
@@ -334,7 +350,8 @@ namespace Kayak
             }
 
             ExceptionEventArgs.Exception = new Exception("SocketException while reading.", e);
-            OnError(this, ExceptionEventArgs);
+            if (OnError != null)
+                OnError(this, ExceptionEventArgs);
         }
 
         void ShutdownIfBufferIsEmpty()
@@ -361,7 +378,9 @@ namespace Kayak
         void RaiseEnd()
         {
             readEnded = true;
-            OnEnd(this, ExceptionEventArgs.Empty);
+            if (OnEnd != null)
+                OnEnd(this, ExceptionEventArgs.Empty);
+
             RaiseClosedIfNecessary();
         }
 
