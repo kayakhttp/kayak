@@ -39,7 +39,7 @@ namespace KayakTests
                 OnEnd();
         }
     }
-
+    /*
     class MockHttpServerDelegate : IHttpServerDelegate
     {
         public int StartCalled;
@@ -60,7 +60,9 @@ namespace KayakTests
                 Start(request, response);
         }
     }
+     */
 
+    /*
     class MockRequestDelegate : IRequestDelegate
     {
         public int BodyCalled;
@@ -96,4 +98,5 @@ namespace KayakTests
                 End();
         }
     }
+    */
 }

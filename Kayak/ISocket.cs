@@ -5,15 +5,30 @@ using System.Collections.Generic;
 
 namespace Kayak
 {
+    public interface IScheduler
+    {
+        event EventHandler OnStarted;
+        event EventHandler OnStopped;
+
+        void Start();
+        void Stop();
+
+        void Post(Action action);
+    }
+
     // (do not retain, impl could have global instance)
     public class ConnectionEventArgs : EventArgs
     {
-        public ISocket Socket { get; internal set; }
+        public ISocket Socket { get; private set; }
+
+        public ConnectionEventArgs(ISocket socket)
+        {
+            Socket = socket;
+        }
     }
 
-    public interface IServer
+    public interface IServer : IDisposable
     {
-        IServerDelegate Delegate { get; set; }
         IPEndPoint ListenEndPoint { get; }
 
         event EventHandler<ConnectionEventArgs> OnConnection;
@@ -21,12 +36,6 @@ namespace Kayak
 
         void Listen(IPEndPoint ep);
         void Close();
-    }
-
-    public interface IServerDelegate
-    {
-        void OnConnection(IServer server, ISocket socket);
-        void OnClose(IServer server);
     }
 
     public class DataEventArgs : EventArgs
@@ -61,33 +70,17 @@ namespace Kayak
         void End(); // send FIN
     }
 
-    public interface ISocketDelegate
-    {
-        void OnConnected(ISocket socket);
-        bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation);
-        void OnEnd(ISocket socket); // received FIN
-        void OnTimeout(ISocket socket);
-
-        void OnError(ISocket socket, Exception e);
-        void OnClose(ISocket socket);
-    }
-
     public interface IStream : IDisposable
     {
-        IStreamDelegate Delegate { get; set; }
+        event EventHandler<DataEventArgs> OnData;
+        event EventHandler OnEnd;
+        event EventHandler<ExceptionEventArgs> OnError;
+        event EventHandler OnClose;
 
         bool CanRead { get; }
         bool CanWrite { get; }
 
         void End(); 
         bool Write(ArraySegment<byte> data, Action continuation);
-    }
-
-    public interface IStreamDelegate
-    {
-        bool OnData(IStream stream, ArraySegment<byte> data, Action continuation);
-        void OnEnd(IStream stream);
-        void OnError(IStream stream, Exception exception);
-        void OnClose(IStream stream);
     }
 }

@@ -3,6 +3,8 @@ namespace KayakTests
 {
     static class Mocks
     {
+
+
         //public static void SetupCallbacks(this Mock<ITransaction> mockTransaction, IEnumerable<Action<IHttpTransactionHandler>> callbacks)
         //{
         //    var en = callbacks.GetEnumerator();

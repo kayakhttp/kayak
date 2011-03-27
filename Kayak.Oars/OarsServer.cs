@@ -9,13 +9,15 @@ namespace Kayak.Oars
 {
     public class OarsServer : IServer
     {
-        public short Backlog;
-        public IServerDelegate Delegate { get; set; }
-        public IPEndPoint ListenEndPoint { get; private set; }
+        public event EventHandler<ConnectionEventArgs> OnConnection;
+        public event EventHandler OnClose;
 
+        public IPEndPoint ListenEndPoint { get; private set; }
         EventBase eventBase;
-        ConnectionListener listener;
+
         int connections;
+        ConnectionListener listener;
+        bool listening;
         bool closed;
 
         public OarsServer(EventBase eventBase)
@@ -23,34 +25,62 @@ namespace Kayak.Oars
             this.eventBase = eventBase;
         }
 
+        public void Dispose()
+        {
+            listener.Dispose();
+            listener = null;
+        }
 
         public void Listen(IPEndPoint ep)
         {
-            listener = new ConnectionListener(eventBase, ep, Backlog);
+            if (listening)
+                throw new InvalidOperationException("Already listening.");
+
+            ListenEndPoint = ep;
+
+            listener = new ConnectionListener(eventBase, ep, 1000);
             listener.Enable();
             listener.ConnectionAccepted = (fd, remoteEp) =>
-                {
-                    connections++;
-                    var ev = new Event(eventBase, fd, Events.EV_WRITE | Events.EV_READ);
-                    Delegate.OnConnection(this, new OarsSocket2(ev, remoteEp, this));
-                };
+            {
+                connections++;
+                var ev = new Event(eventBase, fd, Events.EV_WRITE | Events.EV_READ);
+
+                if (OnConnection != null)
+                    OnConnection(this, new ConnectionEventArgs(new OarsSocket(ev, remoteEp, this)));
+            };
+            listening = true;
+            closed = false;
         }
 
         public void Close()
         {
-            closed = true;
-            listener.Dispose();
+            if (!listening)
+                throw new InvalidOperationException("Not listening.");
 
-            if (connections == 0)
-                Delegate.OnClose(this);
+            if (closed)
+                throw new InvalidOperationException("Already closed.");
+
+            Dispose();
+
+            listening = false;
+            closed = true;
+
+            RaiseOnClosedIfNecessary();
         }
 
-        void SocketClosed()
+        internal void SocketClosed()
         {
             connections--;
+            RaiseOnClosedIfNecessary();
+        }
+
+        void RaiseOnClosedIfNecessary()
+        {
             if (closed && connections == 0)
             {
-                Delegate.OnClose(this);
+                closed = false;
+                if (OnClose != null)
+                    OnClose(this, EventArgs.Empty);
             }
         }
     }

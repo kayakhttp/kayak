@@ -78,27 +78,62 @@ namespace Kayak
 
         byte[] inputBuffer;
         Socket socket;
-        bool gotDel;
         bool disposed;
         bool writeEnded, readEnded, closed;
         Action continuation;
         KayakServer server;
+        IScheduler scheduler;
+
+        public KayakSocket() : this(KayakScheduler.Current) { }
+
+        public KayakSocket(IScheduler scheduler)
+        {
+            this.scheduler = scheduler;
+        }
 
         internal KayakSocket(Socket socket, KayakServer server)
         {
             this.id = nextId++;
             this.socket = socket;
             this.server = server;
+            this.scheduler = KayakScheduler.Current;
             buffer = new SocketBuffer();
+            DoRead();
         }
 
         public void Connect(IPEndPoint ep)
         {
-            this.socket = new Socket(new SocketInformation() { Options = SocketInformationOptions.UseOnlyOverlappedIO });
+            Debug.WriteLine("KayakSocket connecting to " + ep);
+            this.socket = new Socket(ep.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             socket.BeginConnect(ep, iasr => {
-                KayakScheduler.Current.Post(() => { 
-                    if (OnConnected != null)
-                        OnConnected(this, EventArgs.Empty); 
+                Exception error = null;
+                try
+                {
+                    Debug.WriteLine("EndConnect...");
+                    socket.EndConnect(iasr);
+                    Debug.WriteLine("EndConnect.");
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine("exception from EndConnect");
+                    error = e;
+                }
+                scheduler.Post(() =>
+                {
+                    if (error != null)
+                    {
+                        Debug.WriteLine("KayakSocket error while connecting to " + ep);
+                        if (OnError != null)
+                            OnError(this, new ExceptionEventArgs() { Exception = error });
+                    }
+                    else
+                    {
+                        Debug.WriteLine("KayakSocket connected to " + ep);
+                        if (OnConnected != null)
+                            OnConnected(this, EventArgs.Empty);
+
+                        DoRead();
+                    }
                 });
             }, null);
         }
@@ -161,7 +196,7 @@ namespace Kayak
                 {
                     if (ar.CompletedSynchronously) return;
 
-                    server.Scheduler.Post(() =>
+                    scheduler.Post(() =>
                     {
                         CompleteWrite(ar);
 
@@ -213,10 +248,9 @@ namespace Kayak
                 OnError(this, ExceptionEventArgs);
             }
         }
-        bool readZero;
         int reads;
         int readsCompleted;
-        void DoRead()
+        internal void DoRead()
         {
             if (inputBuffer == null)
                 inputBuffer = new byte[1024 * 4];
@@ -229,7 +263,7 @@ namespace Kayak
                 {
                     readsCompleted++;
                     Debug.WriteLine("Read callback.");
-                    server.Scheduler.Post(() =>
+                    scheduler.Post(() =>
                     {
                         if (disposed)
                             return;
@@ -249,7 +283,6 @@ namespace Kayak
 
                         if (read == 0)
                         {
-                            readZero = true;
                             RaiseEnd();
                         }
                         else
@@ -278,6 +311,7 @@ namespace Kayak
 
         public void End()
         {
+            Debug.WriteLine("Socket.End");
             if (disposed)
                 throw new ObjectDisposedException("socket");
 
@@ -285,6 +319,8 @@ namespace Kayak
             //    throw new InvalidOperationException("The socket was previously ended.");
 
             writeEnded = true;
+
+            Debug.WriteLine("will ShutdownIfBufferIsEmpty");
             ShutdownIfBufferIsEmpty();
         }
 
@@ -303,11 +339,12 @@ namespace Kayak
 
         void ShutdownIfBufferIsEmpty()
         {
-            if (buffer.Size == 0)
+            Debug.WriteLine("ShutdownIfBufferIsEmpty");
+            if (buffer == null || buffer.Size == 0)
             {
+                Debug.WriteLine("Shutting down socket outgoing.");
                 socket.Shutdown(SocketShutdown.Send);
                 RaiseClosedIfNecessary();
-                Debug.WriteLine("Shut down socket outgoing.");
             }
         }
 
@@ -316,7 +353,8 @@ namespace Kayak
             if (writeEnded && readEnded && !closed)
             {
                 closed = true;
-                OnClose(this, ExceptionEventArgs.Empty);
+                if (OnClose != null)
+                    OnClose(this, ExceptionEventArgs.Empty);
             }
         }
 
@@ -338,8 +376,12 @@ namespace Kayak
             Debug.WriteLine("Closing socket ");
             disposed = true;
             socket.Dispose();
-            server.SocketClosed(this);
-            server = null;
+
+            if (server != null)
+            {
+                server.SocketClosed(this);
+                server = null;
+            };
         }
     }
 }

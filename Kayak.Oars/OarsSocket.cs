@@ -8,30 +8,33 @@ using System.Runtime.InteropServices;
 
 namespace Kayak.Oars
 {
-    class OarsSocket2 : ISocket
+    class OarsSocket : ISocket
     {
-        public void Connect(IPEndPoint ep)
+        public event EventHandler OnConnected;
+        public event EventHandler<DataEventArgs> OnData;
+        public event EventHandler OnEnd;
+        public event EventHandler OnTimeout;
+        public event EventHandler<ExceptionEventArgs> OnError;
+        public event EventHandler OnClose;
+
+        public IPEndPoint RemoteEndPoint
         {
-
-        }
-
-        public ISocketDelegate Delegate { get; set; }
-
-        public IPEndPoint RemoteEndPoint { get; private set; }
-
-        public OarsSocket2(Event ev, IPEndPoint remoteEp, OarsServer server)
-        {
-
+            get { throw new NotImplementedException(); }
         }
 
         public void SetNoDelay(bool noDelay)
         {
-            //throw new NotImplementedException();
+            throw new NotImplementedException();
+        }
+
+        public void Connect(IPEndPoint ep)
+        {
+            throw new NotImplementedException();
         }
 
         public bool Write(ArraySegment<byte> data, Action continuation)
         {
-            return false;
+            throw new NotImplementedException();
         }
 
         public void End()
@@ -42,6 +45,11 @@ namespace Kayak.Oars
         public void Dispose()
         {
             throw new NotImplementedException();
+        }
+
+
+        public OarsSocket(Event ev, IPEndPoint remoteEP, OarsServer server)
+        {
         }
     }
 

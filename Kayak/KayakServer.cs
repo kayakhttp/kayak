@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 
+
 namespace Kayak
 {
     public class KayakServer : IServer
@@ -11,59 +12,92 @@ namespace Kayak
         public event EventHandler<ConnectionEventArgs> OnConnection;
         public event EventHandler OnClose;
 
-        public short Backlog;
-        public IServerDelegate Delegate { get; set; }
         public IPEndPoint ListenEndPoint { get; private set; }
-        public KayakScheduler Scheduler { get; private set; }
+        IScheduler scheduler;
 
         int connections;
-        bool closed;
         Socket listener;
+        bool listening;
+        bool closed;
+        
+        public KayakServer() : this(KayakScheduler.Current) { }
 
-        public KayakServer()
+        public KayakServer(IScheduler scheduler)
         {
+            this.scheduler = scheduler;
+        }
+
+        public void Dispose()
+        {
+            if (listener != null)
+            {
+                listener.Dispose();
+                listener = null;
+            }
         }
 
         public void Listen(IPEndPoint ep)
         {
+            if (listening)
+                throw new InvalidOperationException("Already listening.");
+
             ListenEndPoint = ep;
 
+            Debug.WriteLine("KayakServer binding to " + ListenEndPoint);
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
             listener.Bind(ListenEndPoint);
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 10000);
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
-            listener.Listen(Backlog);
+            listener.Listen(1000);
 
-            Scheduler = new KayakScheduler();
-            Scheduler.Start();
-            Scheduler.Post(AcceptNext);
+            scheduler = KayakScheduler.Current;
+            scheduler.Post(AcceptNext);
+            listening = true;
+            closed = false;
         }
 
         public void Close()
         {
-            Scheduler.Post(() =>
+            Console.WriteLine("Closing???");
+            if (!listening)
+                throw new InvalidOperationException("Not listening.");
+
+            if (closed)
+                throw new InvalidOperationException("Already closed.");
+
+            listening = false;
+            closed = true;
+            ListenEndPoint = null;
+
+            // XXX should this happen on the worker thread?
+            Console.WriteLine("Closing listening socket.");
+            listener.Close();
+            Dispose();
+
+            scheduler.Post(() =>
             {
-                listener.Close();
                 Debug.WriteLine("Closed listener.");
-                StopIfNoConnections();
+                RaiseOnClosedIfNecessary();
             });
         }
 
         internal void SocketClosed(KayakSocket socket)
         {
-            connections--;
             //Console.WriteLine("Connection " + socket.id + ": closed (" + connections + " active connections)");
-            if (closed)
-                StopIfNoConnections();
+            connections--;
+            RaiseOnClosedIfNecessary();
         }
 
-        void StopIfNoConnections()
+        void RaiseOnClosedIfNecessary()
         {
             Debug.WriteLine(connections + " active connections.");
-            if (connections == 0)
+
+            if (closed && connections == 0)
             {
-                Scheduler.Stop();
-                Delegate.OnClose(this);
+                closed = false;
+
+                if (OnClose != null)
+                    OnClose(this, EventArgs.Empty);
             }
         }
 
@@ -71,12 +105,14 @@ namespace Kayak
         {
             try
             {
+                Debug.WriteLine("BeginAccept");
                 listener.BeginAccept(iasr =>
                 {
                     Socket socket = null;
 
                     try
                     {
+                        Debug.WriteLine("EndAccept");
                         socket = listener.EndAccept(iasr);
                         AcceptNext();
                     }
@@ -85,14 +121,16 @@ namespace Kayak
                         return;
                     }
 
-                    Scheduler.Post(() =>
+                    scheduler.Post(() =>
                         {
                             try
                             {
                                 connections++;
                                 var s = new KayakSocket(socket, this);
-                                //Console.WriteLine("Connection " + s.id + ": accepted (" + connections + " active connections)");
-                                Delegate.OnConnection(this, s);
+                                Console.WriteLine("Connection " + s.id + ": accepted (" + connections + " active connections)");
+                                if (OnConnection != null)
+                                    OnConnection(this, new ConnectionEventArgs(s));
+                                s.DoRead();
                             }
                             catch (Exception e)
                             {
@@ -113,7 +151,9 @@ namespace Kayak
                 listener.Close();
                 Debug.WriteLine("Error attempting to accept next connection.");
                 e.PrintStacktrace();
-                Delegate.OnClose(this);
+
+                if (OnClose != null)
+                    OnClose(this, EventArgs.Empty);
             }
         }
     }
