@@ -69,18 +69,4 @@ namespace Kayak
         bool Write(ArraySegment<byte> data, Action continuation);
         void End(); // send FIN
     }
-
-    public interface IStream : IDisposable
-    {
-        event EventHandler<DataEventArgs> OnData;
-        event EventHandler OnEnd;
-        event EventHandler<ExceptionEventArgs> OnError;
-        event EventHandler OnClose;
-
-        bool CanRead { get; }
-        bool CanWrite { get; }
-
-        void End(); 
-        bool Write(ArraySegment<byte> data, Action continuation);
-    }
 }

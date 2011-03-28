@@ -91,10 +91,6 @@
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
       <Name>Kayak %28Kayak\Kayak%29</Name>
     </ProjectReference>
-    <ProjectReference Include="..\lib\coroutine\src\Coroutine\Coroutine.csproj">
-      <Project>{FD3EBCCF-F96F-405E-9EE9-BC88C38F778C}</Project>
-      <Name>Coroutine</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include="Microsoft.Net.Client.3.5">

@@ -1,6 +1,3 @@
-[submodule "lib/coroutine"]
-	path = lib/coroutine
-	url = git@github.com:bvanderveen/coroutine.git
 [submodule "lib/httpmachine"]
 	path = lib/httpmachine
 	url = git@github.com:bvanderveen/httpmachine.git

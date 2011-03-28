@@ -14,12 +14,6 @@ namespace Kayak.Http
         event EventHandler<HttpRequestEventArgs> OnRequest;
     }
 
-    public interface IHttpServerDelegate
-    {
-        void OnRequest(IRequest request, IResponse response);
-        //void OnUpgrade(IRequest request, ISocket socket, ArraySegment<byte> head);
-    }
-
     public interface IRequest
     {
         event EventHandler<DataEventArgs> OnBody;
