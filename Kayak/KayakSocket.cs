@@ -8,52 +8,6 @@ using System.Diagnostics;
 
 namespace Kayak
 {
-    class SocketBuffer
-    {
-        public List<ArraySegment<byte>> Data;
-        public int Size;
-
-        public SocketBuffer()
-        {
-            Data = new List<ArraySegment<byte>>();
-        }
-
-        public void Add(ArraySegment<byte> data)
-        {
-            var d = new byte[data.Count];
-            Buffer.BlockCopy(data.Array, data.Offset, d, 0, d.Length);
-
-            Size += data.Count;
-            Data.Add(new ArraySegment<byte>(d));
-        }
-
-        public void Remove(int howmuch)
-        {
-            if (howmuch > Size) throw new ArgumentOutOfRangeException("howmuch > size");
-
-            Size -= howmuch;
-
-            int remaining = howmuch;
-
-            while (remaining > 0)
-            {
-                var first = Data[0];
-
-                int count = first.Count;
-                if (count <= remaining)
-                {
-                    remaining -= count;
-                    Data.RemoveAt(0);
-                }
-                else
-                {
-                    Data[0] = new ArraySegment<byte>(first.Array, first.Offset + remaining, count - remaining);
-                    remaining = 0;
-                }
-            }
-        }
-    }
-
     class KayakSocket : ISocket
     {
         public event EventHandler OnConnected;
@@ -90,50 +44,45 @@ namespace Kayak
         KayakServer server;
         IScheduler scheduler;
 
-        public KayakSocket() : this(KayakScheduler.Current) { }
-
         public KayakSocket(IScheduler scheduler)
         {
             this.scheduler = scheduler;
         }
 
-        internal KayakSocket(Socket socket, KayakServer server)
+        internal KayakSocket(Socket socket, KayakServer server, IScheduler scheduler)
         {
             this.id = nextId++;
             this.socket = socket;
             this.server = server;
-            this.scheduler = KayakScheduler.Current;
-            DoRead();
+            this.scheduler = scheduler;
         }
 
         public void Connect(IPEndPoint ep)
         {
-            Debug.WriteLine("KayakSocket connecting to " + ep);
+            Debug.WriteLine("KayakSocket: connecting to " + ep);
             this.socket = new Socket(ep.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             socket.BeginConnect(ep, iasr => {
                 Exception error = null;
+
                 try
                 {
-                    Debug.WriteLine("EndConnect...");
                     socket.EndConnect(iasr);
-                    Debug.WriteLine("EndConnect.");
                 }
                 catch (Exception e)
                 {
-                    Debug.WriteLine("exception from EndConnect");
                     error = e;
                 }
+
                 scheduler.Post(() =>
                 {
                     if (error != null)
                     {
-                        Debug.WriteLine("KayakSocket error while connecting to " + ep);
-                        if (OnError != null)
-                            OnError(this, new ExceptionEventArgs() { Exception = error });
+                        Debug.WriteLine("KayakSocket: error while connecting to " + ep);
+                        RaiseError(error);
                     }
                     else
                     {
-                        Debug.WriteLine("KayakSocket connected to " + ep);
+                        Debug.WriteLine("KayakSocket: connected to " + ep);
                         if (OnConnected != null)
                             OnConnected(this, EventArgs.Empty);
 
@@ -184,7 +133,7 @@ namespace Kayak
 
                 if (!result)
                 {
-                    continuation = null;
+                    this.continuation = null;
                 }
 
                 return result;
@@ -229,10 +178,7 @@ namespace Kayak
             }
             catch (Exception e)
             {
-                ExceptionEventArgs.Exception = new Exception("Exception on write.", e);
-
-                if (OnError != null)
-                    OnError(this, ExceptionEventArgs);
+                RaiseError(new Exception("Exception on write.", e));
                 return false;
             }
         }
@@ -246,7 +192,7 @@ namespace Kayak
                 var written = socket.EndSend(ar);
                 buffer.Remove(written);
 
-                Debug.WriteLine("Wrote " + written + " " + (ar.CompletedSynchronously ? "" : "a") + "sync, buffer size is " + buffer.Size);
+                Debug.WriteLine("KayakSocket: Wrote " + written + " " + (ar.CompletedSynchronously ? "" : "a") + "sync, buffer size is " + buffer.Size);
 
                 if (writeEnded)
                 {
@@ -255,9 +201,7 @@ namespace Kayak
             }
             catch (Exception e)
             {
-                ExceptionEventArgs.Exception = new Exception("Exception during write callback.", e);
-                if (OnError != null)
-                    OnError(this, ExceptionEventArgs);
+                RaiseError(new Exception("Exception during write callback.", e));
             }
         }
         int reads;
@@ -269,28 +213,34 @@ namespace Kayak
 
             try
             {
-                Debug.WriteLine("Reading.");
+                //Debug.WriteLine("Reading.");
                 reads++;
                 socket.BeginReceive(inputBuffer, 0, inputBuffer.Length, SocketFlags.None, ar =>
                 {
                     readsCompleted++;
-                    Debug.WriteLine("Read callback.");
+                    //Debug.WriteLine("Read callback.");
+
+                    int read = 0;
+                    Exception error = null;
+
+                    try
+                    {
+                        read = socket.EndReceive(ar);
+                        Debug.WriteLine("KayakSocket: Read " + read);
+                    }
+                    catch (Exception e)
+                    {
+                        error = e;
+                    }
+
                     scheduler.Post(() =>
                     {
                         if (disposed)
                             return;
 
-                        int read = 0;
-                        try
+                        if (error != null)
                         {
-                            read = socket.EndReceive(ar);
-                            Debug.WriteLine("Read " + read);
-                        }
-                        catch (Exception e)
-                        {
-                            ExceptionEventArgs.Exception = new Exception("Error while reading.", e);
-                            if (OnError != null)
-                                OnError(this, ExceptionEventArgs);
+                            RaiseError(new Exception("Error while reading.", error));
                             return;
                         }
 
@@ -318,25 +268,20 @@ namespace Kayak
             }
             catch (Exception e)
             {
-                ExceptionEventArgs.Exception = new Exception("Error while reading.", e);
-
-                if (OnError != null)
-                    OnError(this, ExceptionEventArgs);
+                RaiseError(new Exception("Error while reading.", e));
             }
         }
 
         public void End()
         {
-            Debug.WriteLine("Socket.End");
             if (disposed)
                 throw new ObjectDisposedException("socket");
 
             //if (writeEnded)
             //    throw new InvalidOperationException("The socket was previously ended.");
 
+            Debug.WriteLine("KayakSocket: end");
             writeEnded = true;
-
-            Debug.WriteLine("will ShutdownIfBufferIsEmpty");
             ShutdownIfBufferIsEmpty();
         }
 
@@ -349,17 +294,14 @@ namespace Kayak
                 return;
             }
 
-            ExceptionEventArgs.Exception = new Exception("SocketException while reading.", e);
-            if (OnError != null)
-                OnError(this, ExceptionEventArgs);
+            RaiseError(new Exception("SocketException while reading.", e));
         }
 
         void ShutdownIfBufferIsEmpty()
         {
-            Debug.WriteLine("ShutdownIfBufferIsEmpty");
             if (buffer == null || buffer.Size == 0)
             {
-                Debug.WriteLine("Shutting down socket outgoing.");
+                Debug.WriteLine("KayakSocket: sending FIN packet");
                 socket.Shutdown(SocketShutdown.Send);
                 RaiseClosedIfNecessary();
             }
@@ -368,11 +310,24 @@ namespace Kayak
         void RaiseClosedIfNecessary()
         {
             if (writeEnded && readEnded && !closed)
-            {
-                closed = true;
-                if (OnClose != null)
-                    OnClose(this, ExceptionEventArgs.Empty);
-            }
+                RaiseClosed();
+        }
+
+        void RaiseClosed()
+        {
+            closed = true;
+            if (OnClose != null)
+                OnClose(this, ExceptionEventArgs.Empty);
+        }
+
+        void RaiseError(Exception e)
+        {
+            ExceptionEventArgs.Exception = e;
+
+            if (OnError != null)
+                OnError(this, ExceptionEventArgs);
+
+            RaiseClosed();
         }
 
         void RaiseEnd()
@@ -392,15 +347,63 @@ namespace Kayak
             //if (reads == 0 || readsCompleted == 0 || !readZero)
             //    Console.WriteLine("Connection " + id + ": reset");
 
-            Debug.WriteLine("Closing socket ");
+            Debug.WriteLine("KayakSocket: dispose");
             disposed = true;
-            socket.Dispose();
+
+            if (socket != null) // i. e., never connected
+                socket.Dispose();
 
             if (server != null)
             {
                 server.SocketClosed(this);
                 server = null;
             };
+        }
+
+        class SocketBuffer
+        {
+            public List<ArraySegment<byte>> Data;
+            public int Size;
+
+            public SocketBuffer()
+            {
+                Data = new List<ArraySegment<byte>>();
+            }
+
+            public void Add(ArraySegment<byte> data)
+            {
+                var d = new byte[data.Count];
+                Buffer.BlockCopy(data.Array, data.Offset, d, 0, d.Length);
+
+                Size += data.Count;
+                Data.Add(new ArraySegment<byte>(d));
+            }
+
+            public void Remove(int howmuch)
+            {
+                if (howmuch > Size) throw new ArgumentOutOfRangeException("howmuch > size");
+
+                Size -= howmuch;
+
+                int remaining = howmuch;
+
+                while (remaining > 0)
+                {
+                    var first = Data[0];
+
+                    int count = first.Count;
+                    if (count <= remaining)
+                    {
+                        remaining -= count;
+                        Data.RemoveAt(0);
+                    }
+                    else
+                    {
+                        Data[0] = new ArraySegment<byte>(first.Array, first.Offset + remaining, count - remaining);
+                        remaining = 0;
+                    }
+                }
+            }
         }
     }
 }

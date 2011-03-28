@@ -125,7 +125,7 @@ namespace Kayak
                             try
                             {
                                 connections++;
-                                var s = new KayakSocket(socket, this);
+                                var s = new KayakSocket(socket, this, this.scheduler);
                                 Debug.WriteLine("Connection " + s.id + ": accepted (" + connections + " active connections)");
                                 if (OnConnection != null)
                                     OnConnection(this, new ConnectionEventArgs(s));

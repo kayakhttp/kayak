@@ -10,14 +10,18 @@ using System.Diagnostics;
 
 namespace KayakTests
 {
+    // TODO
+    // - ISocket.Close is always dispatched (i.e., after error)
+    // - exceptions thrown on scheduler are handled in sane/predictable way.
     class NetTests
     {
         IScheduler scheduler;
         SchedulerDelegate schedulerDelegate;
         IServer server;
         ServerDelegate serverDelegate;
-        ISocket socket;
-
+        ISocket client;
+        SocketDelegate clientDelegate;
+        
         [SetUp]
         public void SetUp()
         {
@@ -25,6 +29,8 @@ namespace KayakTests
             schedulerDelegate = new SchedulerDelegate(scheduler);
             server = new KayakServer(scheduler);
             serverDelegate = new ServerDelegate(server);
+            client = new KayakSocket(scheduler);
+            clientDelegate = new SocketDelegate(client);
         }
 
         [TearDown]
@@ -33,16 +39,8 @@ namespace KayakTests
             serverDelegate.Dispose();
             server.Dispose();
             schedulerDelegate.Dispose();
-        }
-
-        public IServer CreateServer()
-        {
-            return new KayakServer();
-        }
-
-        public ISocket CreateSocket()
-        {
-            return new KayakSocket();
+            clientDelegate.Dispose();
+            client.Dispose();
         }
 
         public IPEndPoint LocalEP(int port)
@@ -53,25 +51,23 @@ namespace KayakTests
         [Test]
         public void Listen_end_point_is_correct_after_binding_and_closing()
         {
-            var server1 = CreateServer();
             var ep1 = LocalEP(Config.Port);
 
-            Assert.That(server1.ListenEndPoint, Is.Null);
-            server1.Listen(ep1);
-            Assert.That(server1.ListenEndPoint, Is.SameAs(ep1));
+            Assert.That(server.ListenEndPoint, Is.Null);
 
-            var server2 = CreateServer();
+            server.Listen(ep1);
+            Assert.That(server.ListenEndPoint, Is.SameAs(ep1));
+
             var ep2 = LocalEP(Config.Port + 1);
 
-            Assert.That(server2.ListenEndPoint, Is.Null);
-            server2.Listen(ep2);
-            Assert.That(server2.ListenEndPoint, Is.SameAs(ep2));
+            server.Close();
+            Assert.That(server.ListenEndPoint, Is.Null);
 
-            server1.Close();
-            Assert.That(server1.ListenEndPoint, Is.Null);
+            server.Listen(ep2);
+            Assert.That(server.ListenEndPoint, Is.SameAs(ep2));
 
-            server2.Close();
-            Assert.That(server1.ListenEndPoint, Is.Null);
+            server.Close();
+            Assert.That(server.ListenEndPoint, Is.Null);
         }
 
         [Test]
@@ -81,7 +77,6 @@ namespace KayakTests
                
             try
             {
-                Debug.WriteLine("ASDF");
                 server.Close();
             }
             catch (Exception ex)
@@ -153,57 +148,57 @@ namespace KayakTests
             bool clientGotClose = false;
 
             Exception clientError = null;
+            bool serverDidClose = false;
 
             serverDelegate.OnConnection = s =>
+            {
+                serverGotConnection = true;
+
+                var socketDelegate = new SocketDelegate(s);
+
+                socketDelegate.OnEnd = () =>
                 {
-                    serverGotConnection = true;
-
-                    var socketDelegate = new SocketDelegate(s);
-
-                    socketDelegate.OnEnd = () =>
-                        {
-                            serverGotEnd = true;
-                            s.End();
-                        };
-                    socketDelegate.OnClose = () =>
-                        {
-                            serverGotClose = true;
-                            s.Dispose();
-                        };
+                    serverGotEnd = true;
+                    s.End();
                 };
+                socketDelegate.OnClose = () =>
+                {
+                    serverGotClose = true;
+                    s.Dispose();
+                    server.Close();
+                };
+            };
+            serverDelegate.OnClose = () =>
+            {
+                serverDidClose = true;
+            };
 
             var ep = LocalEP(Config.Port);
             var wh = new ManualResetEventSlim(false);
 
             schedulerDelegate.OnStarted = () =>
+            {
+                clientDelegate.OnConnected = () =>
                 {
-                    var socket = CreateSocket();
-
-                    var socketDelegate = new SocketDelegate(socket);
-                    socketDelegate.OnConnected = () =>
-                    {
-                        clientGotConnected = true;
-                        socket.End();
-                    };
-                    socketDelegate.OnEnd = () =>
-                    {
-                        clientGotEnd = true;
-                    };
-                    socketDelegate.OnError = e =>
-                    {
-                        clientError = e;
-                        socket.Dispose();
-                        KayakScheduler.Current.Stop();
-                    };
-                    socketDelegate.OnClose = () =>
-                    {
-                        clientGotClose = true;
-                        socket.Dispose();
-                        KayakScheduler.Current.Stop();
-                    };
-
-                    socket.Connect(ep);
+                    clientGotConnected = true;
+                    client.End();
                 };
+                clientDelegate.OnEnd = () =>
+                {
+                    clientGotEnd = true;
+                };
+                clientDelegate.OnError = e =>
+                {
+                    clientError = e;
+                };
+                clientDelegate.OnClose = () =>
+                {
+                    clientGotClose = true;
+                    KayakScheduler.Current.Stop();
+                };
+
+                client.Connect(ep);
+            };
 
             schedulerDelegate.OnStopped = () => wh.Set();
 
@@ -213,12 +208,13 @@ namespace KayakTests
             wh.Wait();
 
             Assert.That(clientError, Is.Null);
-            Assert.That(clientGotConnected);
-            Assert.That(clientGotEnd);
-            Assert.That(clientGotClose);
             Assert.That(serverGotConnection);
+            Assert.That(clientGotConnected);
             Assert.That(serverGotEnd);
             Assert.That(serverGotClose);
+            Assert.That(serverDidClose);
+            Assert.That(clientGotEnd);
+            Assert.That(clientGotClose);
         }
 
 
@@ -238,17 +234,139 @@ namespace KayakTests
             bool clientGotEnd = false;
             bool clientGotClose = false;
             bool clientGotConnected = false;
+            bool serverDidClose = false;
 
             Exception clientError = null;
 
             List<byte[]> buffer = new List<byte[]>();
-            
-            Action<ArraySegment<byte>> doBuff = d =>
+
+            Action<ArraySegment<byte>> addToBuffer = d =>
+            {
+                byte[] b = new byte[d.Count];
+                Buffer.BlockCopy(d.Array, d.Offset, b, 0, d.Count);
+                buffer.Add(b);
+            };
+
+            serverDelegate.OnConnection = s =>
+            {
+                serverGotConnection = true;
+
+                var socketDelegate = new SocketDelegate(s);
+                socketDelegate.OnData = (d, c) =>
                 {
-                    byte[] b = new byte[d.Count];
-                    Buffer.BlockCopy(d.Array, d.Offset, b, 0, d.Count);
-                    buffer.Add(b);
+                    addToBuffer(d);
+                    return false;
                 };
+
+                socketDelegate.OnEnd = () =>
+                {
+                    serverGotEnd = true;
+                    s.End();
+                };
+
+                socketDelegate.OnClose = () =>
+                {
+                    serverGotClose = true;
+                    s.Dispose();
+                    server.Close();
+                };
+            };
+            serverDelegate.OnClose = () =>
+            {
+                serverDidClose = true;
+            };
+
+            var ep = LocalEP(Config.Port);
+            var wh = new ManualResetEventSlim(false);
+
+            schedulerDelegate.OnStarted = () =>
+            {
+                clientDelegate.OnConnected = () =>
+                {
+                    Debug.WriteLine("will write some datums.");
+                    clientGotConnected = true;
+                    try
+                    {
+                        foreach (var d in MakeData())
+                            client.Write(new ArraySegment<byte>(d), null);
+                        client.End();
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.WriteLine("Error while writing to socket." + e.Message);
+                        e.PrintStacktrace();
+                    }
+                };
+
+                clientDelegate.OnEnd = () =>
+                {
+                    clientGotEnd = true;
+                };
+
+                clientDelegate.OnClose = () =>
+                {
+                    clientGotClose = true;
+                    KayakScheduler.Current.Stop();
+                };
+
+                client.Connect(ep);
+            };
+
+            schedulerDelegate.OnStopped = () => wh.Set();
+
+            server.Listen(ep);
+            scheduler.Start();
+
+            wh.Wait();
+
+            Assert.That(clientError, Is.Null);
+            Assert.That(serverGotConnection);
+            Assert.That(clientGotConnected);
+            Assert.That(serverGotEnd);
+            Assert.That(serverGotClose);
+            Assert.That(serverDidClose);
+            Assert.That(clientGotEnd);
+            Assert.That(clientGotClose);
+            Assert.That(
+                buffer.Aggregate("", (acc, next) => acc + Encoding.UTF8.GetString(next)),
+                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
+        }
+
+        void WriteData(IEnumerator<byte[]> ds)
+        {
+            if (ds.MoveNext())
+            {
+                if (!client.Write(new ArraySegment<byte>(ds.Current), () => WriteData(ds)))
+                    WriteData(ds);
+            }
+            else
+            {
+                ds.Dispose();
+                client.End();
+            }
+        }
+
+        [Test]
+        public void Client_writes_asynchronously_server_buffers_synchronously()
+        {
+            bool serverGotConnection = false;
+            bool serverGotEnd = false;
+            bool serverGotClose = false;
+            bool serverDidClose = false;
+            bool clientGotEnd = false;
+            bool clientGotClose = false;
+            bool clientGotConnected = false;
+
+            Exception clientError = null;
+
+            List<byte[]> buffer = new List<byte[]>();
+
+            Action<ArraySegment<byte>> doBuff = d =>
+            {
+                byte[] b = new byte[d.Count];
+                Buffer.BlockCopy(d.Array, d.Offset, b, 0, d.Count);
+                buffer.Add(b);
+            };
 
             serverDelegate.OnConnection = s =>
             {
@@ -260,7 +378,7 @@ namespace KayakTests
                     return false;
                 };
 
-                socketDelegate.OnEnd = () => 
+                socketDelegate.OnEnd = () =>
                 {
                     serverGotEnd = true;
                     s.End();
@@ -270,7 +388,12 @@ namespace KayakTests
                 {
                     serverGotClose = true;
                     s.Dispose();
+                    server.Close();
                 };
+            };
+            serverDelegate.OnClose = () =>
+            {
+                serverDidClose = true;
             };
 
             var ep = LocalEP(Config.Port);
@@ -278,21 +401,14 @@ namespace KayakTests
 
             schedulerDelegate.OnStarted = () =>
             {
-                var socket = CreateSocket();
-
-                var socketDelegate = new SocketDelegate(socket);
-
-                socketDelegate.OnConnected = () =>
+                clientDelegate.OnConnected = () =>
                 {
                     Debug.WriteLine("will write some datums.");
                     clientGotConnected = true;
                     try
                     {
-                        foreach (var d in MakeData())
-                        {
-                            socket.Write(new ArraySegment<byte>(d), null);
-                        }
-                        socket.End();
+                        var en = MakeData().GetEnumerator();
+                        WriteData(en);
                     }
                     catch (Exception e)
                     {
@@ -301,20 +417,20 @@ namespace KayakTests
                     }
                 };
 
-                socketDelegate.OnEnd = () =>
+                clientDelegate.OnEnd = () =>
                 {
                     clientGotEnd = true;
                 };
 
-                socketDelegate.OnClose = () =>
+                clientDelegate.OnClose = () =>
                 {
                     clientGotClose = true;
-                    socket.Dispose();
                     KayakScheduler.Current.Stop();
                 };
 
-                socket.Connect(ep);
+                client.Connect(ep);
             };
+
             schedulerDelegate.OnStopped = () => wh.Set();
 
             server.Listen(ep);
@@ -323,17 +439,19 @@ namespace KayakTests
             wh.Wait();
 
             Assert.That(clientError, Is.Null);
-            Assert.That(clientGotConnected);
-            Assert.That(clientGotEnd);
-            Assert.That(clientGotClose);
             Assert.That(serverGotConnection);
+            Assert.That(clientGotConnected);
             Assert.That(serverGotEnd);
             Assert.That(serverGotClose);
+            Assert.That(serverDidClose);
+            Assert.That(clientGotEnd);
+            Assert.That(clientGotClose);
             Assert.That(
                 buffer.Aggregate("", (acc, next) => acc + Encoding.UTF8.GetString(next)),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
     }
+
 
     class SchedulerDelegate : IDisposable
     {
