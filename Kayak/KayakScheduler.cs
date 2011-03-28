@@ -36,20 +36,18 @@ namespace Kayak
 
         public void Post(Action action)
         {
-            Debug.WriteLine("Posting action " + action);
+            Debug.WriteLine("--- Posted task.");
             
             var task = new Task(action);
             task.ContinueWith(t => { 
                 Debug.WriteLine("Error on scheduler.");
-                t.Exception.PrintStacktrace(); 
-                Thread.CurrentThread.Abort();
+                t.Exception.PrintStacktrace();
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, this);
             task.Start(this);
         }
 
         public KayakScheduler()
         {
-            Debug.WriteLine("KayakScheduler.ctor");
             queue = new ConcurrentQueue<Task>();
         }
 
@@ -64,8 +62,7 @@ namespace Kayak
 
         public void Stop()
         {
-            Debug.WriteLine("Posting stop.");
-            Post(() => { Debug.WriteLine("Stopped."); stopped = true; });
+            Post(() => { stopped = true; });
         }
 
         void Dispatch()
@@ -75,20 +72,19 @@ namespace Kayak
 
             wh = new ManualResetEventSlim();
 
-            Debug.WriteLine("OnStarted...");
             if (OnStarted != null)
                 OnStarted(this, EventArgs.Empty);
-            Debug.WriteLine("OnStarted.");
 
             while (true)
             {
                 Task outTask = null;
 
-                Debug.WriteLine("TryDequeue");
                 if (queue.TryDequeue(out outTask))
                 {
-                    Debug.WriteLine("---");
+                    Debug.WriteLine("--- Executing Task ---");
                     TryExecuteTask(outTask);
+                    Debug.WriteLine("--- Done Executing Task ---");
+
                     if (stopped)
                     {
                         if (OnStopped != null)
@@ -99,10 +95,8 @@ namespace Kayak
                 }
                 else
                 {
-                    Debug.WriteLine("worker waiting.");
                     wh.Wait();
                     wh.Reset();
-                    Debug.WriteLine("worker resumed.");
                 }
             }
 
@@ -110,7 +104,6 @@ namespace Kayak
             dispatch = null;
             wh.Dispose();
             wh = null;
-            Debug.WriteLine("Set wh to null.");
         }
 
         protected override IEnumerable<Task> GetScheduledTasks()
@@ -122,12 +115,9 @@ namespace Kayak
 
         protected override void QueueTask(Task task)
         {
-            Debug.WriteLine("QueueTask");
             queue.Enqueue(task);
-            Debug.WriteLine("Queued task.");
             if (wh != null)
             {
-                Debug.WriteLine("signalling worker.");
                 wh.Set();
             }
         }
@@ -144,7 +134,9 @@ namespace Kayak
             if (Thread.CurrentThread != dispatch) return false;
 
             if (taskWasPreviouslyQueued && !TryDequeue(task))
+            {
                 return false;
+            }
 
             return TryExecuteTask(task);
         }

@@ -19,8 +19,6 @@ namespace Kayak
         Socket listener;
         bool listening;
         bool closed;
-        
-        public KayakServer() : this(KayakScheduler.Current) { }
 
         public KayakServer(IScheduler scheduler)
         {

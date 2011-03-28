@@ -37,12 +37,16 @@ namespace KayakExamples
 
         public static void Run2()
         {
-            var server = new KayakServer();
+            var scheduler = new KayakScheduler();
+            var server = new KayakServer(scheduler);
 
             var http = server.AsHttpServer();
             http.OnRequest += OnRequest;
 
             server.Listen(new IPEndPoint(IPAddress.Any, 8080));
+
+            scheduler.Start();
+            server.OnClose += new EventHandler(server_OnClose);
 
             Console.WriteLine("Listening on " + server.ListenEndPoint);
             Console.WriteLine("Press enter to exit.");
@@ -50,6 +54,11 @@ namespace KayakExamples
 
             http.OnRequest -= OnRequest;
             server.Close();
+        }
+
+        static void server_OnClose(object sender, EventArgs e)
+        {
+            KayakScheduler.Current.Stop();
         }
 
         static void OnRequest(object sender, HttpRequestEventArgs e)
