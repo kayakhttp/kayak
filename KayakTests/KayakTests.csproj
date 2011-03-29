@@ -83,7 +83,17 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Mocks.cs" />
-    <Compile Include="Net.cs" />
+    <Compile Include="Net\Net.cs" />
+    <Compile Include="Net\Delegates\SchedulerDelegate.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Net\Delegates\ServerDelegate.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Net\ServerTests.cs" />
+    <Compile Include="Net\Delegates\SocketDelegate.cs">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

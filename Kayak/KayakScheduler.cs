@@ -62,6 +62,7 @@ namespace Kayak
 
         public void Stop()
         {
+            Debug.WriteLine("Scheduler will stop.");
             Post(() => { stopped = true; });
         }
 
@@ -87,6 +88,7 @@ namespace Kayak
 
                     if (stopped)
                     {
+                        Debug.WriteLine("Scheduler stopped.");
                         if (OnStopped != null)
                             OnStopped(this, EventArgs.Empty);
 

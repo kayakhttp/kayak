@@ -80,7 +80,7 @@ namespace Kayak
 
         internal void SocketClosed(KayakSocket socket)
         {
-            //Console.WriteLine("Connection " + socket.id + ": closed (" + connections + " active connections)");
+            Debug.WriteLine("Connection " + socket.id + ": closed (" + connections + " active connections)");
             connections--;
             RaiseOnClosedIfNecessary();
         }

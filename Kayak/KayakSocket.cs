@@ -231,6 +231,9 @@ namespace Kayak
 
         internal void DoRead()
         {
+            if (readEnded == true)
+                throw new Exception("DoRead called after reading ended.");
+
             if (inputBuffer == null)
                 inputBuffer = new byte[1024 * 4];
 
@@ -238,17 +241,16 @@ namespace Kayak
             {
                 Exception error;
                 int read;
-                //Debug.WriteLine("Reading.");
+                Debug.WriteLine("Reading.");
                 var ar0 = socket.BeginReceive(inputBuffer, 0, inputBuffer.Length, SocketFlags.None, ar =>
                 {
                     if (ar.CompletedSynchronously) return;
 
                     read = EndRead(ar, out error);
-                    Debug.WriteLine("KayakSocket: async read " + read);
                     
                     scheduler.Post(() =>
                     {
-                        HandleReadResult(read, error);
+                        HandleReadResult(read, error, true);
                     });
 
                 }, null);
@@ -261,7 +263,7 @@ namespace Kayak
                         return;
 
                     Debug.WriteLine("KayakSocket: sync read " + read);
-                    HandleReadResult(read, error);
+                    HandleReadResult(read, error, false);
                 }
             }
             catch (SocketException e)
@@ -288,13 +290,15 @@ namespace Kayak
             }
         }
 
-        void HandleReadResult(int read, Exception error)
+        void HandleReadResult(int read, Exception error, bool sync)
         {
             if (error != null)
             {
                 RaiseError(new Exception("Error while reading.", error));
                 return;
             }
+
+            Debug.WriteLine("KayakSocket: " + (sync ? "" : "a") + "sync read " + read);
 
             if (read == 0)
             {
@@ -388,7 +392,7 @@ namespace Kayak
             //if (reads == 0 || readsCompleted == 0 || !readZero)
             //    Console.WriteLine("Connection " + id + ": reset");
 
-            Debug.WriteLine("KayakSocket: dispose");
+            Debug.WriteLine("KayakSocket: dispose (server is " + ((server == null) ? "null?" : "not null") + ", id = " + id + ")");
             disposed = true;
 
             if (socket != null) // i. e., never connected
@@ -396,9 +400,10 @@ namespace Kayak
 
             if (server != null)
             {
+                Debug.WriteLine("KayakSocket: informing server of demise");
                 server.SocketClosed(this);
                 server = null;
-            };
+            }
         }
 
         class SocketBuffer
