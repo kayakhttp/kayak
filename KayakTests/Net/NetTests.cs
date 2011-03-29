@@ -10,9 +10,6 @@ using System.Diagnostics;
 
 namespace KayakTests.Net
 {
-    // TODO
-    // - ISocket.Close is always dispatched (i.e., after error)
-    // - exceptions thrown on scheduler are handled in sane/predictable way.
     class NetTests
     {
         IScheduler scheduler;
