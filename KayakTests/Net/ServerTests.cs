@@ -112,5 +112,10 @@ namespace KayakTests.Net
             Assert.That(e.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
             Assert.That(e.Message, Is.EqualTo("Already listening."));
         }
+
+        [Test]
+        public void Raises_close_event()
+        {
+        }
     }
 }

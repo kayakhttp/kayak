@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using NUnit.Framework;
-using Kayak;
-using System.Net;
-using System.Threading;
 using System.Diagnostics;
+using System.Net;
+using System.Text;
+using System.Threading;
+using Kayak;
+using NUnit.Framework;
 
 namespace KayakTests.Net
 {
@@ -83,7 +82,7 @@ namespace KayakTests.Net
 
             RunLoop();
 
-            AssertCleanConnectionAndShutdown();
+            AssertConnectionAndCleanShutdown();
         }
 
         [Test]
@@ -129,7 +128,7 @@ namespace KayakTests.Net
 
             RunLoop();
 
-            AssertCleanConnectionAndShutdown();
+            AssertConnectionAndCleanShutdown();
             Assert.That(
                 serverSocketDelegate.GetBufferAsString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
@@ -178,7 +177,7 @@ namespace KayakTests.Net
 
             RunLoop();
 
-            AssertCleanConnectionAndShutdown();
+            AssertConnectionAndCleanShutdown();
             Assert.That(serverSocketDelegate.GetBufferAsString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
@@ -211,7 +210,7 @@ namespace KayakTests.Net
 
             RunLoop();
 
-            AssertCleanConnectionAndShutdown();
+            AssertConnectionAndCleanShutdown();
             Assert.That(clientSocketDelegate.GetBufferAsString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
@@ -246,7 +245,7 @@ namespace KayakTests.Net
 
             RunLoop();
 
-            AssertCleanConnectionAndShutdown();
+            AssertConnectionAndCleanShutdown();
             Assert.That(clientSocketDelegate.GetBufferAsString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
@@ -281,10 +280,10 @@ namespace KayakTests.Net
         {
             server.Listen(ep);
             scheduler.Start();
-            wh.Wait();
+            wh.Wait(TimeSpan.FromSeconds(5));
         }
 
-        void AssertCleanConnectionAndShutdown()
+        void AssertConnectionAndCleanShutdown()
         {
             Assert.That(clientSocketDelegate.Exception, Is.Null);
             Assert.That(serverDelegate.NumOnConnectionEvents, Is.EqualTo(1));

@@ -54,7 +54,7 @@ namespace Kayak
         public void Start()
         {
             if (dispatch != null)
-                throw new InvalidOperationException("Scheduler was already started.");
+                throw new InvalidOperationException("The scheduler was already started.");
 
             dispatch = new Thread(Dispatch);
             dispatch.Start();
@@ -62,6 +62,9 @@ namespace Kayak
 
         public void Stop()
         {
+            if (dispatch == null)
+                throw new InvalidOperationException("The scheduler was not started.");
+
             Debug.WriteLine("Scheduler will stop.");
             Post(() => { stopped = true; });
         }
@@ -88,6 +91,10 @@ namespace Kayak
 
                     if (stopped)
                     {
+                        stopped = false;
+                        dispatch = null;
+                        queue = new ConcurrentQueue<Task>();
+
                         Debug.WriteLine("Scheduler stopped.");
                         if (OnStopped != null)
                             OnStopped(this, EventArgs.Empty);

@@ -12,7 +12,6 @@ namespace KayakExamples
 {
     class Simple
     {
-
         class EchoResponse
         {
             IResponse response;
