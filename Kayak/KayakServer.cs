@@ -71,11 +71,8 @@ namespace Kayak
             listener.Close();
             Dispose();
 
-            scheduler.Post(() =>
-            {
-                Debug.WriteLine("Closed listener.");
-                RaiseOnClosedIfNecessary();
-            });
+            Debug.WriteLine("Closed listener.");
+            RaiseOnClosedIfNecessary();
         }
 
         internal void SocketClosed(KayakSocket socket)

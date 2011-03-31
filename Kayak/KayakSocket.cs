@@ -17,18 +17,6 @@ namespace Kayak
         public event EventHandler<ExceptionEventArgs> OnError;
         public event EventHandler OnClose;
 
-        [ThreadStatic]
-        static ExceptionEventArgs ExceptionEventArgs;
-
-        [ThreadStatic]
-        static DataEventArgs DataEventArgs;
-
-        internal static void InitEvents()
-        {
-            DataEventArgs = new DataEventArgs();
-            ExceptionEventArgs = new ExceptionEventArgs();
-        }
-
         public int id;
         static int nextId;
 
@@ -323,13 +311,16 @@ namespace Kayak
             }
             else
             {
-                DataEventArgs.Data = new ArraySegment<byte>(inputBuffer, 0, read);
-                DataEventArgs.Continuation = DoRead;
+                var dataEventArgs = new DataEventArgs()
+                {
+                    Data = new ArraySegment<byte>(inputBuffer, 0, read),
+                    Continuation = DoRead
+                };
 
                 if (OnData != null)
-                    OnData(this, DataEventArgs);
+                    OnData(this, dataEventArgs);
 
-                if (!DataEventArgs.WillInvokeContinuation)
+                if (!dataEventArgs.WillInvokeContinuation)
                     DoRead();
             }
         }
@@ -388,10 +379,8 @@ namespace Kayak
 
         void RaiseError(Exception e)
         {
-            ExceptionEventArgs.Exception = e;
-
             if (OnError != null)
-                OnError(this, ExceptionEventArgs);
+                OnError(this, new ExceptionEventArgs() { Exception = e });
 
             RaiseClosed();
         }
