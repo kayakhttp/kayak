@@ -70,7 +70,7 @@ namespace KayakTests.Net
                 };
                 clientSocketDelegate.OnClose = () =>
                 {
-                    KayakScheduler.Current.Stop();
+                    scheduler.Stop();
                 };
 
                 client.Connect(ep);
@@ -116,7 +116,7 @@ namespace KayakTests.Net
 
                 clientSocketDelegate.OnClose = () =>
                 {
-                    KayakScheduler.Current.Stop();
+                    scheduler.Stop();
                 };
 
                 client.Connect(ep);
@@ -165,7 +165,7 @@ namespace KayakTests.Net
 
                 clientSocketDelegate.OnClose = () =>
                 {
-                    KayakScheduler.Current.Stop();
+                    scheduler.Stop();
                 };
 
                 client.Connect(ep);
@@ -190,7 +190,7 @@ namespace KayakTests.Net
                 {
                     s.Dispose();
                     server.Close();
-                    KayakScheduler.Current.Stop();
+                    scheduler.Stop();
                 };
             };
 
@@ -225,7 +225,7 @@ namespace KayakTests.Net
                     s.Dispose();
                     Debug.WriteLine("did dispose");
                     server.Close();
-                    KayakScheduler.Current.Stop();
+                    scheduler.Stop();
                 };
             };
 

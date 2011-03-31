@@ -34,9 +34,11 @@ namespace KayakExamples
             }
         }
 
+        static IScheduler scheduler;
+
         public static void Run2()
         {
-            var scheduler = new KayakScheduler();
+            scheduler = new KayakScheduler();
             var server = new KayakServer(scheduler);
 
             var http = server.AsHttpServer();
@@ -57,7 +59,7 @@ namespace KayakExamples
 
         static void server_OnClose(object sender, EventArgs e)
         {
-            KayakScheduler.Current.Stop();
+            scheduler.Stop();
         }
 
         static void OnRequest(object sender, HttpRequestEventArgs e)

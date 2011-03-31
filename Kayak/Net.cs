@@ -37,7 +37,7 @@ namespace Kayak
         event EventHandler OnClose;
 
         IPEndPoint RemoteEndPoint { get; }
-        void SetNoDelay(bool noDelay);
+        //void SetNoDelay(bool noDelay);
         //void SetKeepAlive(bool keepAlive, int delay);
 
         void Connect(IPEndPoint ep);

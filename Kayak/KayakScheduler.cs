@@ -11,21 +11,6 @@ namespace Kayak
 {
     public class KayakScheduler : TaskScheduler, IScheduler
     {
-        [ThreadStatic]
-        static IScheduler current;
-
-        public static IScheduler Current
-        {
-            get
-            {
-                if (current == null)
-                    current = new KayakScheduler();
-
-                return current;
-            }
-            set { current = value; }
-        }
-
         public event EventHandler OnStarted;
         public event EventHandler OnStopped;
 
@@ -71,7 +56,6 @@ namespace Kayak
 
         void Dispatch()
         {
-            KayakScheduler.Current = this;
             KayakSocket.InitEvents();
 
             wh = new ManualResetEventSlim();
