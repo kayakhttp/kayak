@@ -9,10 +9,12 @@ using System.Net;
 namespace KayakTests.Net
 {
     // TODO
-    // - ISocket.Close is always dispatched (i.e., after error)
+    // - ISocket.Close is always dispatched (i.e., after error) (how to test?)
     // - OnData continuation semantics: if handler will invoke, event not fired until continuation
     // - access after dispose throws exception
-    // - no data is read until OnData is listened to
+    // Question mark/internal considerations:
+    // - how to test that no data is read until OnData is listened to?
+    // - how to test for write behavior when continuation is provided/write returns true?
     class SocketTests
     {
         EventContext context;
@@ -59,13 +61,12 @@ namespace KayakTests.Net
             {
                 client.Connect(ep);
             }
-            catch (Exception e)
+            catch (InvalidOperationException e)
             {
                 ex = e;
             }
 
             Assert.That(ex, Is.Not.Null);
-            Assert.That(ex.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
             Assert.That(ex.Message, Is.EqualTo("The socket was connecting."));
         }
 
@@ -83,7 +84,7 @@ namespace KayakTests.Net
                     {
                         client.Connect(ep);
                     }
-                    catch (Exception e)
+                    catch (InvalidOperationException e)
                     {
                         ex = e;
                     }
@@ -94,7 +95,6 @@ namespace KayakTests.Net
             ListenAndRun();
 
             Assert.That(ex, Is.Not.Null);
-            Assert.That(ex.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
             Assert.That(ex.Message, Is.EqualTo("The socket was connected."));
         }
 
@@ -108,13 +108,12 @@ namespace KayakTests.Net
             {
                 client.End();
             }
-            catch (Exception e)
+            catch (InvalidOperationException e)
             {
                 ex = e;
             }
 
             Assert.That(ex, Is.Not.Null);
-            Assert.That(ex.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
             Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
         }
 
@@ -127,13 +126,12 @@ namespace KayakTests.Net
             {
                 client.Write(default(ArraySegment<byte>), null);
             }
-            catch (Exception e)
+            catch (InvalidOperationException e)
             {
                 ex = e;
             }
 
             Assert.That(ex, Is.Not.Null);
-            Assert.That(ex.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
             Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
         }
 
@@ -153,7 +151,7 @@ namespace KayakTests.Net
                     {
                         client.End();
                     }
-                    catch (Exception e)
+                    catch (InvalidOperationException e)
                     {
                         ex = e;
                     }
@@ -165,8 +163,7 @@ namespace KayakTests.Net
             ListenAndRun();
 
             Assert.That(ex, Is.Not.Null);
-            Assert.That(ex.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
-            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
+            Assert.That(ex.Message, Is.EqualTo("The socket was previously ended."));
         }
 
         [Test]
@@ -185,7 +182,7 @@ namespace KayakTests.Net
                     {
                         client.Write(default(ArraySegment<byte>), null);
                     }
-                    catch (Exception e)
+                    catch (InvalidOperationException e)
                     {
                         ex = e;
                     }
@@ -197,8 +194,7 @@ namespace KayakTests.Net
             ListenAndRun();
 
             Assert.That(ex, Is.Not.Null);
-            Assert.That(ex.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
-            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
+            Assert.That(ex.Message, Is.EqualTo("The socket was previously ended."));
         }
 
         #region Temporary behavior
@@ -219,7 +215,7 @@ namespace KayakTests.Net
                 {
                     client.Write(default(ArraySegment<byte>), null);
                 }
-                catch (Exception e)
+                catch (InvalidOperationException e)
                 {
                     ex = e;
                 }
@@ -229,7 +225,6 @@ namespace KayakTests.Net
             ListenAndRun();
 
             Assert.That(ex, Is.Not.Null);
-            Assert.That(ex.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
             Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
         }
 
@@ -246,7 +241,7 @@ namespace KayakTests.Net
                 {
                     client.End();
                 }
-                catch (Exception e)
+                catch (InvalidOperationException e)
                 {
                     ex = e;
                 }
@@ -256,10 +251,55 @@ namespace KayakTests.Net
             ListenAndRun();
 
             Assert.That(ex, Is.Not.Null);
-            Assert.That(ex.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
             Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
         }
 
         #endregion
+
+        [Test]
+        public void Write_with_null_continuation_returns_false()
+        {
+            bool writeResult = false;
+            bool connected = false;
+
+            context.OnStarted = () =>
+            {
+                client.Connect(ep);
+                clientSocketDelegate.OnConnected = () =>
+                {
+                    connected = true;
+                    writeResult = client.Write(new ArraySegment<byte>(Encoding.ASCII.GetBytes("hello socket.Write")), null);
+                    scheduler.Stop();
+                };
+            };
+
+            ListenAndRun();
+
+            Assert.That(connected, Is.True);
+            Assert.That(writeResult, Is.False);
+        }
+
+        [Test]
+        public void Write_with_zero_length_buffer_returns_false()
+        {
+            bool writeResult = false;
+            bool connected = false;
+
+            context.OnStarted = () =>
+            {
+                client.Connect(ep);
+                clientSocketDelegate.OnConnected = () =>
+                {
+                    connected = true;
+                    writeResult = client.Write(default(ArraySegment<byte>), () => { });
+                    scheduler.Stop();
+                };
+            };
+
+            ListenAndRun();
+
+            Assert.That(connected, Is.True);
+            Assert.That(writeResult, Is.False);
+        }
     }
 }

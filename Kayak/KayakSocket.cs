@@ -70,7 +70,8 @@ namespace Kayak
 
             Debug.WriteLine("KayakSocket: connecting to " + ep);
             this.socket = new Socket(ep.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            socket.BeginConnect(ep, iasr => {
+            socket.BeginConnect(ep, iasr => 
+            {
                 Exception error = null;
 
                 try
@@ -117,6 +118,9 @@ namespace Kayak
             if (disposed)
                 throw new ObjectDisposedException("socket");
 
+            if (socket == null || connecting)
+                throw new InvalidOperationException("The socket was not connected.");
+
             if (writeEnded)
                 throw new InvalidOperationException("The socket was previously ended.");
             
@@ -146,7 +150,9 @@ namespace Kayak
             {
                 var result = BeginSend();
 
-                if (!result)
+                if (this.continuation == null)
+                    result = false;
+                else if (!result)
                 {
                     this.continuation = null;
                 }
@@ -333,8 +339,11 @@ namespace Kayak
             if (disposed)
                 throw new ObjectDisposedException("socket");
 
-            //if (writeEnded)
-            //    throw new InvalidOperationException("The socket was previously ended.");
+            if (socket == null || connecting)
+                throw new InvalidOperationException("The socket was not connected.");
+
+            if (writeEnded)
+                throw new InvalidOperationException("The socket was previously ended.");
 
             Debug.WriteLine("KayakSocket: end");
             writeEnded = true;
@@ -355,7 +364,7 @@ namespace Kayak
 
         void ShutdownIfBufferIsEmpty()
         {
-            if (buffer == null || buffer.Size == 0)
+            if (socket != null && (buffer == null || buffer.Size == 0))
             {
                 Debug.WriteLine("KayakSocket: sending FIN packet");
                 socket.Shutdown(SocketShutdown.Send);
@@ -390,6 +399,7 @@ namespace Kayak
         void RaiseEnd()
         {
             readEnded = true;
+
             if (OnEnd != null)
                 OnEnd(this, ExceptionEventArgs.Empty);
 
