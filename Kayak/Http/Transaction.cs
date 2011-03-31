@@ -9,7 +9,6 @@ namespace Kayak.Http
 {
     class HttpSocketDelegate
     {
-   
         int numRequests;
         int numResponses;
 

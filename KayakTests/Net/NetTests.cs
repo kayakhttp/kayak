@@ -12,27 +12,24 @@ namespace KayakTests.Net
     class NetTests
     {
         IScheduler scheduler;
-        SchedulerDelegate schedulerDelegate;
         IServer server;
         ServerDelegate serverDelegate;
         ISocket client;
         SocketDelegate clientSocketDelegate;
         SocketDelegate serverSocketDelegate;
-        ManualResetEventSlim wh;
+        EventContext context;
         IPEndPoint ep;
         
         [SetUp]
         public void SetUp()
         {
-            wh = new ManualResetEventSlim(false);
             ep = new IPEndPoint(IPAddress.Loopback, Config.Port);
             scheduler = new KayakScheduler();
-            schedulerDelegate = new SchedulerDelegate(scheduler);
-            schedulerDelegate.OnStopped = () => wh.Set();
             server = new KayakServer(scheduler);
             serverDelegate = new ServerDelegate(server);
             client = new KayakSocket(scheduler);
             clientSocketDelegate = new SocketDelegate(client);
+            context = new EventContext(scheduler);
         }
 
         [TearDown]
@@ -40,10 +37,9 @@ namespace KayakTests.Net
         {
             serverDelegate.Dispose();
             server.Dispose();
-            schedulerDelegate.Dispose();
+            context.Dispose();
             clientSocketDelegate.Dispose();
             client.Dispose();
-            wh.Dispose();
         }
 
 
@@ -66,7 +62,7 @@ namespace KayakTests.Net
                 };
             };
 
-            schedulerDelegate.OnStarted = () =>
+            context.OnStarted = () =>
             {
                 clientSocketDelegate.OnConnected = () =>
                 {
@@ -80,7 +76,7 @@ namespace KayakTests.Net
                 client.Connect(ep);
             };
 
-            RunLoop();
+            ListenAndRun();
 
             AssertConnectionAndCleanShutdown();
         }
@@ -104,7 +100,7 @@ namespace KayakTests.Net
                 };
             };
 
-            schedulerDelegate.OnStarted = () =>
+            context.OnStarted = () =>
             {
                 clientSocketDelegate.OnConnected = () =>
                 {
@@ -126,7 +122,7 @@ namespace KayakTests.Net
                 client.Connect(ep);
             };
 
-            RunLoop();
+            ListenAndRun();
 
             AssertConnectionAndCleanShutdown();
             Assert.That(
@@ -153,7 +149,7 @@ namespace KayakTests.Net
                 };
             };
 
-            schedulerDelegate.OnStarted = () =>
+            context.OnStarted = () =>
             {
                 clientSocketDelegate.OnConnected = () =>
                 {
@@ -175,7 +171,7 @@ namespace KayakTests.Net
                 client.Connect(ep);
             };
 
-            RunLoop();
+            ListenAndRun();
 
             AssertConnectionAndCleanShutdown();
             Assert.That(serverSocketDelegate.GetBufferAsString(),
@@ -198,7 +194,7 @@ namespace KayakTests.Net
                 };
             };
 
-            schedulerDelegate.OnStarted = () =>
+            context.OnStarted = () =>
             {
                 clientSocketDelegate.OnEnd = () =>
                 {
@@ -208,7 +204,7 @@ namespace KayakTests.Net
                 client.Connect(ep);
             };
 
-            RunLoop();
+            ListenAndRun();
 
             AssertConnectionAndCleanShutdown();
             Assert.That(clientSocketDelegate.GetBufferAsString(),
@@ -233,7 +229,7 @@ namespace KayakTests.Net
                 };
             };
 
-            schedulerDelegate.OnStarted = () =>
+            context.OnStarted = () =>
             {
                 clientSocketDelegate.OnEnd = () =>
                 {
@@ -243,7 +239,7 @@ namespace KayakTests.Net
                 client.Connect(ep);
             };
 
-            RunLoop();
+            ListenAndRun();
 
             AssertConnectionAndCleanShutdown();
             Assert.That(clientSocketDelegate.GetBufferAsString(),
@@ -276,11 +272,10 @@ namespace KayakTests.Net
             }
         }
 
-        void RunLoop()
+        void ListenAndRun()
         {
             server.Listen(ep);
-            scheduler.Start();
-            wh.Wait(TimeSpan.FromSeconds(5));
+            context.Run();
         }
 
         void AssertConnectionAndCleanShutdown()

@@ -126,8 +126,15 @@ namespace Kayak
                                 var s = new KayakSocket(socket, this, this.scheduler);
                                 Debug.WriteLine("Connection " + s.id + ": accepted (" + connections + " active connections)");
                                 if (OnConnection != null)
+                                {
                                     OnConnection(this, new ConnectionEventArgs(s));
-                                s.DoRead();
+                                    s.DoRead(); // TODO defer til OnData event gets listener?
+                                }
+                                else
+                                {
+                                    s.End();
+                                    s.Dispose();
+                                }
                             }
                             catch (Exception e)
                             {

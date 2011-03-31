@@ -38,7 +38,7 @@ namespace Kayak
 
         byte[] inputBuffer;
         Socket socket;
-        bool disposed;
+        bool disposed, connecting, connected;
         bool writeEnded, readEnded, closed;
         Action continuation;
         KayakServer server;
@@ -59,6 +59,15 @@ namespace Kayak
 
         public void Connect(IPEndPoint ep)
         {
+            Debug.WriteLine("KayakSocket: connect called with " + ep);
+            if (connecting)
+                throw new InvalidOperationException("The socket was connecting.");
+
+            if (connected)
+                throw new InvalidOperationException("The socket was connected.");
+
+            connecting = true;
+
             Debug.WriteLine("KayakSocket: connecting to " + ep);
             this.socket = new Socket(ep.Address.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             socket.BeginConnect(ep, iasr => {
@@ -68,10 +77,6 @@ namespace Kayak
                 {
                     socket.EndConnect(iasr);
                 }
-                catch (ObjectDisposedException e)
-                {
-                    return;
-                }
                 catch (Exception e)
                 {
                     error = e;
@@ -79,6 +84,12 @@ namespace Kayak
 
                 scheduler.Post(() =>
                 {
+                    connected = true;
+                    connecting = false;
+
+                    if (error is ObjectDisposedException)
+                        return;
+
                     if (error != null)
                     {
                         Debug.WriteLine("KayakSocket: error while connecting to " + ep);
@@ -360,6 +371,7 @@ namespace Kayak
 
         void RaiseClosed()
         {
+            connected = false;
             closed = true;
             if (OnClose != null)
                 OnClose(this, ExceptionEventArgs.Empty);

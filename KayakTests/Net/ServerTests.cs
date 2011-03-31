@@ -8,6 +8,9 @@ using Kayak;
 
 namespace KayakTests.Net
 {
+    // TODO
+    // - closes connection if no OnConnection listeners
+    // - raises OnClose after being closed.
     class ServerTests
     {
         IServer server;
@@ -66,7 +69,7 @@ namespace KayakTests.Net
         }
 
         [Test]
-        public void Double_close_throws_exception()
+        public void Close_after_close_throws_exception()
         {
             Exception e = null;
 
@@ -88,7 +91,7 @@ namespace KayakTests.Net
         }
 
         [Test]
-        public void Double_listen_throws_exception()
+        public void Listen_after_listen_throws_exception()
         {
             Exception e = null;
 
@@ -111,11 +114,6 @@ namespace KayakTests.Net
             Assert.That(e, Is.Not.Null);
             Assert.That(e.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
             Assert.That(e.Message, Is.EqualTo("Already listening."));
-        }
-
-        [Test]
-        public void Raises_close_event()
-        {
         }
     }
 }

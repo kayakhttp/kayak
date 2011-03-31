@@ -1,0 +1,46 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using Kayak;
+using System.Threading;
+
+namespace KayakTests.Net
+{
+    class EventContext : IDisposable
+    {
+        IScheduler scheduler;
+        ManualResetEventSlim wh;
+        public Action OnStarted;
+
+        public EventContext(IScheduler scheduler)
+        {
+            this.scheduler = scheduler;
+            wh = new ManualResetEventSlim(false);
+            scheduler.OnStopped += new EventHandler(scheduler_OnStopped);
+            scheduler.OnStarted += new EventHandler(scheduler_OnStarted);
+        }
+
+        void scheduler_OnStarted(object sender, EventArgs e)
+        {
+            if (OnStarted != null)
+                OnStarted();
+        }
+
+        void scheduler_OnStopped(object sender, EventArgs e)
+        {
+            wh.Set();
+        }
+
+        public void Run()
+        {
+            scheduler.Start();
+            wh.Wait(TimeSpan.FromSeconds(5));
+        }
+
+        public void Dispose()
+        {
+            scheduler.OnStopped -= new EventHandler(scheduler_OnStopped);
+        }
+    }
+}

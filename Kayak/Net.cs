@@ -45,7 +45,8 @@ namespace Kayak
         void End(); // send FIN
     }
 
-    // do not retain these, impl could have global instances
+    // do not retain these EventArgs classes, impl could have global instances
+    
     public class ConnectionEventArgs : EventArgs
     {
         public ISocket Socket { get; private set; }
