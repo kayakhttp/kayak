@@ -8,6 +8,7 @@ using System.Diagnostics;
 
 namespace Kayak
 {
+
     class KayakSocket : ISocket
     {
         public event EventHandler OnConnected;
