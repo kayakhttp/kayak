@@ -1,200 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
-using System.Diagnostics;
-using System.Threading;
 
 namespace Kayak
 {
-    interface ISocketWrapper : IDisposable
-    {
-        IAsyncResult BeginConnect(IPEndPoint ep, AsyncCallback callback);
-        void EndConnect(IAsyncResult iasr);
-
-        IAsyncResult BeginReceive(byte[] buffer, int offset, int count, AsyncCallback callback);
-        int EndReceive(IAsyncResult iasr);
-
-        IAsyncResult BeginSend(List<ArraySegment<byte>> data, AsyncCallback callback);
-        int EndSend(IAsyncResult iasr);
-
-        void Shutdown();
-    }
-
-    class SocketState
-    {
-        [Flags]
-        enum State : int
-        {
-            NotConnected = 1,
-            Connecting = 1 << 1,
-            Connected = 1 << 2,
-            WriteEnded = 1 << 3,
-            ReadEnded = 1 << 4,
-            Closed = 1 << 5,
-            Disposed = 1 << 6
-        }
-
-        State state;
-
-        public SocketState(bool connected)
-        {
-            state = connected ? State.NotConnected : State.Connected;
-        }
-
-        public void SetConnecting()
-        {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-                if ((state & State.Connected) > 0)
-                    throw new InvalidOperationException("The socket was connected.");
-
-                if ((state & State.Connecting) > 0)
-                    throw new InvalidOperationException("The socket was connecting.");
-
-                state |= State.Connecting;
-            }
-        }
-
-        public void SetConnected()
-        {
-            lock (this)
-            {
-                // these checks should never pass; they are here for safety.
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-                if ((state & State.Connecting) == 0)
-                    throw new Exception("The socket was not connecting.");
-
-                state ^= State.Connecting;
-                state |= State.Connected;
-            }
-        }
-
-
-        //public bool IsWriteEnded()
-        //{
-        //    return writeEnded == 1;
-        //}
-
-        public void EnsureCanWrite()
-        {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-                if ((state & State.Connected) == 0)
-                    throw new InvalidOperationException("The socket was not connected.");
-
-                if ((state & State.WriteEnded) > 0)
-                    throw new InvalidOperationException("The socket was previously ended.");
-            }
-        }
-
-        public void EnsureCanRead()
-        {
-            lock (this)
-            {
-                // these checks should never pass; they are here for safety.
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-                if ((state & State.Connected) == 0)
-                    throw new InvalidOperationException("The socket was not connected.");
-
-                if ((state & State.ReadEnded) > 0)
-                    throw new InvalidOperationException("The socket was previously ended by the peer.");
-            }
-        }
-
-        public bool SetReadEnded()
-        {
-            lock (this)
-            {
-                EnsureCanRead();
-
-                state |= State.ReadEnded;
-
-                if ((state & State.WriteEnded) > 0)
-                {
-                    state |= State.Closed;
-                    return true;
-                }
-                else
-                    return false;
-            }
-        }
-
-        public bool WriteCompleted()
-        {
-            lock (this)
-            {
-                if ((state & State.ReadEnded) > 0 & (state & State.WriteEnded) > 0)
-                {
-                    state |= State.Closed;
-                    return true;
-                }
-                else
-                    return false;
-            }
-        }
-
-        public bool SetWriteEnded()
-        {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-                if ((state & State.Connected) == 0)
-                    throw new InvalidOperationException("The socket was not connected.");
-
-                if ((state & State.WriteEnded) > 0)
-                    throw new InvalidOperationException("The socket was previously ended.");
-
-                state |= State.WriteEnded;
-
-                if ((state & State.ReadEnded) > 0)
-                {
-                    state |= State.Closed;
-                    return true;
-                }
-                else
-                    return false;
-            }
-        }
-
-        public void SetError()
-        {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-                state ^= State.Connecting | State.Connected;
-                state |= State.Closed;
-            }
-        }
-
-        public void SetDisposed()
-        {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-                state |= State.Disposed;
-            }
-        }
-    }
-
     class KayakSocket : ISocket
     {
         public event EventHandler OnConnected;
@@ -209,11 +19,11 @@ namespace Kayak
 
         public IPEndPoint RemoteEndPoint { get; private set; }
 
-        SocketBuffer buffer;
+        OutputBuffer buffer;
 
         byte[] inputBuffer;
 
-        SocketState state;
+        KayakSocketState state;
 
         SocketWrapper socket;
         Action continuation;
@@ -222,7 +32,7 @@ namespace Kayak
         public KayakSocket(IScheduler scheduler)
         {
             this.scheduler = scheduler;
-            state = new SocketState(true);
+            state = new KayakSocketState(true);
         }
 
         internal KayakSocket(Socket socket, IScheduler scheduler)
@@ -230,7 +40,7 @@ namespace Kayak
             this.id = nextId++;
             this.socket = new SocketWrapper(socket);
             this.scheduler = scheduler;
-            state = new SocketState(false);
+            state = new KayakSocketState(false);
         }
 
         public void Connect(IPEndPoint ep)
@@ -255,8 +65,8 @@ namespace Kayak
                     error = e;
                 }
                 
-                //scheduler.Post(() =>
-                //{
+                scheduler.Post(() =>
+                {
                     if (error is ObjectDisposedException)
                         return;
 
@@ -277,7 +87,7 @@ namespace Kayak
 
                         DoRead();
                     }
-                //});
+                });
             });
         }
 
@@ -293,7 +103,7 @@ namespace Kayak
             this.continuation = continuation;
 
             if (buffer == null)
-                buffer = new SocketBuffer();
+                buffer = new OutputBuffer();
 
             var size = buffer.Size;
 
@@ -344,8 +154,8 @@ namespace Kayak
                     if (error is ObjectDisposedException) 
                         return;
 
-                    //scheduler.Post(() =>
-                    //{
+                    scheduler.Post(() =>
+                    {
                         if (error != null)
                             HandleSendError(error);
                         else
@@ -357,7 +167,7 @@ namespace Kayak
                             continuation = null;
                             c();
                         }
-                    //});
+                    });
                 });
 
                 if (ar0.CompletedSynchronously)
@@ -441,8 +251,8 @@ namespace Kayak
                     if (error is ObjectDisposedException)
                         return;
                     
-                    //scheduler.Post(() =>
-                    //{
+                    scheduler.Post(() =>
+                    {
                         if (error != null)
                         {
                             HandleReadError(error);
@@ -451,7 +261,7 @@ namespace Kayak
                         {
                             HandleReadResult(read, true);
                         }
-                    //});
+                    });
 
                 });
 
@@ -596,104 +406,6 @@ namespace Kayak
         {
             if (OnClose != null)
                 OnClose(this, ExceptionEventArgs.Empty);
-        }
-
-        class SocketWrapper : ISocketWrapper
-        {
-            Socket socket;
-
-            public SocketWrapper(AddressFamily af)
-                : this(new Socket(af, SocketType.Stream, ProtocolType.Tcp)) { }
-
-            public SocketWrapper(Socket socket)
-            {
-                this.socket = socket;
-            }
-            public IAsyncResult BeginConnect(IPEndPoint ep, AsyncCallback callback)
-            {
-                return socket.BeginConnect(ep, callback, null);
-            }
-
-            public void EndConnect(IAsyncResult iasr)
-            {
-                socket.EndConnect(iasr);
-            }
-
-            public IAsyncResult BeginReceive(byte[] buffer, int offset, int count, AsyncCallback callback)
-            {
-                return socket.BeginReceive(buffer, offset, count, SocketFlags.None, callback, null);
-            }
-
-            public int EndReceive(IAsyncResult iasr)
-            {
-                return socket.EndReceive(iasr);
-            }
-
-            public IAsyncResult BeginSend(List<ArraySegment<byte>> data, AsyncCallback callback)
-            {
-                return socket.BeginSend(data, SocketFlags.None, callback, null);
-            }
-
-            public int EndSend(IAsyncResult iasr)
-            {
-                return socket.EndSend(iasr);
-            }
-
-            public void Shutdown()
-            {
-                socket.Shutdown(SocketShutdown.Send);
-            }
-
-            public void Dispose()
-            {
-                socket.Dispose();
-            }
-        }
-
-        class SocketBuffer
-        {
-            public List<ArraySegment<byte>> Data;
-            public int Size;
-
-            public SocketBuffer()
-            {
-                Data = new List<ArraySegment<byte>>();
-            }
-
-            public void Add(ArraySegment<byte> data)
-            {
-                var d = new byte[data.Count];
-                Buffer.BlockCopy(data.Array, data.Offset, d, 0, d.Length);
-
-                Size += data.Count;
-                Data.Add(new ArraySegment<byte>(d));
-            }
-
-            public void Remove(int howmuch)
-            {
-                if (howmuch > Size) throw new ArgumentOutOfRangeException("howmuch > size");
-
-                Size -= howmuch;
-
-                int remaining = howmuch;
-
-                while (remaining > 0)
-                {
-                    var first = Data[0];
-
-                    int count = first.Count;
-                    if (count <= remaining)
-                    {
-                        remaining -= count;
-                        Data.RemoveAt(0);
-                    }
-                    else
-                    {
-                        Data[0] = new ArraySegment<byte>(first.Array, first.Offset + remaining, count - remaining);
-                        remaining = 0;
-                    }
-                }
-            }
         }
     }
 }

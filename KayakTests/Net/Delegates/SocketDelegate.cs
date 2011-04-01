@@ -37,7 +37,7 @@ namespace KayakTests.Net
             socket.OnData += socket_OnData;
             socket.OnEnd += socket_OnEnd;
             socket.OnError += socket_OnError;
-            socket.OnTimeout += socket_OnTimeout;
+            //socket.OnTimeout += socket_OnTimeout;
         }
 
         public void Dispose()
@@ -47,7 +47,7 @@ namespace KayakTests.Net
             socket.OnData -= socket_OnData;
             socket.OnEnd -= socket_OnEnd;
             socket.OnError -= socket_OnError;
-            socket.OnTimeout -= socket_OnTimeout;
+            //socket.OnTimeout -= socket_OnTimeout;
             socket = null;
         }
 

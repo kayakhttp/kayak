@@ -37,7 +37,6 @@ namespace Kayak.Http
             socket.OnData += socket_OnData;
             socket.OnEnd += socket_OnEnd;
             socket.OnError += socket_OnError;
-            socket.OnTimeout += socket_OnTimeout;
             socket.OnClose += socket_OnClose;
         }
 
@@ -48,7 +47,6 @@ namespace Kayak.Http
             socket.OnData -= socket_OnData;
             socket.OnEnd -= socket_OnEnd;
             socket.OnError -= socket_OnError;
-            socket.OnTimeout -= socket_OnTimeout;
             socket.OnClose -= socket_OnClose;
             socket.Dispose();
             this.socket = null;
@@ -173,11 +171,6 @@ namespace Kayak.Http
             }
         }
 
-        public void OnTimeout()
-        {
-            OnError(new Exception("Socket timeout"));
-        }
-
         public void OnError(Exception e)
         {
             //requestDelegate.OnError(request, e);
@@ -192,11 +185,6 @@ namespace Kayak.Http
         void socket_OnClose(object sender, EventArgs e)
         {
             OnClose();
-        }
-
-        void socket_OnTimeout(object sender, EventArgs e)
-        {
-            OnTimeout();
         }
 
         void socket_OnError(object sender, ExceptionEventArgs e)
