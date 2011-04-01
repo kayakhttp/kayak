@@ -27,26 +27,21 @@ namespace KayakTests.Net
             server = new KayakServer(scheduler);
         }
 
+        [TearDown]
+        public void TearDown()
+        {
+            server.Dispose();
+        }
+
         [Test]
-        public void Listen_end_point_is_correct_after_binding_and_closing()
+        public void Listen_end_point_is_correct_after_binding()
         {
             var ep1 = LocalEP(Config.Port);
 
             Assert.That(server.ListenEndPoint, Is.Null);
 
             server.Listen(ep1);
-            Assert.That(server.ListenEndPoint, Is.SameAs(ep1));
-
-            var ep2 = LocalEP(Config.Port + 1);
-
-            server.Close();
-            Assert.That(server.ListenEndPoint, Is.Null);
-
-            server.Listen(ep2);
-            Assert.That(server.ListenEndPoint, Is.SameAs(ep2));
-
-            server.Close();
-            Assert.That(server.ListenEndPoint, Is.Null);
+            Assert.That(server.ListenEndPoint, Is.EqualTo(ep1));
         }
 
         [Test]
@@ -65,7 +60,7 @@ namespace KayakTests.Net
 
             Assert.That(e, Is.Not.Null);
             Assert.That(e.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
-            Assert.That(e.Message, Is.EqualTo("Not listening."));
+            Assert.That(e.Message, Is.EqualTo("The server was not listening."));
         }
 
         [Test]
@@ -87,7 +82,7 @@ namespace KayakTests.Net
 
             Assert.That(e, Is.Not.Null);
             Assert.That(e.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
-            Assert.That(e.Message, Is.EqualTo("Not listening."));
+            Assert.That(e.Message, Is.EqualTo("The server was closed."));
         }
 
         [Test]
@@ -98,7 +93,7 @@ namespace KayakTests.Net
             var ep = LocalEP(Config.Port);
             Assert.That(server.ListenEndPoint, Is.Null);
             server.Listen(ep);
-            Assert.That(server.ListenEndPoint, Is.SameAs(ep));
+            Assert.That(server.ListenEndPoint, Is.EqualTo(ep));
 
             try
             {
@@ -113,7 +108,7 @@ namespace KayakTests.Net
 
             Assert.That(e, Is.Not.Null);
             Assert.That(e.GetType(), Is.EqualTo(typeof(InvalidOperationException)));
-            Assert.That(e.Message, Is.EqualTo("Already listening."));
+            Assert.That(e.Message, Is.EqualTo("The server was already listening."));
         }
     }
 }

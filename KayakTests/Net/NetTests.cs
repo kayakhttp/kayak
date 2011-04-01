@@ -48,15 +48,18 @@ namespace KayakTests.Net
         {
             serverDelegate.OnConnection = s =>
             {
+                Debug.WriteLine("server OnConnection");
                 serverSocketDelegate = new SocketDelegate(s);
 
                 serverSocketDelegate.OnEnd = () =>
                 {
+                    Debug.WriteLine("serverSocket OnEnd");
                     s.End();
                 };
 
                 serverSocketDelegate.OnClose = () =>
                 {
+                    Debug.WriteLine("serverSocket OnClose");
                     s.Dispose();
                     server.Close();
                 };
@@ -66,10 +69,12 @@ namespace KayakTests.Net
             {
                 clientSocketDelegate.OnConnected = () =>
                 {
+                    Debug.WriteLine("client End");
                     client.End();
                 };
                 clientSocketDelegate.OnClose = () =>
                 {
+                    Debug.WriteLine("client OnClose");
                     scheduler.Stop();
                 };
 

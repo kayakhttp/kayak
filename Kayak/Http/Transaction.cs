@@ -136,8 +136,8 @@ namespace Kayak.Http
 
             if (responses.Count > 0)
                 responses.Last.Value.IsLast = true;
-            else
-                socket.End();
+            else if (activeResponse != null)
+                activeResponse.IsLast = true;
         }
 
         public void OnClose() 
