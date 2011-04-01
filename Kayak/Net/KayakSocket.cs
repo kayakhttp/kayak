@@ -134,52 +134,64 @@ namespace Kayak
 
         public bool WriteCompleted()
         {
-            if ((state & State.ReadEnded) > 0 & (state & State.WriteEnded) > 0)
+            lock (this)
             {
-                state |= State.Closed;
-                return true;
+                if ((state & State.ReadEnded) > 0 & (state & State.WriteEnded) > 0)
+                {
+                    state |= State.Closed;
+                    return true;
+                }
+                else
+                    return false;
             }
-            else
-                return false;
         }
 
         public bool SetWriteEnded()
         {
-            if ((state & State.Disposed) > 0)
-                throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-            if ((state & State.Connected) == 0)
-                throw new InvalidOperationException("The socket was not connected.");
-
-            if ((state & State.WriteEnded) > 0)
-                throw new InvalidOperationException("The socket was previously ended.");
-
-            state |= State.WriteEnded;
-
-            if ((state & State.ReadEnded) > 0)
+            lock (this)
             {
-                state |= State.Closed;
-                return true;
+                if ((state & State.Disposed) > 0)
+                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
+
+                if ((state & State.Connected) == 0)
+                    throw new InvalidOperationException("The socket was not connected.");
+
+                if ((state & State.WriteEnded) > 0)
+                    throw new InvalidOperationException("The socket was previously ended.");
+
+                state |= State.WriteEnded;
+
+                if ((state & State.ReadEnded) > 0)
+                {
+                    state |= State.Closed;
+                    return true;
+                }
+                else
+                    return false;
             }
-            else
-                return false;
         }
 
         public void SetError()
         {
-            if ((state & State.Disposed) > 0)
-                throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            lock (this)
+            {
+                if ((state & State.Disposed) > 0)
+                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
 
-            state ^= State.Connecting | State.Connected;
-            state |= State.Closed;
+                state ^= State.Connecting | State.Connected;
+                state |= State.Closed;
+            }
         }
 
         public void SetDisposed()
         {
-            if ((state & State.Disposed) > 0)
-                throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            lock (this)
+            {
+                if ((state & State.Disposed) > 0)
+                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
 
-            state |= State.Disposed;
+                state |= State.Disposed;
+            }
         }
     }
 
