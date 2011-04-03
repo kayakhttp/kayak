@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Kayak;
 using System.Threading;
+using System.Diagnostics;
 
 namespace KayakTests.Net
 {
@@ -35,7 +36,8 @@ namespace KayakTests.Net
         public void Run()
         {
             scheduler.Start();
-            wh.Wait(TimeSpan.FromSeconds(5));
+            wh.Wait(TimeSpan.FromSeconds(1));
+            Debug.WriteLine("EventContext: Done waiting.");
         }
 
         public void Dispose()

@@ -120,7 +120,6 @@ namespace Kayak
                 if ((state & State.Disposed) > 0)
                     throw new ObjectDisposedException(typeof(KayakServer).Name);
 
-                Debug.WriteLine("Disposing!?");
                 state |= State.Disposed;
             }
         }

@@ -111,11 +111,17 @@ namespace Kayak
             }
         }
 
-        public bool WriteCompleted()
+        public bool WriteCompleted(out bool writeEnded)
         {
             lock (this)
             {
-                if ((state & State.ReadEnded) > 0 & (state & State.WriteEnded) > 0)
+                bool readEnded = (state & State.ReadEnded) > 0;
+                writeEnded = (state & State.WriteEnded) > 0;
+
+                Console.WriteLine("KayakSocketState: WriteCompleted (readEnded = " + readEnded +
+                    ", writeEnded = " + writeEnded + ")");
+
+                if (readEnded && writeEnded)
                 {
                     state |= State.Closed;
                     return true;

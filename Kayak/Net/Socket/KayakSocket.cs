@@ -214,13 +214,17 @@ namespace Kayak
 
             Debug.WriteLine("KayakSocket: Wrote " + written + " " + (sync ? "" : "a") + "sync, buffer size is " + buffer.Size);
 
-            if (BufferIsEmpty() && state.WriteCompleted())
-            {
-                if (socket != null)
-                    socket.Shutdown();
+            bool writeEnded = false;
 
-                RaiseClosed();
+            bool closed = state.WriteCompleted(out writeEnded);
+            if (writeEnded && socket != null && BufferIsEmpty())
+            {
+                Debug.WriteLine("KayakSocket: shutting down after send.");
+                socket.Shutdown();
             }
+
+            if (closed)
+                RaiseClosed();
         }
 
         void HandleSendError(Exception error)
@@ -244,7 +248,6 @@ namespace Kayak
                 var ar0 = socket.BeginReceive(inputBuffer, 0, inputBuffer.Length, ar =>
                 {
                     if (ar.CompletedSynchronously) return;
-                    Debug.WriteLine("KayakSocket: receive completed async");
 
                     read = EndRead(ar, out error);
 
@@ -253,6 +256,8 @@ namespace Kayak
                     
                     scheduler.Post(() =>
                     {
+                        Debug.WriteLine("KayakSocket: receive completed async");
+
                         if (error != null)
                         {
                             HandleReadError(error);
@@ -358,7 +363,10 @@ namespace Kayak
             var empty = BufferIsEmpty();
 
             if (empty)
+            {
+                Debug.WriteLine("KayakSocket: shutting down socket on end.");
                 socket.Shutdown();
+            }
 
             if (state.SetWriteEnded())
             {

@@ -61,7 +61,6 @@ namespace KayakTests.Net
                 {
                     Debug.WriteLine("serverSocket OnClose");
                     s.Dispose();
-                    server.Close();
                 };
             };
 
@@ -75,6 +74,7 @@ namespace KayakTests.Net
                 clientSocketDelegate.OnClose = () =>
                 {
                     Debug.WriteLine("client OnClose");
+                    server.Close();
                     scheduler.Stop();
                 };
 
@@ -91,17 +91,19 @@ namespace KayakTests.Net
         {
             serverDelegate.OnConnection = s =>
             {
+                Debug.WriteLine("server OnConnection");
                 serverSocketDelegate = new SocketDelegate(s);
 
                 serverSocketDelegate.OnEnd = () =>
                 {
+                    Debug.WriteLine("serverSocket OnEnd");
                     s.End();
                 };
 
                 serverSocketDelegate.OnClose = () =>
                 {
+                    Debug.WriteLine("serverSocket OnClose");
                     s.Dispose();
-                    server.Close();
                 };
             };
 
@@ -109,6 +111,7 @@ namespace KayakTests.Net
             {
                 clientSocketDelegate.OnConnected = () =>
                 {
+                    Debug.WriteLine("client OnConnected");
                     try
                     {
                         WriteDataSync(client);
@@ -121,7 +124,10 @@ namespace KayakTests.Net
 
                 clientSocketDelegate.OnClose = () =>
                 {
+                    Debug.WriteLine("client OnClose");
+                    server.Close();
                     scheduler.Stop();
+
                 };
 
                 client.Connect(ep);
@@ -150,7 +156,6 @@ namespace KayakTests.Net
                 serverSocketDelegate.OnClose = () =>
                 {
                     s.Dispose();
-                    server.Close();
                 };
             };
 
@@ -170,6 +175,7 @@ namespace KayakTests.Net
 
                 clientSocketDelegate.OnClose = () =>
                 {
+                    server.Close();
                     scheduler.Stop();
                 };
 
@@ -254,24 +260,31 @@ namespace KayakTests.Net
         void WriteDataSync(ISocket socket)
         {
             foreach (var d in MakeData())
+            {
+                Debug.WriteLine("Client writing data sync.");
                 socket.Write(new ArraySegment<byte>(d), null);
+            }
+            Debug.WriteLine("Client ending connection.");
             socket.End();
         }
 
         void WriteDataAsync(ISocket socket)
         {
             var en = MakeData().GetEnumerator();
-            WriteData(socket, en);
+            WriteDataAsync(socket, en);
         }
-        void WriteData(ISocket socket, IEnumerator<byte[]> ds)
+
+        void WriteDataAsync(ISocket socket, IEnumerator<byte[]> ds)
         {
             if (ds.MoveNext())
             {
-                if (!socket.Write(new ArraySegment<byte>(ds.Current), () => WriteData(socket, ds)))
-                    WriteData(socket, ds);
+                Debug.WriteLine("Client writing data async.");
+                if (!socket.Write(new ArraySegment<byte>(ds.Current), () => WriteDataAsync(socket, ds)))
+                    WriteDataAsync(socket, ds);
             }
             else
             {
+                Debug.WriteLine("Client ending connection.");
                 ds.Dispose();
                 socket.End();
             }
@@ -285,14 +298,14 @@ namespace KayakTests.Net
 
         void AssertConnectionAndCleanShutdown()
         {
-            Assert.That(clientSocketDelegate.Exception, Is.Null);
-            Assert.That(serverDelegate.NumOnConnectionEvents, Is.EqualTo(1));
-            Assert.That(clientSocketDelegate.NumOnConnectedEvents, Is.EqualTo(1));
-            Assert.That(serverSocketDelegate.NumOnEndEvents, Is.EqualTo(1));
-            Assert.That(serverSocketDelegate.NumOnCloseEvents, Is.EqualTo(1));
-            Assert.That(clientSocketDelegate.NumOnEndEvents, Is.EqualTo(1));
-            Assert.That(clientSocketDelegate.NumOnCloseEvents, Is.EqualTo(1));
-            Assert.That(serverDelegate.NumOnCloseEvents, Is.EqualTo(1));
+            Assert.That(clientSocketDelegate.Exception, Is.Null, "Client got error.");
+            Assert.That(serverDelegate.NumOnConnectionEvents, Is.EqualTo(1), "Server did not get OnConnection.");
+            Assert.That(clientSocketDelegate.NumOnConnectedEvents, Is.EqualTo(1), "Client did not connect.");
+            Assert.That(serverSocketDelegate.NumOnEndEvents, Is.EqualTo(1), "Server did not get OnEnd.");
+            Assert.That(serverSocketDelegate.NumOnCloseEvents, Is.EqualTo(1), "Server did not get OnClose.");
+            Assert.That(clientSocketDelegate.NumOnEndEvents, Is.EqualTo(1), "Client did not get OnEnd.");
+            Assert.That(clientSocketDelegate.NumOnCloseEvents, Is.EqualTo(1), "Client did not get OnClose.");
+            Assert.That(serverDelegate.NumOnCloseEvents, Is.EqualTo(1), "Server did not raise OnClose.");
         }
 
         IEnumerable<byte[]> MakeData()

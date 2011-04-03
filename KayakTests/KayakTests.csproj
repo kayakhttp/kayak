@@ -134,7 +134,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Extensions\" />
-    <Folder Include="NewFolder1\" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

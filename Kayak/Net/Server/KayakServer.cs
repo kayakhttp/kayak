@@ -76,14 +76,13 @@ namespace Kayak
         {
             try
             {
-                Debug.WriteLine("BeginAccept");
+                Debug.WriteLine("KayakServer: accepting connection");
                 listener.BeginAccept(iasr =>
                 {
                     Socket socket = null;
                     Exception error = null;
                     try
                     {
-                        Debug.WriteLine("EndAccept");
                         socket = listener.EndAccept(iasr);
                         AcceptNext();
                     }
@@ -97,6 +96,7 @@ namespace Kayak
 
                     scheduler.Post(() =>
                     {
+                        Debug.WriteLine("KayakServer: accepted connection");
                         if (error != null)
                             HandleAcceptError(error);
 
