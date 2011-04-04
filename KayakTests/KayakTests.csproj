@@ -73,6 +73,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Config.cs" />
+    <Compile Include="Http\Messages\SocketBufferTests.cs" />
     <Compile Include="Http\Mocks.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -83,6 +84,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Mocks.cs" />
+    <Compile Include="Net\BufferingConsumer.cs" />
     <Compile Include="Net\Delegates\SchedulerDelegate.cs">
       <SubType>Code</SubType>
     </Compile>

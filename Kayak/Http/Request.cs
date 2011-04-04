@@ -15,12 +15,26 @@ namespace Kayak.Http
 
         internal bool RaiseOnBody(ArraySegment<byte> data, Action continuation)
         {
+            if (OnBody != null)
+            {
+                var eventArgs = new DataEventArgs()
+                {
+                    Data = data,
+                    Continuation = continuation
+                };
+
+                OnBody(this, eventArgs);
+
+                return eventArgs.WillInvokeContinuation;
+            }
+
             return false;
         }
 
         internal void RaiseOnEnd()
         {
-
+            if (OnEnd != null)
+                OnEnd(this, EventArgs.Empty);
         }
     }
 }

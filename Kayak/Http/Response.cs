@@ -5,131 +5,6 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    abstract class OutgoingMessage
-    {
-        public bool IsLast;
-
-        protected bool wroteHeaders;
-        protected bool ended;
-        ISocket socket;
-        readonly Action onFinished;
-
-        Action sendContinuation;
-        LinkedList<byte[]> buffer;
-
-        protected OutgoingMessage(Action onFinished)
-        {
-            this.onFinished = onFinished;
-        }
-
-        public ISocket Socket
-        {
-            get
-            {
-                return socket;
-            }
-            set
-            {
-                socket = value;
-                if (socket != null)
-                    Flush();
-            }
-        }
-
-        protected void Flush()
-        {
-            while (buffer != null && buffer.Count > 0)
-            {
-                var first = buffer.First;
-                buffer.RemoveFirst();
-
-                var continuation = buffer.Count == 0 && sendContinuation != null ?
-                    sendContinuation : null;
-
-                if (socket.Write(new ArraySegment<byte>(buffer.First.Value), continuation))
-                    return;
-            }
-
-            if (ended)
-                onFinished();
-        }
-
-        protected bool WriteBody(ArraySegment<byte> data, Action continuation)
-        {
-            if (ended)
-                throw new InvalidOperationException("Response was ended.");
-
-            if (!wroteHeaders)
-            {
-                wroteHeaders = true;
-
-                // want to make sure these go out in same packet
-                // XXX can we do this better?
-
-                var head = GetHead();
-                var headPlusBody = new byte[head.Length + data.Count];
-                Buffer.BlockCopy(head, 0, headPlusBody, 0, head.Length);
-                Buffer.BlockCopy(data.Array, data.Offset, headPlusBody, head.Length, data.Count);
-
-                return Send(new ArraySegment<byte>(headPlusBody), continuation);
-            }
-            else
-                return Send(data, continuation);
-        }
-
-        protected bool Send(ArraySegment<byte> data, Action continuation)
-        {
-            if (socket == null)
-            {
-                if (buffer == null)
-                    buffer = new LinkedList<byte[]>();
-
-                var b = new byte[data.Count];
-                Buffer.BlockCopy(data.Array, data.Offset, b, 0, data.Count);
-
-                buffer.AddLast(b);
-
-                if (continuation != null)
-                {
-                    Console.WriteLine("weird.");
-                    sendContinuation = continuation;
-                    return true;
-                }
-
-                return false;
-            }
-            else
-            {
-                // XXX possible that buffer is not empty?
-                if (buffer != null && buffer.Count > 0) throw new Exception("Buffer was not empty.");
-
-                return socket.Write(data, continuation);
-            }
-        }
-
-        protected abstract byte[] GetHead();
-
-        public void End()
-        {
-            if (ended)
-                throw new InvalidOperationException("Response was ended.");
-
-            ended = true;
-
-            if (!wroteHeaders)
-            {
-                wroteHeaders = true;
-                var head = GetHead();
-                Send(new ArraySegment<byte>(head), null);
-            }
-
-            if (socket != null)
-            {
-                onFinished();
-            }
-        }
-    }
-
     class Response : OutgoingMessage, IResponse
     {
         Version version;
@@ -144,8 +19,8 @@ namespace Kayak.Http
         string status;
         IDictionary<string, string> headers;
 
-        public Response(IRequest request, bool keepAlive, Action onFinished)
-            : base (onFinished)
+        public Response(IRequest request, bool keepAlive, SocketBuffer buffer)
+            : base (buffer)
         {
             this.version = request.Version;
             this.prohibitBody = request.Method == "HEAD";

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace Kayak
 {
@@ -118,7 +119,7 @@ namespace Kayak
                 bool readEnded = (state & State.ReadEnded) > 0;
                 writeEnded = (state & State.WriteEnded) > 0;
 
-                Console.WriteLine("KayakSocketState: WriteCompleted (readEnded = " + readEnded +
+                Debug.WriteLine("KayakSocketState: WriteCompleted (readEnded = " + readEnded +
                     ", writeEnded = " + writeEnded + ")");
 
                 if (readEnded && writeEnded)

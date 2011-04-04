@@ -22,12 +22,7 @@ namespace KayakTests.Net
         public int NumOnEndEvents;
         public int NumOnCloseEvents;
 
-        public List<byte[]> Buffer = new List<byte[]>();
-
-        public string GetBufferAsString()
-        {
-            return Buffer.Aggregate("", (acc, next) => acc + Encoding.UTF8.GetString(next));
-        }
+        public DataBuffer Buffer;
 
         public SocketDelegate(ISocket socket)
         {
@@ -38,6 +33,7 @@ namespace KayakTests.Net
             socket.OnEnd += socket_OnEnd;
             socket.OnError += socket_OnError;
             //socket.OnTimeout += socket_OnTimeout;
+            Buffer = new DataBuffer();
         }
 
         public void Dispose()
@@ -75,18 +71,12 @@ namespace KayakTests.Net
         {
             e.WillInvokeContinuation = false;
 
-            AddToBuffer(e.Data);
+            Buffer.AddToBuffer(e.Data);
 
             if (OnData != null)
                 e.WillInvokeContinuation = OnData(e.Data, e.Continuation);
         }
 
-        void AddToBuffer(ArraySegment<byte> d)
-        {
-            byte[] b = new byte[d.Count];
-            System.Buffer.BlockCopy(d.Array, d.Offset, b, 0, d.Count);
-            Buffer.Add(b);
-        }
 
         void socket_OnConnected(object sender, EventArgs e)
         {

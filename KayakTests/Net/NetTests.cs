@@ -137,7 +137,7 @@ namespace KayakTests.Net
 
             AssertConnectionAndCleanShutdown();
             Assert.That(
-                serverSocketDelegate.GetBufferAsString(),
+                serverSocketDelegate.Buffer.ToString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
 
@@ -185,7 +185,7 @@ namespace KayakTests.Net
             ListenAndRun();
 
             AssertConnectionAndCleanShutdown();
-            Assert.That(serverSocketDelegate.GetBufferAsString(),
+            Assert.That(serverSocketDelegate.Buffer.ToString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
 
@@ -218,7 +218,7 @@ namespace KayakTests.Net
             ListenAndRun();
 
             AssertConnectionAndCleanShutdown();
-            Assert.That(clientSocketDelegate.GetBufferAsString(),
+            Assert.That(clientSocketDelegate.Buffer.ToString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
 
@@ -253,7 +253,7 @@ namespace KayakTests.Net
             ListenAndRun();
 
             AssertConnectionAndCleanShutdown();
-            Assert.That(clientSocketDelegate.GetBufferAsString(),
+            Assert.That(clientSocketDelegate.Buffer.ToString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
 
@@ -308,7 +308,8 @@ namespace KayakTests.Net
             Assert.That(serverDelegate.NumOnCloseEvents, Is.EqualTo(1), "Server did not raise OnClose.");
         }
 
-        IEnumerable<byte[]> MakeData()
+        // XXX pull out to somewhere else
+        public static IEnumerable<byte[]> MakeData()
         {
             yield return Encoding.UTF8.GetBytes("hailey is a stinky ");
             yield return Encoding.UTF8.GetBytes("punky butt ");
