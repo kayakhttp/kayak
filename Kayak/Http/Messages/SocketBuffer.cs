@@ -10,7 +10,7 @@ namespace Kayak.Http
         ISocket socket;
         LinkedList<byte[]> buffer;
         Action drained;
-        Action sendContinuation;
+        Action continuation;
         bool ended;
 
         public SocketBuffer(Action drained)
@@ -43,6 +43,10 @@ namespace Kayak.Http
 
         public bool Write(ArraySegment<byte> data, Action continuation)
         {
+            // XXX
+            if (this.continuation != null)
+                throw new InvalidOperationException("the continuation was not null.");
+
             if (socket == null)
             {
                 if (buffer == null)
@@ -56,7 +60,7 @@ namespace Kayak.Http
                 if (continuation != null)
                 {
                     Console.WriteLine("weird.");
-                    sendContinuation = continuation;
+                    this.continuation = continuation;
                     return true;
                 }
 
@@ -86,17 +90,26 @@ namespace Kayak.Http
 
         void Flush()
         {
+            if (continuation != null)
+            {
+                var c = continuation;
+                continuation = null;
+                c();
+            }
             while (!BufferIsEmpty())
             {
                 var first = buffer.First;
                 buffer.RemoveFirst();
 
-                var continuation = buffer.Count == 0 && sendContinuation != null ?
-                    sendContinuation : null;
+                var c = buffer.Count == 0 && this.continuation != null ?
+                    this.continuation : null;
 
                 var data = first.Value;
-                if (socket.Write(new ArraySegment<byte>(data), continuation))
+                if (socket.Write(new ArraySegment<byte>(data), c))
+                {
+                    this.continuation = null;
                     return;
+                }
             }
 
             if (ended)

@@ -84,7 +84,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Mocks.cs" />
-    <Compile Include="Net\BufferingConsumer.cs" />
+    <Compile Include="Net\DataBuffer.cs" />
     <Compile Include="Net\Delegates\SchedulerDelegate.cs">
       <SubType>Code</SubType>
     </Compile>
