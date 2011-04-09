@@ -80,7 +80,7 @@ namespace Kayak.Http
 
                         activeRequest = request;
 
-                        var response = new Response(request, shouldKeepAlive, new SocketBuffer(OnResponseFinished));
+                        var response = new Response(request, shouldKeepAlive, new AttachableStream(OnResponseFinished));
 
                         if (activeResponse != null)
                         {
@@ -89,7 +89,7 @@ namespace Kayak.Http
                         else
                         {
                             activeResponse = response;
-                            response.Buffer.Attach(socket);
+                            response.Output.Attach(socket);
                         }
 
                         try
@@ -149,7 +149,7 @@ namespace Kayak.Http
         {
             numResponses++;
             Debug.WriteLine("OnResponseFinished.");
-            activeResponse.Buffer.Detach(socket);
+            activeResponse.Output.Detach(socket);
             var last = activeResponse.IsLast;
             activeResponse = null;
 
@@ -163,7 +163,7 @@ namespace Kayak.Http
                 Debug.WriteLine("Attaching socket to next response.");
                 activeResponse = responses.First.Value;
                 responses.RemoveFirst();
-                activeResponse.Buffer.Attach(socket);
+                activeResponse.Output.Attach(socket);
             }
             else
             {

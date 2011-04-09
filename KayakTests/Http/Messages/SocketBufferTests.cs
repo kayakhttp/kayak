@@ -13,7 +13,7 @@ namespace KayakTests.Http
     [TestFixture]
     public class SocketBufferTests
     {
-        SocketBuffer buffer;
+        AttachableStream buffer;
         MockSocket socket;
         bool drained;
 
@@ -21,7 +21,7 @@ namespace KayakTests.Http
         public void SetUp()
         {
             drained = false;
-            buffer = new SocketBuffer(() => drained = true);
+            buffer = new AttachableStream(() => drained = true);
             socket = new MockSocket();
         }
 

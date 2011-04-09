@@ -19,8 +19,8 @@ namespace Kayak.Http
         string status;
         IDictionary<string, string> headers;
 
-        public Response(IRequest request, bool keepAlive, SocketBuffer buffer)
-            : base (buffer)
+        public Response(IRequest request, bool keepAlive, IOutputStream stream)
+            : base (stream)
         {
             this.version = request.Version;
             this.prohibitBody = request.Method == "HEAD";
@@ -31,7 +31,7 @@ namespace Kayak.Http
         public void WriteContinue()
         {
             sentContinue = true;
-            Send(new ArraySegment<byte>(Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n")), null);
+            Write(new ArraySegment<byte>(Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n")), null);
         }
 
         public void WriteHeaders(string status, IDictionary<string, string> headers)

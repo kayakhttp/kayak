@@ -72,6 +72,12 @@ namespace Kayak
         // void SetKeepAlive(bool keepAlive, int delay);
     }
 
+    interface IOutputStream
+    {
+        bool Write(ArraySegment<byte> data, Action continuation);
+        void End();
+    }
+
     // do not retain these EventArgs classes, impl could have global instances.
    
     // the server got a connection!

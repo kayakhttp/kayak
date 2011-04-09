@@ -12,14 +12,13 @@ namespace Kayak.Http
         protected bool wroteHeaders;
 
         protected bool ended; // XXX on buffer state?
-        public SocketBuffer Buffer;
+        public IOutputStream Output;
 
 
-        protected OutgoingMessage(SocketBuffer buffer)
+        protected OutgoingMessage(IOutputStream output)
         {
-            this.Buffer = buffer;
+            Output = output;
         }
-
 
         protected bool WriteBody(ArraySegment<byte> data, Action continuation)
         {
@@ -38,15 +37,15 @@ namespace Kayak.Http
                 System.Buffer.BlockCopy(head, 0, headPlusBody, 0, head.Length);
                 System.Buffer.BlockCopy(data.Array, data.Offset, headPlusBody, head.Length, data.Count);
 
-                return Send(new ArraySegment<byte>(headPlusBody), continuation);
+                return Write(new ArraySegment<byte>(headPlusBody), continuation);
             }
             else
-                return Send(data, continuation);
+                return Write(data, continuation);
         }
 
-        protected bool Send(ArraySegment<byte> data, Action continuation)
+        protected bool Write(ArraySegment<byte> data, Action continuation)
         {
-            return Buffer.Write(data, continuation);
+            return Output.Write(data, continuation);
         }
 
         protected abstract byte[] GetHead();
@@ -62,10 +61,10 @@ namespace Kayak.Http
             {
                 wroteHeaders = true;
                 var head = GetHead();
-                Send(new ArraySegment<byte>(head), null);
+                Write(new ArraySegment<byte>(head), null);
             }
 
-            Buffer.End();
+            Output.End();
         }
     }
 }

@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    class SocketBuffer
+    class AttachableStream : IOutputStream
     {
         ISocket socket;
         LinkedList<byte[]> buffer;
@@ -13,7 +13,7 @@ namespace Kayak.Http
         Action continuation;
         bool ended;
 
-        public SocketBuffer(Action drained)
+        public AttachableStream(Action drained)
         {
             this.drained = drained;
         }
