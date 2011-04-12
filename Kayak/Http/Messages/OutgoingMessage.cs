@@ -5,6 +5,18 @@ using System.Text;
 
 namespace Kayak.Http
 {
+    interface IOutgoingMessage
+    {
+        event EventHandler Ended;
+
+        bool IsLast { get; set; }
+
+        void Attach(ISocket socket);
+
+        bool Write(ArraySegment<byte> data, Action continuation);
+        void End();
+    }
+
     abstract class OutgoingMessage
     {
         public bool IsLast;

@@ -8,7 +8,7 @@ namespace Kayak.Http
     struct ParserEvent
     {
         public ParserEventType Type;
-        public Request Request;
+        public HttpRequestHeaders Request;
         public bool KeepAlive;
         public bool Rebuffered;
         public ArraySegment<byte> Data;
@@ -21,13 +21,19 @@ namespace Kayak.Http
         RequestEnded
     }
 
-    class ParserEventQueue : IParserDelegate
+    class ParserEventQueue : IHighLevelParserDelegate
     {
         List<ParserEvent> events;
 
         public bool HasEvents { get { return events.Count > 0; } }
 
+        [Obsolete]
         public ParserEvent GetNextEvent()
+        {
+            return Dequeue();
+        }
+
+        public ParserEvent Dequeue()
         {
             var e = events[0];
             events.RemoveAt(0);
@@ -58,7 +64,7 @@ namespace Kayak.Http
             events = new List<ParserEvent>();
         }
 
-        public void OnRequestBegan(Request request, bool shouldKeepAlive)
+        public void OnRequestBegan(HttpRequestHeaders request, bool shouldKeepAlive)
         {
             events.Add(new ParserEvent()
             {

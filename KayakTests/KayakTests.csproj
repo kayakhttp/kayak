@@ -73,10 +73,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Config.cs" />
-    <Compile Include="Http\Messages\SocketBufferTests.cs" />
+    <Compile Include="Http\Messages\AttachableStreamTests.cs" />
     <Compile Include="Http\Mocks.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Http\ParserTest.cs" />
     <Compile Include="Http\TestRequest.cs">
       <SubType>Code</SubType>
     </Compile>

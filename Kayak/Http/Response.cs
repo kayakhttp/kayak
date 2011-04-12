@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    class Response : OutgoingMessage, IResponse
+    class Response : OutgoingMessage, IHttpServerResponse
     {
         Version version;
         bool keepAlive;
@@ -19,13 +19,13 @@ namespace Kayak.Http
         string status;
         IDictionary<string, string> headers;
 
-        public Response(IRequest request, bool keepAlive, IOutputStream stream)
+        public Response(IHttpServerRequest request, bool keepAlive, IOutputStream stream)
             : base (stream)
         {
             this.version = request.Version;
             this.prohibitBody = request.Method == "HEAD";
             this.keepAlive = keepAlive;
-            this.expectContinue = request.GetIsContinueExpected();
+            this.expectContinue = request.IsContinueExpected();
         }
 
         public void WriteContinue()
@@ -47,15 +47,6 @@ namespace Kayak.Http
 
             this.status = status;
             this.headers = headers;
-
-            if (headers.ContainsKey("Connection"))
-            {
-                sentConnectionHeader = true;
-                if (headers["Connection"] == "close")
-                    IsLast = true;
-                else
-                    keepAlive = true;
-            }
 
             var spaceSplit = status.Split(' ');
             int statusCode = 0;
@@ -98,6 +89,16 @@ namespace Kayak.Http
 
             if (!headers.ContainsKey("Date"))
                 headers["Date"] = DateTime.UtcNow.ToString();
+
+
+            if (headers.ContainsKey("Connection"))
+            {
+                sentConnectionHeader = true;
+                if (headers["Connection"] == "close")
+                    IsLast = true;
+                else
+                    keepAlive = true;
+            }
 
             if (!sentConnectionHeader)
             {

@@ -14,9 +14,9 @@ namespace KayakExamples
     {
         class EchoResponse
         {
-            IResponse response;
+            IHttpServerResponse response;
 
-            public EchoResponse(IRequest request, IResponse response)
+            public EchoResponse(IHttpServerRequest request, IHttpServerResponse response)
             {
                 request.OnBody += new EventHandler<DataEventArgs>(request_OnBody);
                 request.OnEnd += new EventHandler(request_OnEnd);
@@ -89,7 +89,7 @@ namespace KayakExamples
                             { "Connection", "close" }
                         });
 
-                if (request.GetIsContinueExpected())
+                if (request.IsContinueExpected())
                     response.WriteContinue();
 
                 new EchoResponse(request, response);

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Kayak.Http
 {
-    class Request : IRequest
+    class Request : IHttpServerRequest
     {
         public string Method { get; internal set; }
         public string Uri { get; internal set; }
@@ -12,6 +12,14 @@ namespace Kayak.Http
 
         public event EventHandler<DataEventArgs> OnBody;
         public event EventHandler OnEnd;
+
+        public Request(HttpRequestHeaders headers)
+        {
+            Method = headers.Method;
+            Uri = headers.Uri;
+            Headers = headers.Headers;
+            Version = headers.Version;
+        }
 
         internal bool RaiseOnBody(ArraySegment<byte> data, Action continuation)
         {

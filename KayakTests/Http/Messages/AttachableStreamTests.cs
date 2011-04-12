@@ -11,7 +11,7 @@ using System.Diagnostics;
 namespace KayakTests.Http
 {
     [TestFixture]
-    public class SocketBufferTests
+    public class AttachableStreamTests
     {
         AttachableStream buffer;
         MockSocket socket;

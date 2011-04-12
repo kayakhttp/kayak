@@ -5,19 +5,32 @@ using System.Diagnostics;
 
 namespace Kayak.Http
 {
-    interface IParserDelegate
+    // all of this should probably live in HTTP Machine
+    struct HttpRequestHeaders
     {
-        void OnRequestBegan(Request request, bool shouldKeepAlive);
+        public string Method;
+        public string Uri;
+        public Version Version;
+        public IDictionary<string, string> Headers;
+    }
+
+    interface IHighLevelParserDelegate
+    {
+        void OnRequestBegan(HttpRequestHeaders request, bool shouldKeepAlive);
         void OnRequestBody(ArraySegment<byte> data);
         void OnRequestEnded();
     }
 
-    class ParserHandler : IHttpParserHandler
+    class ParserDelegate : IHttpParserHandler
     {
         string method, requestUri, fragment, queryString, headerName, headerValue;
         IDictionary<string, string> headers;
+        IHighLevelParserDelegate del;
 
-        public IParserDelegate Delegate;
+        public ParserDelegate(IHighLevelParserDelegate del)
+        {
+            this.del = del;
+        }
 
         public void OnMessageBegin(HttpParser parser)
         {
@@ -71,7 +84,7 @@ namespace Kayak.Http
             if (!string.IsNullOrEmpty(headerValue))
                 CommitHeader();
 
-            var request = new Request()
+            var request = new HttpRequestHeaders()
                 {
                     // TODO path, query, fragment?
                     Method = method,
@@ -80,7 +93,7 @@ namespace Kayak.Http
                     Version = new Version(parser.MajorVersion, parser.MinorVersion)
                 };
 
-            Delegate.OnRequestBegan(request, parser.ShouldKeepAlive);
+            del.OnRequestBegan(request, parser.ShouldKeepAlive);
         }
 
         void CommitHeader()
@@ -95,14 +108,14 @@ namespace Kayak.Http
             // XXX can we defer this check to the parser?
             if (data.Count > 0)
             {
-                Delegate.OnRequestBody(data);
+                del.OnRequestBody(data);
             }
         }
 
         public void OnMessageEnd(HttpParser parser)
         {
             Debug.WriteLine("OnMessageEnd");
-            Delegate.OnRequestEnded();
+            del.OnRequestEnded();
         }
     }
 }

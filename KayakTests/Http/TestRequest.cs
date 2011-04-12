@@ -67,7 +67,7 @@ namespace KayakTests
             Body = Encoding.UTF8.GetBytes("hello world")
         };
 
-        public static void AssertAreEqual(TestRequest expected, IRequest actual)
+        public static void AssertAreEqual(TestRequest expected, IHttpServerRequest actual)
         {
             Assert.AreEqual(expected.Method, actual.Method, "Unexpected method.");
             Assert.AreEqual(expected.Uri, actual.Uri, "Unexpected URI.");

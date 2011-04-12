@@ -7,7 +7,7 @@ using Kayak.Http;
 
 namespace KayakTests
 {
-    class MockResponse : IResponse
+    class MockResponse : IHttpServerResponse
     {
         public Action OnWriteContinue;
         public Action<string, IDictionary<string, string>> OnWriteHeaders;

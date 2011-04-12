@@ -5,8 +5,8 @@ namespace Kayak.Http
 {
     public class HttpRequestEventArgs : EventArgs
     {
-        public IRequest Request { get; internal set; }
-        public IResponse Response { get; internal set; }
+        public IHttpServerRequest Request { get; internal set; }
+        public IHttpServerResponse Response { get; internal set; }
     }
 
     public interface IHttpServer
@@ -14,7 +14,7 @@ namespace Kayak.Http
         event EventHandler<HttpRequestEventArgs> OnRequest;
     }
 
-    public interface IRequest
+    public interface IHttpServerRequest
     {
         event EventHandler<DataEventArgs> OnBody;
         event EventHandler OnEnd;
@@ -25,7 +25,7 @@ namespace Kayak.Http
         IDictionary<string, string> Headers { get; }
     }
 
-    public interface IResponse
+    public interface IHttpServerResponse
     {
         void WriteContinue();
         void WriteHeaders(string status, IDictionary<string, string> headers);
