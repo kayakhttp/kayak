@@ -17,11 +17,21 @@ namespace KayakTests.Http
         MockSocket socket;
         bool drained;
 
+        class Del : IOutputStreamDelegate
+        {
+            public Action<Kayak.Http.IOutputStream> OnFlush;
+
+            public void OnFlushed(Kayak.Http.IOutputStream message)
+            {
+                OnFlush(message);
+            }
+        }
+
         [SetUp]
         public void SetUp()
         {
             drained = false;
-            buffer = new AttachableStream(() => drained = true);
+            buffer = new AttachableStream(new Del() { OnFlush = o => drained = true });
             socket = new MockSocket();
         }
 

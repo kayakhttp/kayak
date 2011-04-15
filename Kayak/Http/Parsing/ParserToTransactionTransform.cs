@@ -9,6 +9,7 @@ namespace Kayak.Http
 {
     interface IHttpServerTransactionDelegate
     {
+        void OnBegin(ISocket socket);
         void OnRequest(IHttpServerRequest request, bool shouldKeepAlive);
         void OnEnd();
     }

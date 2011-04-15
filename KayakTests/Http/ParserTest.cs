@@ -87,6 +87,10 @@ namespace KayakTests.Http
             Requests = new List<MockIRequestDelegate>();
         }
 
+        public void OnBegin(ISocket socket)
+        {
+        }
+
         public void OnRequest(IHttpServerRequest request, bool shouldKeepAlive)
         {
             Requests.Add(new MockIRequestDelegate(request, shouldKeepAlive) { OnData = OnDataFactory == null ? null : OnDataFactory() });

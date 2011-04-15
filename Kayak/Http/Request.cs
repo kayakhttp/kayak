@@ -12,7 +12,7 @@ namespace Kayak.Http
 
         public event EventHandler<DataEventArgs> OnBody;
         public event EventHandler OnEnd;
-
+        
         public Request(HttpRequestHeaders headers)
         {
             Method = headers.Method;

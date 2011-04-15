@@ -27,6 +27,15 @@ namespace Kayak
         void Close();
     }
 
+    public interface ISocketDelegate
+    {
+        void OnConnected(ISocket socket);
+        bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation);
+        void OnEnd(ISocket socket);
+        void OnError(ISocket socket, Exception e);
+        void OnClose(ISocket socket);
+    }
+
     public interface ISocket : IDisposable
     {
         // successful connection

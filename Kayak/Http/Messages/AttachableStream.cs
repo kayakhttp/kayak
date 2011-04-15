@@ -9,13 +9,13 @@ namespace Kayak.Http
     {
         ISocket socket;
         LinkedList<byte[]> buffer;
-        Action drained;
+        IOutputStreamDelegate del;
         Action continuation;
         bool ended;
 
-        public AttachableStream(Action drained)
+        public AttachableStream(IOutputStreamDelegate del)
         {
-            this.drained = drained;
+            this.del = del;
         }
 
         public void Attach(ISocket socket)
@@ -113,7 +113,7 @@ namespace Kayak.Http
             }
 
             if (ended)
-                drained();
+                del.OnFlushed(this);
         }
     }
 }

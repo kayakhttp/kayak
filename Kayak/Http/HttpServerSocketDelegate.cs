@@ -21,6 +21,7 @@ namespace Kayak.Http
             Attach(socket);
             del = new ParserToTransactionTransform(transactionDelegate);
             parser = new HttpParser(new ParserDelegate(del));
+            transactionDelegate.OnBegin(socket); // XXX really call this right here?
         }
 
         bool OnData(ArraySegment<byte> data, Action continuation)

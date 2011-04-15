@@ -5,50 +5,77 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    class Response : OutgoingMessage, IHttpServerResponse
+
+    class Response : IOutputStream, IOutputStreamDelegate, IHttpServerResponse
     {
         Version version;
-        bool keepAlive;
+        ResponseState state;
 
-        bool prohibitBody;
-        bool expectContinue;
-        bool sentContinue;
-
-        bool sentConnectionHeader;
+        public bool KeepAlive { get { return state.keepAlive; } }
 
         string status;
         IDictionary<string, string> headers;
 
-        public Response(IHttpServerRequest request, bool keepAlive, IOutputStream stream)
-            : base (stream)
+        IOutputStream output;
+        IOutputStreamDelegate del;
+
+        public Response(IOutputStreamDelegate del, IHttpServerRequest request, bool shouldKeepAlive)
         {
+            this.del = del;
             this.version = request.Version;
-            this.prohibitBody = request.Method == "HEAD";
-            this.keepAlive = keepAlive;
-            this.expectContinue = request.IsContinueExpected();
+            output = new AttachableStream(this);
+            state = ResponseState.Create(request, shouldKeepAlive);
         }
 
-        public void WriteContinue()
+        #region IOutputStream
+
+        void IOutputStream.Attach(ISocket socket)
         {
-            sentContinue = true;
+            output.Attach(socket);
+        }
+        
+        void IOutputStream.Detach(ISocket socket)
+        {
+            output.Detach(socket);
+        }
+
+        bool IOutputStream.Write(ArraySegment<byte> data, Action continuation)
+        {
+            throw new InvalidOperationException("You must use one of the IHttpServerResponse.Write* methods.");
+        }
+
+        void IOutputStream.End()
+        {
+            throw new InvalidOperationException("You must use the IHttpServerResponse.End method.");
+        }
+
+        public void OnFlushed(IOutputStream stream)
+        {
+            del.OnFlushed(this);
+        }
+
+        #endregion
+
+        bool Write(ArraySegment<byte> data, Action continuation)
+        {
+            return output.Write(data, continuation);
+        }
+
+        void IHttpServerResponse.WriteContinue()
+        {
+            state.OnWriteContinue();
             Write(new ArraySegment<byte>(Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n")), null);
         }
 
-        public void WriteHeaders(string status, IDictionary<string, string> headers)
+        void IHttpServerResponse.WriteHeaders(string status, IDictionary<string, string> headers)
         {
-            if (ended)
-                throw new InvalidOperationException("Response was ended.");
-
-            if (this.status != null)
-                throw new InvalidOperationException("WriteHeaders was already called.");
+            state.EnsureWriteHeaders();
 
             if (string.IsNullOrEmpty(status))
                 throw new ArgumentException("status");
 
-            this.status = status;
-            this.headers = headers;
-
             var spaceSplit = status.Split(' ');
+            bool prohibitBody = false;
             int statusCode = 0;
             if (spaceSplit.Length > 1)
                 if (int.TryParse(spaceSplit[0], out statusCode))
@@ -57,25 +84,46 @@ namespace Kayak.Http
                         prohibitBody = true;
                 }
 
-            if (expectContinue && !sentContinue)
-                keepAlive = false;
+            state.OnWriteHeaders(prohibitBody);
+
+            this.status = status;
+            this.headers = headers;
         }
 
-        public bool WriteBody(ArraySegment<byte> data, Action continuation)
+        bool IHttpServerResponse.WriteBody(ArraySegment<byte> data, Action continuation)
         {
-            if (this.status == null)
-                throw new InvalidOperationException("Must call WriteHeaders before calling WriteBody.");
-            if (prohibitBody)
-                throw new InvalidOperationException("This type of response must not have a body.");
+            bool renderHeaders;
+            state.EnsureWriteBody(out renderHeaders);
+            if (renderHeaders)
+            {
+                // want to make sure these go out in same packet
+                // XXX can we do this better?
 
-            return base.WriteBody(data, continuation);
+                var head = RenderHeaders();
+                var headPlusBody = new byte[head.Length + data.Count];
+                System.Buffer.BlockCopy(head, 0, headPlusBody, 0, head.Length);
+                System.Buffer.BlockCopy(data.Array, data.Offset, headPlusBody, head.Length, data.Count);
+
+                return Write(new ArraySegment<byte>(headPlusBody), continuation);
+            }
+            else
+                return Write(data, continuation);
         }
 
-        protected override byte[] GetHead()
+        void IHttpServerResponse.End()
         {
-            if (status == null)
-                throw new Exception("WriteHeaders was not called, cannot generate head.");
+            bool renderHeaders = false;
+            state.OnEnd(out renderHeaders);
 
+            if (renderHeaders)
+                Write(new ArraySegment<byte>(RenderHeaders()), null);
+
+            output.End();
+        }
+
+        // XXX probably could be optimized
+        byte[] RenderHeaders()
+        {
             // XXX don't reallocate every time
             var sb = new StringBuilder();
 
@@ -90,26 +138,17 @@ namespace Kayak.Http
             if (!headers.ContainsKey("Date"))
                 headers["Date"] = DateTime.UtcNow.ToString();
 
+            bool indicateConnection;
+            bool indicateConnectionClose;
 
-            if (headers.ContainsKey("Connection"))
-            {
-                sentConnectionHeader = true;
-                if (headers["Connection"] == "close")
-                    IsLast = true;
-                else
-                    keepAlive = true;
-            }
+            state.OnRenderHeaders(
+                headers.ContainsKey("Connection"),
+                headers["Connection"] == "close",
+                out indicateConnection,
+                out indicateConnectionClose);
 
-            if (!sentConnectionHeader)
-            {
-                if (keepAlive)
-                    headers["Connection"] = "keep-alive";
-                else
-                {
-                    headers["Connection"] = "close";
-                    IsLast = true;
-                }
-            }
+            if (indicateConnection)
+                headers["Connection"] = indicateConnectionClose ? "close" : "keep-alive";
 
             foreach (var pair in headers)
                 foreach (var line in pair.Value.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries))
