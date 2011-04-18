@@ -13,7 +13,7 @@ namespace Kayak.Http
 
     interface IBufferedOutputStreamDelegate
     {
-        void OnFlushed(IBufferedOutputStream message);
+        void OnDrained(IBufferedOutputStream message);
     }
 
     interface IBufferedOutputStream : IOutputStream
@@ -45,16 +45,6 @@ namespace Kayak.Http
             this.socket = socket;
 
             Flush();
-        }
-
-        public void Detach(ISocket socket)
-        {
-            if (this.socket != socket)
-                throw new ArgumentException("Socket was not attached.");
-
-            // if flushing or buffer is not empty, throw exception
-
-            this.socket = null;
         }
 
         public bool Write(ArraySegment<byte> data, Action continuation)
@@ -129,7 +119,7 @@ namespace Kayak.Http
             }
 
             if (ended)
-                del.OnFlushed(this);
+                del.OnDrained(this);
         }
     }
 }

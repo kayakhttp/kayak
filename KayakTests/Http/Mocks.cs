@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Kayak;
 using Kayak.Http;
+using KayakTests.Net;
 
 namespace KayakTests
 {
@@ -37,6 +38,58 @@ namespace KayakTests
         {
             if (OnEnd != null)
                 OnEnd();
+        }
+    }
+
+    class MockSocket : ISocket
+    {
+        public DataBuffer Buffer;
+        public Action Continuation;
+
+        public MockSocket()
+        {
+            Buffer = new DataBuffer();
+        }
+
+        public bool Write(ArraySegment<byte> data, Action continuation)
+        {
+            // XXX do copy? 
+            Buffer.AddToBuffer(data);
+
+            if (continuation != null)
+            {
+                Continuation = continuation;
+                return true;
+            }
+
+            return false;
+        }
+
+        public event EventHandler OnConnected;
+        public event EventHandler<DataEventArgs> OnData;
+        public event EventHandler OnEnd;
+        public event EventHandler<ExceptionEventArgs> OnError;
+        public event EventHandler OnClose;
+
+        public System.Net.IPEndPoint RemoteEndPoint
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        public void Connect(System.Net.IPEndPoint ep)
+        {
+            throw new NotImplementedException();
+        }
+
+
+        public void End()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
         }
     }
     /*

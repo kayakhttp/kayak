@@ -5,6 +5,9 @@ using System.Text;
 
 namespace Kayak.Http
 {
+    using RequestDelegate =
+        Action<IHttpServerRequest, IHttpServerResponse>;
+
     using ResponseFactory =
         Func<
             IHttpServerRequest, 
@@ -15,26 +18,23 @@ namespace Kayak.Http
     // ties it all together
     class HttpServerTransactionDelegate : IHttpServerTransactionDelegate, IBufferedOutputStreamDelegate
     {
-        HttpServer server;
+        RequestDelegate requestDelegate;
         ResponseFactory responseFactory;
+
         LinkedList<Tuple<IHttpServerResponseInternal, IBufferedOutputStream>> responses;
         IHttpServerResponseInternal activeResponse;
         ISocket socket;
         bool ended;
+        bool shutdown;
 
-        public HttpServerTransactionDelegate(HttpServer server) 
-            : this(server, null) { }
+        public HttpServerTransactionDelegate(RequestDelegate requestDelegate) 
+            : this(requestDelegate, null) { }
 
-        public HttpServerTransactionDelegate(HttpServer server, ResponseFactory responseFactory)
+        public HttpServerTransactionDelegate(RequestDelegate requestDelegate, ResponseFactory responseFactory)
         {
-            this.server = server;
+            this.requestDelegate = requestDelegate;
             this.responseFactory = responseFactory ?? CreateResponse;
             responses = new LinkedList<Tuple<IHttpServerResponseInternal, IBufferedOutputStream>>();
-        }
-
-        public void OnBegin(ISocket socket)
-        {
-            this.socket = socket;
         }
 
         Tuple<IHttpServerResponseInternal, IBufferedOutputStream> CreateResponse(
@@ -48,31 +48,39 @@ namespace Kayak.Http
             return Tuple.Create(response, output);
         }
 
+        public void OnBegin(ISocket socket)
+        {
+            ended = false;
+            shutdown = false;
+            this.socket = socket;
+        }
+
         public void OnRequest(IHttpServerRequest request, bool shouldKeepAlive)
         {
-            // if socket was ended, throw exception
-
             if (ended)
                 throw new InvalidOperationException("Transaction was ended.");
 
+            // XXX does this flag make sense?
+            if (shutdown)
+                throw new InvalidOperationException("Socket was shutdown.");
             
-            var responseAndOutput = CreateResponse(request, this, shouldKeepAlive);
+            var responseAndOutput = responseFactory(request, this, shouldKeepAlive);
             var response = responseAndOutput.Item1;
             var output = responseAndOutput.Item2;
 
-            // if no pending responses, attach
-            if (responses.Count == 0)
+            // if no active response, attach
+            if (activeResponse == null)
             {
                 activeResponse = response;
                 output.Attach(socket);
             }
-            // else added to pending
+            // else add to pending
             else
             {
                 responses.AddLast(responseAndOutput);
             }
 
-            server.RaiseOnRequest(request, response);
+            requestDelegate(request, response);
         }
 
         public void OnEnd()
@@ -80,14 +88,18 @@ namespace Kayak.Http
             ended = true;
         }
 
-        public void OnFlushed(IBufferedOutputStream message)
+        public void OnDrained(IBufferedOutputStream message)
         {
+            var keepAlive = activeResponse.KeepAlive;
+            activeResponse = null;
+
             // if completed response indicates that connection should be closed,
             // or if the client ended the connection and no further responses
             // are queued, end/shutdown socket
-            if (!activeResponse.KeepAlive || (ended && responses.Count == 0))
+            if (!keepAlive || (ended && responses.Count == 0))
             {
-                socket.End(); // XXX want to also prohibit further reading, set flag and throw exception if more data
+                shutdown = true;
+                socket.End();
                 return;
             }
             
@@ -97,10 +109,9 @@ namespace Kayak.Http
                 var next = responses.First.Value;
                 var response = next.Item1;
                 var output = next.Item2;
-
                 responses.RemoveFirst();
-                activeResponse = response;
 
+                activeResponse = response;
                 output.Attach(socket);
             }
 

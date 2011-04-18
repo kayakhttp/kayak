@@ -12,15 +12,16 @@ namespace Kayak.Http
     {
         ISocket socket;
         HttpParser parser;
-        ParserToTransactionTransform del;
+        ParserToTransactionTransform transactionTransform;
         IHttpServerTransactionDelegate transactionDelegate;
 
         public HttpServerSocketDelegate(ISocket socket, IHttpServerTransactionDelegate transactionDelegate)
         {
             this.transactionDelegate = transactionDelegate;
+            transactionTransform = new ParserToTransactionTransform(transactionDelegate);
+            parser = new HttpParser(new ParserDelegate(transactionTransform));
+
             Attach(socket);
-            del = new ParserToTransactionTransform(transactionDelegate);
-            parser = new HttpParser(new ParserDelegate(del));
             transactionDelegate.OnBegin(socket); // XXX really call this right here?
         }
 
@@ -34,11 +35,11 @@ namespace Kayak.Http
 
                 Detach();
 
-                // XXX what to do with this?
+                // XXX forward to user?
                 throw new Exception("Error while parsing request.");
             }
 
-            return del.Commit(continuation);
+            return transactionTransform.Commit(continuation);
         }
 
         void OnEnd()
@@ -59,6 +60,7 @@ namespace Kayak.Http
 
         void OnError(Exception e)
         {
+            // XXX forward to user?
             Debug.WriteLine("Socket OnError.");
             e.PrintStacktrace();
         }
@@ -79,6 +81,7 @@ namespace Kayak.Http
             socket.OnError -= socket_OnError;
             socket.OnClose -= socket_OnClose;
             socket.Dispose();
+            socket = null;
         }
 
         #region Socket Event Boilerplate

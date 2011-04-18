@@ -114,9 +114,12 @@ namespace Kayak.Http
             bool indicateConnection;
             bool indicateConnectionClose;
 
+            bool givenConnection = headers.ContainsKey("Connection");
+            bool givenConnectionClose = givenConnection && headers["Connection"] == "close";
+
             state.OnRenderHeaders(
-                headers.ContainsKey("Connection"),
-                headers["Connection"] == "close",
+                givenConnection,
+                givenConnectionClose,
                 out indicateConnection,
                 out indicateConnectionClose);
 

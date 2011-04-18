@@ -11,7 +11,7 @@ using System.Diagnostics;
 namespace KayakTests.Http
 {
     [TestFixture]
-    public class AttachableStreamTests
+    public class BufferedOutputStreamTests
     {
         BufferedOutputStream buffer;
         MockSocket socket;
@@ -21,7 +21,7 @@ namespace KayakTests.Http
         {
             public Action<Kayak.Http.IBufferedOutputStream> OnFlush;
 
-            public void OnFlushed(Kayak.Http.IBufferedOutputStream message)
+            public void OnDrained(Kayak.Http.IBufferedOutputStream message)
             {
                 OnFlush(message);
             }
@@ -209,58 +209,6 @@ namespace KayakTests.Http
         string DataString()
         {
             return NetTests.MakeData().Aggregate("", (s, d) => s + Encoding.UTF8.GetString(d));
-        }
-    }
-
-    class MockSocket : ISocket
-    {
-        public DataBuffer Buffer;
-        public Action Continuation;
-
-        public MockSocket()
-        {
-            Buffer = new DataBuffer();
-        }
-
-        public bool Write(ArraySegment<byte> data, Action continuation)
-        {
-            // XXX do copy? 
-            Buffer.AddToBuffer(data);
-
-            if (continuation != null)
-            {
-                Continuation = continuation;
-                return true;
-            }
-
-            return false;
-        }
-
-        public event EventHandler OnConnected;
-        public event EventHandler<DataEventArgs> OnData;
-        public event EventHandler OnEnd;
-        public event EventHandler<ExceptionEventArgs> OnError;
-        public event EventHandler OnClose;
-
-        public System.Net.IPEndPoint RemoteEndPoint
-        {
-            get { throw new NotImplementedException(); }
-        }
-
-        public void Connect(System.Net.IPEndPoint ep)
-        {
-            throw new NotImplementedException();
-        }
-
-
-        public void End()
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Dispose()
-        {
-            throw new NotImplementedException();
         }
     }
 }

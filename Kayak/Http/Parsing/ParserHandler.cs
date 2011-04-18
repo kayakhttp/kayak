@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using HttpMachine;
 using System.Diagnostics;
 
+// XXX all of this should live in HTTP Machine
 namespace Kayak.Http
 {
-    // all of this should probably live in HTTP Machine
     struct HttpRequestHeaders
     {
         public string Method;

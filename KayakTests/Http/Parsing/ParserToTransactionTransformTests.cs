@@ -159,7 +159,7 @@ namespace KayakTests.Http
 
 
     [TestFixture]
-    public class TransactionTests
+    public class ParserToTransactionTransformTests
     {
         ParserToTransactionTransform del;
         MockHttpDel httpDel;
@@ -211,8 +211,6 @@ namespace KayakTests.Http
             Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(1));
             Assert.That(requestDelegates[0].Buffer.ToString(), Is.EqualTo("and so it begins."));
             Assert.That(requestDelegates[0].NumOnEndEvents, Is.EqualTo(1));
-            Assert.That(httpDel.GotOnEnd, Is.True);
-
         }
 
         [Test]

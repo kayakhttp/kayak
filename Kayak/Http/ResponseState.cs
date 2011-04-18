@@ -44,6 +44,7 @@ namespace Kayak.Http
             if (expectContinue && !sentContinue)
                 keepAlive = false;
 
+            wroteHeaders = true;
             this.prohibitBody = prohibitBody;
         }
 

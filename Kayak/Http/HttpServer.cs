@@ -47,7 +47,7 @@ namespace Kayak.Http
             var socket = e.Socket;
 
             // XXX freelist
-            var del = new HttpServerSocketDelegate(socket, new HttpServerTransactionDelegate(this));
+            var del = new HttpServerSocketDelegate(socket, new HttpServerTransactionDelegate(RaiseOnRequest));
         }
 
         internal void RaiseOnRequest(IHttpServerRequest req, IHttpServerResponse res)
