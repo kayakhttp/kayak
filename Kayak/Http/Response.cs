@@ -5,8 +5,12 @@ using System.Text;
 
 namespace Kayak.Http
 {
+    interface IHttpServerResponseInternal : IHttpServerResponse
+    {
+        bool KeepAlive { get; }
+    }
 
-    class Response : IOutputStream, IOutputStreamDelegate, IHttpServerResponse
+    class Response : IHttpServerResponseInternal
     {
         Version version;
         ResponseState state;
@@ -17,44 +21,13 @@ namespace Kayak.Http
         IDictionary<string, string> headers;
 
         IOutputStream output;
-        IOutputStreamDelegate del;
 
-        public Response(IOutputStreamDelegate del, IHttpServerRequest request, bool shouldKeepAlive)
+        public Response(IOutputStream output, IHttpServerRequest request, bool shouldKeepAlive)
         {
-            this.del = del;
             this.version = request.Version;
-            output = new AttachableStream(this);
+            this.output = output;
             state = ResponseState.Create(request, shouldKeepAlive);
         }
-
-        #region IOutputStream
-
-        void IOutputStream.Attach(ISocket socket)
-        {
-            output.Attach(socket);
-        }
-        
-        void IOutputStream.Detach(ISocket socket)
-        {
-            output.Detach(socket);
-        }
-
-        bool IOutputStream.Write(ArraySegment<byte> data, Action continuation)
-        {
-            throw new InvalidOperationException("You must use one of the IHttpServerResponse.Write* methods.");
-        }
-
-        void IOutputStream.End()
-        {
-            throw new InvalidOperationException("You must use the IHttpServerResponse.End method.");
-        }
-
-        public void OnFlushed(IOutputStream stream)
-        {
-            del.OnFlushed(this);
-        }
-
-        #endregion
 
         bool Write(ArraySegment<byte> data, Action continuation)
         {

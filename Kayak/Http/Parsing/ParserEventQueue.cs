@@ -10,7 +10,6 @@ namespace Kayak.Http
         public ParserEventType Type;
         public HttpRequestHeaders Request;
         public bool KeepAlive;
-        public bool Rebuffered;
         public ArraySegment<byte> Data;
     }
 
@@ -27,36 +26,11 @@ namespace Kayak.Http
 
         public bool HasEvents { get { return events.Count > 0; } }
 
-        [Obsolete]
-        public ParserEvent GetNextEvent()
-        {
-            return Dequeue();
-        }
-
         public ParserEvent Dequeue()
         {
             var e = events[0];
             events.RemoveAt(0);
             return e;
-        }
-
-        public void RebufferQueuedData()
-        {
-            for (int i = 0; i < events.Count; i++)
-            {
-                var e = events[i];
-                if (e.Type == ParserEventType.RequestBody && !e.Rebuffered)
-                {
-                    var dest = new byte[e.Data.Count];
-                    Buffer.BlockCopy(e.Data.Array, e.Data.Offset, dest, 0, e.Data.Count);
-                    events[i] = new ParserEvent()
-                        {
-                            Type = ParserEventType.RequestBody,
-                            Data = new ArraySegment<byte>(dest),
-                            Rebuffered = true
-                        };
-                }
-            }
         }
 
         public ParserEventQueue()

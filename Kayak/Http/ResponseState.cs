@@ -43,6 +43,8 @@ namespace Kayak.Http
         {
             if (expectContinue && !sentContinue)
                 keepAlive = false;
+
+            this.prohibitBody = prohibitBody;
         }
 
         public void EnsureWriteBody(out bool renderHeaders)

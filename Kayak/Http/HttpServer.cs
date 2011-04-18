@@ -55,9 +55,7 @@ namespace Kayak.Http
             if (onRequest != null)
                 onRequest(this, new HttpRequestEventArgs() { Request = req, Response = res });
             else
-            {
                 res.End();
-            }
         }
     }
 

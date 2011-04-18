@@ -13,15 +13,15 @@ namespace KayakTests.Http
     [TestFixture]
     public class AttachableStreamTests
     {
-        AttachableStream buffer;
+        BufferedOutputStream buffer;
         MockSocket socket;
         bool drained;
 
-        class Del : IOutputStreamDelegate
+        class OutputStreamDelegate : IBufferedOutputStreamDelegate
         {
-            public Action<Kayak.Http.IOutputStream> OnFlush;
+            public Action<Kayak.Http.IBufferedOutputStream> OnFlush;
 
-            public void OnFlushed(Kayak.Http.IOutputStream message)
+            public void OnFlushed(Kayak.Http.IBufferedOutputStream message)
             {
                 OnFlush(message);
             }
@@ -31,7 +31,7 @@ namespace KayakTests.Http
         public void SetUp()
         {
             drained = false;
-            buffer = new AttachableStream(new Del() { OnFlush = o => drained = true });
+            buffer = new BufferedOutputStream(new OutputStreamDelegate() { OnFlush = o => drained = true });
             socket = new MockSocket();
         }
 

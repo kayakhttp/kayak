@@ -67,6 +67,7 @@
     <Compile Include="Extensions\Trace.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Http\BufferedOutputStream.cs" />
     <Compile Include="Http\Extensions\Request.cs" />
     <Compile Include="Http\Extensions\Server.cs" />
     <Compile Include="Http\Http.cs" />
@@ -74,14 +75,11 @@
     <Compile Include="Http\HttpServer.cs" />
     <Compile Include="Http\HttpServerSocketDelegate.cs" />
     <Compile Include="Http\HttpServerTransactionDelegate.cs" />
-    <Compile Include="Http\Messages\AttachableStream.cs" />
-    <Compile Include="Http\Messages\OutgoingMessage.cs" />
     <Compile Include="Http\Parsing\ParserEventQueue.cs" />
     <Compile Include="Http\Parsing\ParserHandler.cs" />
     <Compile Include="Http\Request.cs" />
     <Compile Include="Http\Response.cs" />
     <Compile Include="Http\ResponseState.cs" />
-    <Compile Include="Http\Transaction.cs" />
     <Compile Include="Net.cs" />
     <Compile Include="Net\KayakScheduler.cs" />
     <Compile Include="Net\Server\KayakServer.cs" />

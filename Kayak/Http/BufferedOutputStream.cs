@@ -5,15 +5,31 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    class AttachableStream : IOutputStream
+    interface IOutputStream
+    {
+        bool Write(ArraySegment<byte> data, Action continuation);
+        void End();
+    }
+
+    interface IBufferedOutputStreamDelegate
+    {
+        void OnFlushed(IBufferedOutputStream message);
+    }
+
+    interface IBufferedOutputStream : IOutputStream
+    {
+        void Attach(ISocket socket);
+    }
+
+    class BufferedOutputStream : IBufferedOutputStream
     {
         ISocket socket;
         LinkedList<byte[]> buffer;
-        IOutputStreamDelegate del;
+        IBufferedOutputStreamDelegate del;
         Action continuation;
         bool ended;
 
-        public AttachableStream(IOutputStreamDelegate del)
+        public BufferedOutputStream(IBufferedOutputStreamDelegate del)
         {
             this.del = del;
         }
