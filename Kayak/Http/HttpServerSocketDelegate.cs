@@ -27,19 +27,27 @@ namespace Kayak.Http
 
         bool OnData(ArraySegment<byte> data, Action continuation)
         {
-            var parsed = parser.Execute(data);
-
-            if (parsed != data.Count)
+            try
             {
-                Trace.Write("Error while parsing request.");
+                var parsed = parser.Execute(data);
 
-                Detach();
+                if (parsed != data.Count)
+                {
+                    Trace.Write("Error while parsing request.");
 
-                // XXX forward to user?
-                throw new Exception("Error while parsing request.");
+                    Detach();
+
+                    // XXX forward to user?
+                    throw new Exception("Error while parsing request.");
+                }
+
+                return transactionTransform.Commit(continuation);
             }
-
-            return transactionTransform.Commit(continuation);
+            catch
+            {
+                Detach();
+                throw;
+            }
         }
 
         void OnEnd()

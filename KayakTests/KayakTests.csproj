@@ -79,6 +79,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Http\Parsing\ParserToTransactionTransformTests.cs" />
+    <Compile Include="Http\ResponseTests.cs" />
     <Compile Include="Http\TestRequest.cs">
       <SubType>Code</SubType>
     </Compile>

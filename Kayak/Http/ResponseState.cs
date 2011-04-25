@@ -73,7 +73,10 @@ namespace Kayak.Http
             else
             {
                 if (shouldKeepAlive)
+                {
                     indicateKeepAlive = true;
+                    keepAlive = true;
+                }
                 else
                 {
                     indicateClose = true;
@@ -94,7 +97,7 @@ namespace Kayak.Http
 
             ended = true;
 
-            renderHeaders = renderedHeaders ? false : (renderedHeaders = true);
+            renderHeaders = wroteHeaders && !renderedHeaders ? (renderedHeaders = true) : false;
         }
     }
 }

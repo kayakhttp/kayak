@@ -34,13 +34,13 @@ namespace Kayak.Http
             return output.Write(data, continuation);
         }
 
-        void IHttpServerResponse.WriteContinue()
+        public void WriteContinue()
         {
             state.OnWriteContinue();
             Write(new ArraySegment<byte>(Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n")), null);
         }
 
-        void IHttpServerResponse.WriteHeaders(string status, IDictionary<string, string> headers)
+        public void WriteHeaders(string status, IDictionary<string, string> headers)
         {
             state.EnsureWriteHeaders();
 
@@ -63,7 +63,7 @@ namespace Kayak.Http
             this.headers = headers;
         }
 
-        bool IHttpServerResponse.WriteBody(ArraySegment<byte> data, Action continuation)
+        public bool WriteBody(ArraySegment<byte> data, Action continuation)
         {
             bool renderHeaders;
             state.EnsureWriteBody(out renderHeaders);
@@ -83,7 +83,7 @@ namespace Kayak.Http
                 return Write(data, continuation);
         }
 
-        void IHttpServerResponse.End()
+        public void End()
         {
             bool renderHeaders = false;
             state.OnEnd(out renderHeaders);

@@ -2,15 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Diagnostics;
 
 namespace Kayak.Http
 {
-    interface IOutputStream
-    {
-        bool Write(ArraySegment<byte> data, Action continuation);
-        void End();
-    }
-
     interface IBufferedOutputStreamDelegate
     {
         void OnDrained(IBufferedOutputStream message);
@@ -104,6 +99,7 @@ namespace Kayak.Http
             }
             while (!BufferIsEmpty())
             {
+                Debug.WriteLine("BufferedOutputStream: flush spin");
                 var first = buffer.First;
                 buffer.RemoveFirst();
 

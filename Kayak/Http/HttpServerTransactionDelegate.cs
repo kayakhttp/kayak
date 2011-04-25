@@ -62,7 +62,7 @@ namespace Kayak.Http
 
             // XXX does this flag make sense?
             if (shutdown)
-                throw new InvalidOperationException("Socket was shutdown.");
+                throw new InvalidOperationException("Socket was shutdown."); 
             
             var responseAndOutput = responseFactory(request, this, shouldKeepAlive);
             var response = responseAndOutput.Item1;
@@ -91,7 +91,6 @@ namespace Kayak.Http
         public void OnDrained(IBufferedOutputStream message)
         {
             var keepAlive = activeResponse.KeepAlive;
-            activeResponse = null;
 
             // if completed response indicates that connection should be closed,
             // or if the client ended the connection and no further responses
@@ -100,11 +99,9 @@ namespace Kayak.Http
             {
                 shutdown = true;
                 socket.End();
-                return;
             }
-            
             // if pending responses, attach next
-            if (responses.Count > 0)
+            else if (responses.Count > 0)
             {
                 var next = responses.First.Value;
                 var response = next.Item1;
@@ -116,6 +113,8 @@ namespace Kayak.Http
             }
 
             // if no pending, do nothing (either response was last on connection, or another request is coming later)
+            
+            activeResponse = null;
         }
     }
 }

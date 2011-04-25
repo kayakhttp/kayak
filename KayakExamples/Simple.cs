@@ -36,7 +36,7 @@ namespace KayakExamples
 
         static IScheduler scheduler;
 
-        public static void Run2()
+        public static void Run()
         {
             scheduler = new KayakScheduler();
             var server = new KayakServer(scheduler);
@@ -67,7 +67,7 @@ namespace KayakExamples
             var request = e.Request;
             var response = e.Response;
 
-            Debug.WriteLine("OnStart");
+            Debug.WriteLine("OnRequest");
 
             if (request.Uri == "/")
             {
@@ -79,6 +79,7 @@ namespace KayakExamples
                                 });
                 response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\nHello.")), null);
                 response.End();
+                Debug.WriteLine("OnRequest: Ended response.");
             }
             else if (request.Uri == "/echo")
             {
@@ -94,10 +95,6 @@ namespace KayakExamples
 
                 new EchoResponse(request, response);
             }
-
         }
-
-
-
     }
 }

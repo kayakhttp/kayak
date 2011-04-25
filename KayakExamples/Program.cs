@@ -9,7 +9,7 @@ namespace KayakExamples
         {
             Debug.Listeners.Add(new TextWriterTraceListener(Console.Out));
             Debug.AutoFlush = true;
-            Simple.Run2();
+            Simple.Run();
         }
     }
 }

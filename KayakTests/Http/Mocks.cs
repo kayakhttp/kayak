@@ -92,6 +92,41 @@ namespace KayakTests
             throw new NotImplementedException();
         }
     }
+
+    class MockOutputStream : IOutputStream
+    {
+        public DataBuffer Buffer;
+        public Action Continuation;
+        public bool GotEnd;
+
+        public MockOutputStream()
+        {
+            Buffer = new DataBuffer();
+        }
+
+        public bool Write(ArraySegment<byte> data, Action continuation)
+        {
+            // XXX do copy? 
+            Buffer.AddToBuffer(data);
+
+            if (continuation != null)
+            {
+                Continuation = continuation;
+                return true;
+            }
+
+            return false;
+        }
+        
+        public void End()
+        {
+            if (GotEnd)
+                throw new Exception("End was already called.");
+
+            GotEnd = true;
+        }
+    }
+
     /*
     class MockHttpServerDelegate : IHttpServerDelegate
     {
