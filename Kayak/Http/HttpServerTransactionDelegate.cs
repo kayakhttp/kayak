@@ -14,6 +14,7 @@ namespace Kayak.Http
             IBufferedOutputStreamDelegate, 
             bool, 
             Tuple<IHttpServerResponseInternal, IBufferedOutputStream>>;
+    using System.Diagnostics;
 
     // ties it all together
     class HttpServerTransactionDelegate : IHttpServerTransactionDelegate, IBufferedOutputStreamDelegate
@@ -71,12 +72,14 @@ namespace Kayak.Http
             // if no active response, attach
             if (activeResponse == null)
             {
+                Debug.WriteLine("Transaction: no active response, attaching");
                 activeResponse = response;
                 output.Attach(socket);
             }
             // else add to pending
             else
             {
+                Debug.WriteLine("Transaction: active response, queuing");
                 responses.AddLast(responseAndOutput);
             }
 
@@ -97,12 +100,14 @@ namespace Kayak.Http
             // are queued, end/shutdown socket
             if (!keepAlive || (ended && responses.Count == 0))
             {
+                Debug.WriteLine("Transaction: ending socket");
                 shutdown = true;
                 socket.End();
             }
             // if pending responses, attach next
             else if (responses.Count > 0)
             {
+                Debug.WriteLine("Transaction: attaching next pending response");
                 var next = responses.First.Value;
                 var response = next.Item1;
                 var output = next.Item2;
@@ -111,10 +116,12 @@ namespace Kayak.Http
                 activeResponse = response;
                 output.Attach(socket);
             }
-
-            // if no pending, do nothing (either response was last on connection, or another request is coming later)
-            
-            activeResponse = null;
+            else
+            {
+                Debug.WriteLine("Transaction: no pending responses");
+                // if no pending, do nothing (either response was last on connection, or another request is coming later)
+                activeResponse = null;
+            }
         }
     }
 }
