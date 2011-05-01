@@ -5,12 +5,9 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    using RequestDelegate =
-        Action<IHttpServerRequest, IHttpServerResponse>;
-
     using ResponseFactory =
         Func<
-            IHttpServerRequest, 
+            HttpRequestHead, 
             IBufferedOutputStreamDelegate, 
             bool, 
             Tuple<IHttpServerResponseInternal, IBufferedOutputStream>>;
@@ -19,27 +16,27 @@ namespace Kayak.Http
     // ties it all together
     class HttpServerTransactionDelegate : IHttpServerTransactionDelegate, IBufferedOutputStreamDelegate
     {
-        RequestDelegate requestDelegate;
         ResponseFactory responseFactory;
+        IHttpServerDelegate del;
+        IHttpRequestDelegate requestDelegate;
 
         LinkedList<Tuple<IHttpServerResponseInternal, IBufferedOutputStream>> responses;
         IHttpServerResponseInternal activeResponse;
         ISocket socket;
         bool ended;
-        bool shutdown;
 
-        public HttpServerTransactionDelegate(RequestDelegate requestDelegate) 
-            : this(requestDelegate, null) { }
+        public HttpServerTransactionDelegate(IHttpServerDelegate httpServerDelegate)
+            : this(httpServerDelegate, null) { }
 
-        public HttpServerTransactionDelegate(RequestDelegate requestDelegate, ResponseFactory responseFactory)
+        public HttpServerTransactionDelegate(IHttpServerDelegate httpServerDelegate, ResponseFactory responseFactory)
         {
-            this.requestDelegate = requestDelegate;
+            this.del = httpServerDelegate;
             this.responseFactory = responseFactory ?? CreateResponse;
             responses = new LinkedList<Tuple<IHttpServerResponseInternal, IBufferedOutputStream>>();
         }
 
         Tuple<IHttpServerResponseInternal, IBufferedOutputStream> CreateResponse(
-            IHttpServerRequest request,
+            HttpRequestHead request,
             IBufferedOutputStreamDelegate del,
             bool shouldKeepAlive)
         {
@@ -49,21 +46,13 @@ namespace Kayak.Http
             return Tuple.Create(response, output);
         }
 
-        public void OnBegin(ISocket socket)
+        public void OnRequest(ISocket socket, HttpRequestHead request, bool shouldKeepAlive)
         {
-            ended = false;
-            shutdown = false;
             this.socket = socket;
-        }
 
-        public void OnRequest(IHttpServerRequest request, bool shouldKeepAlive)
-        {
+            // XXX will need to reset this state when we refactor for reuse
             if (ended)
                 throw new InvalidOperationException("Transaction was ended.");
-
-            // XXX does this flag make sense?
-            if (shutdown)
-                throw new InvalidOperationException("Socket was shutdown."); 
             
             var responseAndOutput = responseFactory(request, this, shouldKeepAlive);
             var response = responseAndOutput.Item1;
@@ -83,10 +72,20 @@ namespace Kayak.Http
                 responses.AddLast(responseAndOutput);
             }
 
-            requestDelegate(request, response);
+            requestDelegate = del.OnRequest(null, response);
         }
 
-        public void OnEnd()
+        public bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation)
+        {
+            return requestDelegate.OnBody(data, continuation);
+        }
+
+        public void OnRequestEnd(ISocket socket)
+        {
+            requestDelegate.OnEnd();
+        }
+
+        public void OnEnd(ISocket socket)
         {
             ended = true;
         }
@@ -101,7 +100,6 @@ namespace Kayak.Http
             if (!keepAlive || (ended && responses.Count == 0))
             {
                 Debug.WriteLine("Transaction: ending socket");
-                shutdown = true;
                 socket.End();
             }
             // if pending responses, attach next

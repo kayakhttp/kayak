@@ -5,58 +5,87 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    class HttpServer : IHttpServer
+    class HttpServerFactory : IHttpServerFactory
     {
-        int listeners;
-        EventHandler<HttpRequestEventArgs> onRequest;
-
-        public event EventHandler<HttpRequestEventArgs> OnRequest
+        public IServer Create(IHttpServerDelegate del, IScheduler scheduler)
         {
-            add
-            {
-                onRequest = (EventHandler<HttpRequestEventArgs>)Delegate.Combine(onRequest, value);
-                listeners++;
+            return KayakServer.Factory.Create(new ServerDelegate(del), scheduler);
+        }
 
-                if (listeners == 1)
-                {
-                    server.OnConnection += OnConnection;
-                }
+        class ServerDelegate : IServerDelegate
+        {
+            IHttpServerDelegate del;
+
+            public ServerDelegate(IHttpServerDelegate del)
+            {
+                this.del = del;
             }
 
-            remove
+            public ISocketDelegate OnConnection(IServer server, ISocket socket)
             {
-                onRequest = (EventHandler<HttpRequestEventArgs>)Delegate.Remove(onRequest, value);
-                listeners--;
+                return new HttpServerSocketDelegate(new HttpServerTransactionDelegate(del));
+            }
 
-                if (listeners == 0)
-                {
-                    server.OnConnection -= OnConnection;
-                }
+            public void OnClose(IServer server)
+            {
+                del.OnClose(server);
             }
         }
 
-        IServer server;
-
-        public HttpServer(IServer server)
-        {
-            this.server = server;
-        }
-
-        void OnConnection(object sender, ConnectionEventArgs e)
-        {
-            var socket = e.Socket;
-
-            // XXX freelist
-            var del = new HttpServerSocketDelegate(socket, new HttpServerTransactionDelegate(RaiseOnRequest));
-        }
-
-        internal void RaiseOnRequest(IHttpServerRequest req, IHttpServerResponse res)
-        {
-            if (onRequest != null)
-                onRequest(this, new HttpRequestEventArgs() { Request = req, Response = res });
-            else
-                res.End();
-        }
     }
+
+    //class HttpServer : IHttpServer
+    //{
+    //    int listeners;
+    //    EventHandler<HttpRequestEventArgs> onRequest;
+
+    //    public event EventHandler<HttpRequestEventArgs> OnRequest
+    //    {
+    //        add
+    //        {
+    //            onRequest = (EventHandler<HttpRequestEventArgs>)Delegate.Combine(onRequest, value);
+    //            listeners++;
+
+    //            if (listeners == 1)
+    //            {
+    //                server.OnConnection += OnConnection;
+    //            }
+    //        }
+
+    //        remove
+    //        {
+    //            onRequest = (EventHandler<HttpRequestEventArgs>)Delegate.Remove(onRequest, value);
+    //            listeners--;
+
+    //            if (listeners == 0)
+    //            {
+    //                server.OnConnection -= OnConnection;
+    //            }
+    //        }
+    //    }
+
+    //    IServer server;
+
+    //    public HttpServer(IServer server)
+    //    {
+    //        this.server = server;
+    //    }
+
+    //    void OnConnection(object sender, ConnectionEventArgs e)
+    //    {
+    //        var socket = e.Socket;
+
+    //        // XXX freelist
+    //        var del = new HttpServerSocketDelegate(socket, new HttpServerTransactionDelegate(RaiseOnRequest));
+    //    }
+
+    //    internal void RaiseOnRequest(IHttpServerRequest req, IHttpResponse res)
+    //    {
+    //        if (onRequest != null)
+    //            onRequest(this, new HttpRequestEventArgs() { Request = req, Response = res });
+    //        else
+    //            res.End();
+    //    }
+    //}
 
 }

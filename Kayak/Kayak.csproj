@@ -64,6 +64,7 @@
     <Reference Include="System" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Disposable.cs" />
     <Compile Include="Extensions\Trace.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -77,7 +78,6 @@
     <Compile Include="Http\HttpServerTransactionDelegate.cs" />
     <Compile Include="Http\Parsing\ParserEventQueue.cs" />
     <Compile Include="Http\Parsing\ParserHandler.cs" />
-    <Compile Include="Http\Request.cs" />
     <Compile Include="Http\Response.cs" />
     <Compile Include="Http\ResponseState.cs" />
     <Compile Include="Net.cs" />

@@ -26,8 +26,7 @@ namespace Kayak
             var task = new Task(action);
             task.ContinueWith(t =>
             {
-                Debug.WriteLine("Error on scheduler.");
-                t.Exception.PrintStacktrace();
+                // XXX invoke del.OnError(t.Exception)
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, this);
             task.Start(this);
         }
@@ -37,20 +36,19 @@ namespace Kayak
             queue = new ConcurrentQueue<Task>();
         }
 
-        public void Start()
+        public IDisposable Start()
         {
             if (dispatch != null)
                 throw new InvalidOperationException("The scheduler was already started.");
 
             dispatch = new Thread(Dispatch);
             dispatch.Start();
+
+            return new Disposable(() => Stop());
         }
 
-        public void Stop()
+        void Stop()
         {
-            if (dispatch == null)
-                throw new InvalidOperationException("The scheduler was not started.");
-
             Debug.WriteLine("Scheduler will stop.");
             Post(() => { stopped = true; });
         }
@@ -131,6 +129,11 @@ namespace Kayak
             }
 
             return TryExecuteTask(task);
+        }
+
+        public void Dispose()
+        {
+            // nothing to see here!
         }
     }
 }

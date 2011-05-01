@@ -10,12 +10,12 @@ namespace Kayak.Oars
 {
     class OarsSocket : ISocket
     {
-        public event EventHandler OnConnected;
-        public event EventHandler<DataEventArgs> OnData;
-        public event EventHandler OnEnd;
-        public event EventHandler OnTimeout;
-        public event EventHandler<ExceptionEventArgs> OnError;
-        public event EventHandler OnClose;
+        //public event EventHandler OnConnected;
+        //public event EventHandler<DataEventArgs> OnData;
+        //public event EventHandler OnEnd;
+        //public event EventHandler OnTimeout;
+        //public event EventHandler<ExceptionEventArgs> OnError;
+        //public event EventHandler OnClose;
 
         public IPEndPoint RemoteEndPoint
         {

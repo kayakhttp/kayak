@@ -3,37 +3,28 @@ using Kayak;
 
 namespace KayakTests.Net
 {
-    class SchedulerDelegate : IDisposable
+    class SchedulerDelegate : ISchedulerDelegate
     {
-        IScheduler scheduler;
+        public Action OnStartedAction;
+        public Action OnStoppedAction;
+        public Action<Exception> OnExceptionAction;
 
-        public Action OnStarted;
-        public Action OnStopped;
-
-        public SchedulerDelegate(IScheduler scheduler)
+        public void OnStopped(IScheduler scheduler)
         {
-            this.scheduler = scheduler;
-            scheduler.OnStarted += new EventHandler(scheduler_OnStarted);
-            scheduler.OnStopped += new EventHandler(scheduler_OnStopped);
+            if (OnStoppedAction != null)
+                OnStoppedAction();
         }
 
-        public void Dispose()
+        public void OnStarted(IScheduler scheduler)
         {
-            scheduler.OnStarted -= new EventHandler(scheduler_OnStarted);
-            scheduler.OnStopped -= new EventHandler(scheduler_OnStopped);
-            this.scheduler = null;
+            if (OnStartedAction != null)
+                OnStartedAction();
         }
 
-        void scheduler_OnStopped(object sender, EventArgs e)
+        public void OnException(IScheduler scheduler, Exception e)
         {
-            if (OnStopped != null)
-                OnStopped();
-        }
-
-        void scheduler_OnStarted(object sender, EventArgs e)
-        {
-            if (OnStarted != null)
-                OnStarted();
+            if (OnExceptionAction != null)
+                OnExceptionAction(e);
         }
     }
 }

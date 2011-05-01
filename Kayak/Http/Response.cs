@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    interface IHttpServerResponseInternal : IHttpServerResponse
+    interface IHttpServerResponseInternal : IHttpResponse
     {
         bool KeepAlive { get; }
     }
@@ -22,7 +22,7 @@ namespace Kayak.Http
 
         IOutputStream output;
 
-        public Response(IOutputStream output, IHttpServerRequest request, bool shouldKeepAlive)
+        public Response(IOutputStream output, HttpRequestHead request, bool shouldKeepAlive)
         {
             this.version = request.Version;
             this.output = output;
@@ -40,9 +40,12 @@ namespace Kayak.Http
             Write(new ArraySegment<byte>(Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n")), null);
         }
 
-        public void WriteHeaders(string status, IDictionary<string, string> headers)
+        public void WriteHeaders(HttpResponseHead head)
         {
             state.EnsureWriteHeaders();
+
+            var status = head.Status;
+            var headers = head.Headers;
 
             if (string.IsNullOrEmpty(status))
                 throw new ArgumentException("status");

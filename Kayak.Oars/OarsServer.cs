@@ -9,8 +9,8 @@ namespace Kayak.Oars
 {
     public class OarsServer : IServer
     {
-        public event EventHandler<ConnectionEventArgs> OnConnection;
-        public event EventHandler OnClose;
+        //public event EventHandler<ConnectionEventArgs> OnConnection;
+        //public event EventHandler OnClose;
 
         public IPEndPoint ListenEndPoint { get; private set; }
         EventBase eventBase;
@@ -31,7 +31,7 @@ namespace Kayak.Oars
             listener = null;
         }
 
-        public void Listen(IPEndPoint ep)
+        public IDisposable Listen(IPEndPoint ep)
         {
             if (listening)
                 throw new InvalidOperationException("Already listening.");
@@ -45,11 +45,14 @@ namespace Kayak.Oars
                 connections++;
                 var ev = new Event(eventBase, fd, Events.EV_WRITE | Events.EV_READ);
 
-                if (OnConnection != null)
-                    OnConnection(this, new ConnectionEventArgs(new OarsSocket(ev, remoteEp, this)));
+                //if (OnConnection != null)
+                //    OnConnection(this, new ConnectionEventArgs(new OarsSocket(ev, remoteEp, this)));
             };
             listening = true;
             closed = false;
+
+            // XXX return Disposable(() => Close());
+            return null;
         }
 
         public void Close()
@@ -79,8 +82,8 @@ namespace Kayak.Oars
             if (closed && connections == 0)
             {
                 closed = false;
-                if (OnClose != null)
-                    OnClose(this, EventArgs.Empty);
+                //if (OnClose != null)
+                //    OnClose(this, EventArgs.Empty);
             }
         }
     }

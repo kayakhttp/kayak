@@ -78,7 +78,7 @@ namespace KayakTests.Net
             context.OnStarted = () =>
             {
                 client.Connect(ep);
-                clientSocketDelegate.OnConnected = () =>
+                clientSocketDelegate.OnConnectedAction = () =>
                 {
                     try
                     {
@@ -143,7 +143,7 @@ namespace KayakTests.Net
             context.OnStarted = () =>
             {
                 client.Connect(ep);
-                clientSocketDelegate.OnConnected = () =>
+                clientSocketDelegate.OnConnectedAction = () =>
                 {
                     client.End();
 
@@ -174,7 +174,7 @@ namespace KayakTests.Net
             context.OnStarted = () =>
             {
                 client.Connect(ep);
-                clientSocketDelegate.OnConnected = () =>
+                clientSocketDelegate.OnConnectedAction = () =>
                 {
                     client.End();
 
@@ -265,7 +265,7 @@ namespace KayakTests.Net
             context.OnStarted = () =>
             {
                 client.Connect(ep);
-                clientSocketDelegate.OnConnected = () =>
+                clientSocketDelegate.OnConnectedAction = () =>
                 {
                     connected = true;
                     writeResult = client.Write(new ArraySegment<byte>(Encoding.ASCII.GetBytes("hello socket.Write")), null);
@@ -288,7 +288,7 @@ namespace KayakTests.Net
             context.OnStarted = () =>
             {
                 client.Connect(ep);
-                clientSocketDelegate.OnConnected = () =>
+                clientSocketDelegate.OnConnectedAction = () =>
                 {
                     connected = true;
                     writeResult = client.Write(default(ArraySegment<byte>), () => { });

@@ -1,100 +1,105 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Kayak;
-using Kayak.Http;
-using System.Threading.Tasks;
-using System.Threading;
-using System.Diagnostics;
-using System.Net;
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Text;
+//using Kayak;
+//using Kayak.Http;
+//using System.Threading.Tasks;
+//using System.Threading;
+//using System.Diagnostics;
+//using System.Net;
 
-namespace KayakExamples
-{
-    class Simple
-    {
-        class EchoResponse
-        {
-            IHttpServerResponse response;
+//namespace KayakExamples
+//{
+//    class Simple : IServerDelegate
+//    {
+//        class EchoResponse
+//        {
+//            IHttpResponse response;
 
-            public EchoResponse(IHttpServerRequest request, IHttpServerResponse response)
-            {
-                request.OnBody += new EventHandler<DataEventArgs>(request_OnBody);
-                request.OnEnd += new EventHandler(request_OnEnd);
-                this.response = response;
-            }
+//            public EchoResponse(IHttpServerRequest request, IHttpResponse response)
+//            {
+//                request.OnBody += new EventHandler<DataEventArgs>(request_OnBody);
+//                request.OnEnd += new EventHandler(request_OnEnd);
+//                this.response = response;
+//            }
 
-            void request_OnBody(object sender, DataEventArgs e)
-            {
-                e.WillInvokeContinuation = response.WriteBody(e.Data, e.Continuation);
-            }
+//            void request_OnBody(object sender, DataEventArgs e)
+//            {
+//                e.WillInvokeContinuation = response.WriteBody(e.Data, e.Continuation);
+//            }
 
-            void request_OnEnd(object sender, EventArgs e)
-            {
-                response.End();
-            }
-        }
+//            void request_OnEnd(object sender, EventArgs e)
+//            {
+//                response.End();
+//            }
+//        }
 
-        static IScheduler scheduler;
+//        IScheduler scheduler;
 
-        public static void Run()
-        {
-            scheduler = new KayakScheduler();
-            var server = new KayakServer(scheduler);
+//        public void OnConnection(IServer server, ISocket socket)
+//        {
 
-            var http = server.AsHttpServer();
-            http.OnRequest += OnRequest;
+//        }
 
-            server.Listen(new IPEndPoint(IPAddress.Any, 8080));
+//        public void Run()
+//        {
+//            scheduler = new KayakScheduler();
+//            var server = new KayakServer(scheduler);
 
-            scheduler.Start();
-            server.OnClose += new EventHandler(server_OnClose);
+//            var http = server.AsHttpServer();
+//            http.OnRequest += OnRequest;
 
-            Console.WriteLine("Listening on " + server.ListenEndPoint);
-            Console.WriteLine("Press enter to exit.");
-            Console.ReadLine();
+//            server.Listen(new IPEndPoint(IPAddress.Any, 8080), this);
 
-            http.OnRequest -= OnRequest;
-            server.Close();
-        }
+//            scheduler.Start();
+//            server.OnClose += new EventHandler(server_OnClose);
 
-        static void server_OnClose(object sender, EventArgs e)
-        {
-            scheduler.Stop();
-        }
+//            Console.WriteLine("Listening on " + server.ListenEndPoint);
+//            Console.WriteLine("Press enter to exit.");
+//            Console.ReadLine();
 
-        static void OnRequest(object sender, HttpRequestEventArgs e)
-        {
-            var request = e.Request;
-            var response = e.Response;
+//            http.OnRequest -= OnRequest;
+//            server.Close();
+//        }
 
-            Debug.WriteLine("OnRequest");
+//        static void server_OnClose(object sender, EventArgs e)
+//        {
+//            scheduler.Stop();
+//        }
 
-            if (request.Uri == "/")
-            {
-                response.WriteHeaders("200 OK",
-                                new Dictionary<string, string>() 
-                                {
-                                    { "Content-Type", "text/plain" },
-                                    { "Content-Length", "20" },
-                                });
-                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\nHello.")), null);
-                response.End();
-                Debug.WriteLine("OnRequest: Ended response.");
-            }
-            else if (request.Uri == "/echo")
-            {
-                response.WriteHeaders("200 OK",
-                    new Dictionary<string, string>()
-                        {
-                            { "Content-Type", "text/plain" },
-                            { "Connection", "close" }
-                        });
+//        static void OnRequest(object sender, HttpRequestEventArgs e)
+//        {
+//            var request = e.Request;
+//            var response = e.Response;
 
-                if (request.IsContinueExpected())
-                    response.WriteContinue();
+//            Debug.WriteLine("OnRequest");
 
-                new EchoResponse(request, response);
-            }
-        }
-    }
-}
+//            if (request.Uri == "/")
+//            {
+//                response.WriteHeaders("200 OK",
+//                                new Dictionary<string, string>() 
+//                                {
+//                                    { "Content-Type", "text/plain" },
+//                                    { "Content-Length", "20" },
+//                                });
+//                response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\nHello.")), null);
+//                response.End();
+//                Debug.WriteLine("OnRequest: Ended response.");
+//            }
+//            else if (request.Uri == "/echo")
+//            {
+//                response.WriteHeaders("200 OK",
+//                    new Dictionary<string, string>()
+//                        {
+//                            { "Content-Type", "text/plain" },
+//                            { "Connection", "close" }
+//                        });
+
+//                if (request.IsContinueExpected())
+//                    response.WriteContinue();
+
+//                new EchoResponse(request, response);
+//            }
+//        }
+//    }
+//}

@@ -8,8 +8,7 @@ namespace Kayak
 {
     public class KayakServer : IServer
     {
-        public event EventHandler<ConnectionEventArgs> OnConnection;
-        public event EventHandler OnClose;
+        IServerDelegate del;
 
         public IPEndPoint ListenEndPoint { get { return (IPEndPoint)listener.LocalEndPoint; } }
 
@@ -17,8 +16,21 @@ namespace Kayak
         KayakServerState state;
         Socket listener;
 
-        public KayakServer(IScheduler scheduler)
+        class KayakServerFactory : IServerFactory
         {
+            public IServer Create(IServerDelegate del, IScheduler scheduler)
+            {
+                return new KayakServer(del, scheduler);
+            }
+        }
+
+        readonly static KayakServerFactory factory = new KayakServerFactory();
+
+        public static IServerFactory Factory { get { return factory; } }
+
+        KayakServer(IServerDelegate del, IScheduler scheduler)
+        {
+            this.del = del;
             this.scheduler = scheduler;
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
             state = new KayakServerState();
@@ -34,7 +46,7 @@ namespace Kayak
             }
         }
 
-        public void Listen(IPEndPoint ep)
+        public IDisposable Listen(IPEndPoint ep)
         {
             state.SetListening();
 
@@ -46,9 +58,10 @@ namespace Kayak
             listener.Listen(1000);
 
             AcceptNext();
+            return new Disposable(() => Close());
         }
 
-        public void Close()
+        void Close()
         {
             var closed = state.SetClosing();
             
@@ -68,8 +81,7 @@ namespace Kayak
 
         void RaiseOnClose()
         {
-            if (OnClose != null)
-                OnClose(this, EventArgs.Empty);
+            del.OnClose(this);
         }
 
         void AcceptNext()
@@ -101,17 +113,10 @@ namespace Kayak
                             HandleAcceptError(error);
 
                         var s = new KayakSocket(socket, this.scheduler);
-                        if (OnConnection != null)
-                        {
-                            state.IncrementConnections();
-                            OnConnection(this, new ConnectionEventArgs(s));
-                            s.DoRead(); // TODO defer til OnData event gets listener
-                        }
-                        else
-                        {
-                            s.End();
-                            s.Dispose();
-                        }
+                        state.IncrementConnections();
+
+                        del.OnConnection(this, s);
+                        s.DoRead();
                     });
 
                 }, null);
@@ -139,8 +144,7 @@ namespace Kayak
             Debug.WriteLine("Error attempting to accept connection.");
             e.PrintStacktrace();
 
-            if (OnClose != null)
-                OnClose(this, EventArgs.Empty);
+            RaiseOnClose();
         }
     }
 }

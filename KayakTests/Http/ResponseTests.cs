@@ -13,30 +13,24 @@ namespace KayakTests.Http
     {
         Response response;
         MockOutputStream output;
-        MockRequest request;
-
-        class MockRequest : IHttpServerRequest
-        {
-            public event EventHandler<DataEventArgs> OnBody;
-            public event EventHandler OnEnd;
-
-            public string Method { get; set; }
-            public string Uri { get; set; }
-            public Version Version { get; set; }
-
-            public IDictionary<string, string> Headers { get; private set; }
-
-            public MockRequest()
-            {
-                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
-            }
-        }
+        HttpRequestHead request;
 
         [SetUp]
         public void SetUp()
         {
             output = new MockOutputStream();
-            request = new MockRequest();
+            
+        }
+
+        void CreateRequest(Version version)
+        {
+            request = new HttpRequestHead()
+            {
+                Method = null,
+                Uri = null,
+                Version = version,
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
+            };
         }
 
         void WriteBody(string data)
@@ -47,7 +41,7 @@ namespace KayakTests.Http
         [Test]
         public void OneOh__End_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, false);
 
             response.End();
@@ -60,7 +54,7 @@ namespace KayakTests.Http
         [Test]
         public void OneOhKeepAlive__End_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, true);
 
             response.End();
@@ -73,11 +67,17 @@ namespace KayakTests.Http
         [Test]
         public void OneOh__WriteHeaders_End_writes_headers_and_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, false);
 
-            response.WriteHeaders("200 OK", new Dictionary<string, string>() {
-                { "Date" , "today" }, { "Server", "Kayak" }
+            response.WriteHeaders(new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>() 
+                {
+                    { "Date" , "today" }, 
+                    { "Server", "Kayak" }
+                }
             });
             response.End();
 
@@ -93,11 +93,17 @@ Server: Kayak
         [Test]
         public void OneOhKeepAlive__WriteHeaders_End_writes_headers_and_ends_output_keep_alive()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, true);
 
-            response.WriteHeaders("200 OK", new Dictionary<string, string>() {
-                { "Date" , "today" }, { "Server", "Kayak" }
+            response.WriteHeaders(new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>() 
+                {
+                    { "Date" , "today" }, 
+                    { "Server", "Kayak" }
+                }
             });
             response.End();
 
@@ -114,11 +120,17 @@ Connection: keep-alive
         [Test]
         public void OneOh__WriteHeaders_connection_close_End_writes_headers_and_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, false);
 
-            response.WriteHeaders("200 OK", new Dictionary<string, string>() {
-                { "Date" , "today" }, { "Server", "Kayak" }
+            response.WriteHeaders(new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>() 
+                {
+                    { "Date" , "today" }, 
+                    { "Server", "Kayak" }
+                }
             });
             response.End();
 
@@ -134,11 +146,18 @@ Server: Kayak
         [Test]
         public void OneOhKeepAlive__WriteHeaders_connection_close_End_writes_headers_and_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, true);
 
-            response.WriteHeaders("200 OK", new Dictionary<string, string>() {
-                { "Date" , "today" }, { "Server", "Kayak" }, { "Connection", "close" }
+            response.WriteHeaders(new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>() 
+                {
+                    { "Date" , "today" }, 
+                    { "Server", "Kayak" },
+                    { "Connection", "Close" }
+                }
             });
             response.End();
 
@@ -155,11 +174,17 @@ Connection: close
         [Test]
         public void OneOh__WriteHeaders_WriteBody_End_writes_headers_and_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, false);
 
-            response.WriteHeaders("200 OK", new Dictionary<string, string>() {
-                { "Date" , "today" }, { "Server", "Kayak" }
+            response.WriteHeaders(new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>() 
+                {
+                    { "Date" , "today" }, 
+                    { "Server", "Kayak" }
+                }
             });
 
             WriteBody("hello");
@@ -177,12 +202,19 @@ hello"));
         [Test]
         public void OneOhKeepAlive__WriteHeaders_WriteBody_End_writes_headers_and_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, true);
 
-            response.WriteHeaders("200 OK", new Dictionary<string, string>() {
-                { "Date" , "today" }, { "Server", "Kayak" }
-                // XXX really there would have to be content length. require this?
+
+            response.WriteHeaders(new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>() 
+                {
+                    { "Date" , "today" }, 
+                    { "Server", "Kayak" }
+                    // XXX really there would have to be content length. require this?
+                }
             });
 
             WriteBody("hello");
@@ -201,11 +233,18 @@ hello"));
         [Test]
         public void OneOh__WriteHeaders_WriteBody2x_End_writes_headers_and_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, false);
 
-            response.WriteHeaders("200 OK", new Dictionary<string, string>() {
-                { "Date" , "today" }, { "Server", "Kayak" }
+
+            response.WriteHeaders(new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>() 
+                {
+                    { "Date" , "today" }, 
+                    { "Server", "Kayak" }
+                }
             });
 
             WriteBody("hello");
@@ -224,11 +263,17 @@ helloworld"));
         [Test]
         public void OneOhKeepAlive__WriteHeaders_WriteBody2x_End_writes_headers_and_ends_output()
         {
-            request.Version = new Version(1, 0);
+            CreateRequest(new Version(1, 0));
             response = new Response(output, request, false);
 
-            response.WriteHeaders("200 OK", new Dictionary<string, string>() {
-                { "Date" , "today" }, { "Server", "Kayak" }
+            response.WriteHeaders(new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>() 
+                {
+                    { "Date" , "today" }, 
+                    { "Server", "Kayak" }
+                }
             });
 
             WriteBody("hello");

@@ -3,46 +3,36 @@ using Kayak;
 
 namespace KayakTests.Net
 {
-    class ServerDelegate : IDisposable
+    class ServerDelegate : IServerDelegate
     {
         IServer server;
-        public Action<ISocket> OnConnection;
-        public Action OnClose;
+        public Func<ISocket, ISchedulerDelegate> OnConnectionAction;
+        public Action OnCloseAction;
 
         public int NumOnConnectionEvents;
         public int NumOnCloseEvents;
 
-        public ServerDelegate(IServer server)
-        {
-            this.server = server;
-            server.OnConnection += new EventHandler<ConnectionEventArgs>(server_OnConnection);
-            server.OnClose += new EventHandler(server_OnClose);
-        }
-
-        public void Dispose()
-        {
-            server.OnConnection -= server_OnConnection;
-            server.OnClose -= server_OnClose;
-            server = null;
-        }
-
-        void server_OnConnection(object sender, ConnectionEventArgs e)
+        public ISocketDelegate OnConnection(IServer server, ISocket socket)
         {
             NumOnConnectionEvents++;
 
-            if (OnConnection != null)
+            if (OnConnectionAction != null)
             {
-                OnConnection(e.Socket);
+                return OnConnectionAction(socket);
             }
-            else e.Socket.Dispose();
+            else
+            {
+                socket.Dispose();
+                return null;
+            }
         }
 
-        void server_OnClose(object sender, EventArgs e)
+        public void OnClose(IServer server)
         {
             NumOnCloseEvents++;
 
-            if (OnClose != null)
-                OnClose();
+            if (OnCloseAction != null)
+                OnCloseAction();
         }
     }
 }

@@ -9,9 +9,10 @@ namespace Kayak.Http
 {
     interface IHttpServerTransactionDelegate
     {
-        void OnBegin(ISocket socket);
-        void OnRequest(IHttpServerRequest request, bool shouldKeepAlive);
-        void OnEnd();
+        void OnRequest(ISocket socket, HttpRequestHead request, bool shouldKeepAlive);
+        bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation);
+        void OnRequestEnd(ISocket socket);
+        void OnEnd(ISocket socket);
     }
 
     // adapts flat parser events to OnRequest, Request.OnData, and
@@ -34,7 +35,6 @@ namespace Kayak.Http
     {
         ParserEventQueue queue;
         IHttpServerTransactionDelegate transactionDelegate;
-        Request activeRequest;
 
         public ParserToTransactionTransform(IHttpServerTransactionDelegate transactionDelegate)
         {
@@ -57,7 +57,7 @@ namespace Kayak.Http
             queue.OnRequestEnded();
         }
 
-        public bool Commit(Action continuation)
+        public bool Commit(ISocket socket, Action continuation)
         {
             while (queue.HasEvents)
             {
@@ -66,16 +66,21 @@ namespace Kayak.Http
                 switch (e.Type)
                 {
                     case ParserEventType.RequestHeaders:
-                        transactionDelegate.OnRequest(activeRequest = new Request(e.Request), e.KeepAlive);
+                        transactionDelegate.OnRequest(socket, new HttpRequestHead() { 
+                            Method = e.Request.Method,
+                            Uri = e.Request.Uri,
+                            Version = e.Request.Version,
+                            Headers = e.Request.Headers
+                        }, e.KeepAlive);
                         break;
                     case ParserEventType.RequestBody:
                         if (!queue.HasEvents)
-                            return activeRequest.RaiseOnBody(e.Data, continuation);
+                            return transactionDelegate.OnData(socket, e.Data, continuation);
 
-                        activeRequest.RaiseOnBody(e.Data, null);
+                        transactionDelegate.OnData(socket, e.Data, null);
                         break;
                     case ParserEventType.RequestEnded:
-                        activeRequest.RaiseOnEnd();
+                        transactionDelegate.OnRequestEnd(socket);
                         break;
                 }
             }

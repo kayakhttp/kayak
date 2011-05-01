@@ -14,7 +14,7 @@ namespace KayakTests.Http
         HttpServerTransactionDelegate txDel;
         bool shouldKeepAlive;
         int requestRaised;
-        Action<IHttpServerRequest, IHttpServerResponse> onRequest;
+        //Action<IHttpServerRequest, IHttpResponse> onRequest;
         List<IBufferedOutputStreamDelegate> outputDels;
         MockSocket socket;
         List<MockResponse> responses;
@@ -229,7 +229,7 @@ namespace KayakTests.Http
                 throw new NotImplementedException();
             }
 
-            public void WriteHeaders(string status, IDictionary<string, string> headers)
+            public void WriteHeaders(HttpResponseHead head)
             {
                 throw new NotImplementedException();
             }
@@ -248,12 +248,6 @@ namespace KayakTests.Http
         class MockSocket : ISocket
         {
             public bool GotEnd { get; private set; }
-
-            public event EventHandler OnConnected;
-            public event EventHandler<DataEventArgs> OnData;
-            public event EventHandler OnEnd;
-            public event EventHandler<ExceptionEventArgs> OnError;
-            public event EventHandler OnClose;
 
             public System.Net.IPEndPoint RemoteEndPoint
             {

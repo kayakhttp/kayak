@@ -8,7 +8,7 @@ using KayakTests.Net;
 
 namespace KayakTests
 {
-    class MockResponse : IHttpServerResponse
+    class MockResponse : IHttpResponse
     {
         public Action OnWriteContinue;
         public Action<string, IDictionary<string, string>> OnWriteHeaders;
@@ -21,10 +21,10 @@ namespace KayakTests
                 OnWriteContinue();
         }
 
-        public void WriteHeaders(string status, IDictionary<string, string> headers)
+        public void WriteHeaders(HttpResponseHead head)
         {
             if (OnWriteHeaders != null)
-                OnWriteHeaders(status, headers);
+                OnWriteHeaders(head.Status, head.Headers);
         }
 
         public bool WriteBody(ArraySegment<byte> data, Action complete)
@@ -64,12 +64,6 @@ namespace KayakTests
 
             return false;
         }
-
-        public event EventHandler OnConnected;
-        public event EventHandler<DataEventArgs> OnData;
-        public event EventHandler OnEnd;
-        public event EventHandler<ExceptionEventArgs> OnError;
-        public event EventHandler OnClose;
 
         public System.Net.IPEndPoint RemoteEndPoint
         {
@@ -124,6 +118,54 @@ namespace KayakTests
                 throw new Exception("End was already called.");
 
             GotEnd = true;
+        }
+    }
+
+    class MockHttpServerTransactionDelegate : IHttpServerTransactionDelegate
+    {
+        public class HttpRequest
+        {
+            public HttpRequestHead Head;
+            public bool ShouldKeepAlive;
+            public DataBuffer Data;
+        }
+
+        public List<HttpRequest> Requests;
+        public Func<ArraySegment<byte>, Action, bool> OnDataAction;
+        public bool GotOnEnd;
+        public HttpRequest current; // XXX rename
+
+        public MockHttpServerTransactionDelegate()
+        {
+            Requests = new List<HttpRequest>();
+        }
+
+        public void OnRequest(ISocket socket, HttpRequestHead request, bool shouldKeepAlive)
+        {
+            current = new HttpRequest() { Head = request, ShouldKeepAlive = shouldKeepAlive, Data = new DataBuffer() };
+        }
+
+        public bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation)
+        {
+            current.Data.AddToBuffer(data);
+
+            if (OnDataAction != null)
+                return OnDataAction(data, continuation);
+
+            return false;
+        }
+
+        public void OnRequestEnd(ISocket socket)
+        {
+            Requests.Add(current);
+        }
+
+        public void OnEnd(ISocket socket)
+        {
+            if (GotOnEnd)
+                throw new Exception("OnEnd was called more than once.");
+
+            GotOnEnd = true;
         }
     }
 

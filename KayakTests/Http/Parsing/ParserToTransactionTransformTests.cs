@@ -76,85 +76,87 @@ namespace KayakTests.Http
     //    }
     //}
 
-    class MockHttpDel : IHttpServerTransactionDelegate, IDisposable
-    {
-        public List<MockIRequestDelegate> Requests;
-        public bool GotOnEnd;
-        public Func<Func<ArraySegment<byte>, Action, bool>> OnDataFactory;
+    
 
-        public MockHttpDel()
-        {
-            Requests = new List<MockIRequestDelegate>();
-        }
+    //class MockHttpDel : IHttpServerTransactionDelegate, IDisposable
+    //{
+    //    public List<MockIRequestDelegate> Requests;
+    //    public bool GotOnEnd;
+    //    public Func<Func<ArraySegment<byte>, Action, bool>> OnDataFactory;
 
-        public void OnBegin(ISocket socket)
-        {
-        }
+    //    public MockHttpDel()
+    //    {
+    //        Requests = new List<MockIRequestDelegate>();
+    //    }
 
-        public void OnRequest(IHttpServerRequest request, bool shouldKeepAlive)
-        {
-            Requests.Add(new MockIRequestDelegate(request, shouldKeepAlive) { OnData = OnDataFactory == null ? null : OnDataFactory() });
-        }
+    //    public void OnBegin(ISocket socket)
+    //    {
+    //    }
 
-        public void OnEnd()
-        {
-            if (GotOnEnd)
-                throw new Exception("OnEnd was called more than once.");
+    //    public void OnRequest(ISocket socket, HttpRequestHead request, bool shouldKeepAlive)
+    //    {
+    //        Requests.Add(new MockIRequestDelegate(request, shouldKeepAlive) { OnData = OnDataFactory == null ? null : OnDataFactory() });
+    //    }
 
-            GotOnEnd = true;
-        }
+    //    public void OnEnd(ISocket socket)
+    //    {
+    //        if (GotOnEnd)
+    //            throw new Exception("OnEnd was called more than once.");
 
-        public void Dispose()
-        {
-            foreach (var di in Requests)
-                di.Dispose();
-        }
+    //        GotOnEnd = true;
+    //    }
 
-        public class MockIRequestDelegate : IDisposable
-        {
-            public IHttpServerRequest Request;
-            public bool ShouldKeepAlive;
-            public Action OnEnd;
-            public Func<ArraySegment<byte>, Action, bool> OnData;
-            public int NumOnEndEvents;
-            public int NumOnBodyEvents;
-            public DataBuffer Buffer;
+    //    public void Dispose()
+    //    {
+    //        foreach (var di in Requests)
+    //            di.Dispose();
+    //    }
 
-            public MockIRequestDelegate(IHttpServerRequest request, bool shouldKeepAlive)
-            {
-                Request = request;
-                ShouldKeepAlive = shouldKeepAlive;
-                request.OnBody += request_OnBody;
-                request.OnEnd += request_OnEnd;
-                Buffer = new DataBuffer();
+    //    public class MockIRequestDelegate : IDisposable
+    //    {
+    //        public IHttpServerRequest Request;
+    //        public bool ShouldKeepAlive;
+    //        public Action OnEnd;
+    //        public Func<ArraySegment<byte>, Action, bool> OnData;
+    //        public int NumOnEndEvents;
+    //        public int NumOnBodyEvents;
+    //        public DataBuffer Buffer;
 
-            }
+    //        public MockIRequestDelegate(IHttpServerRequest request, bool shouldKeepAlive)
+    //        {
+    //            Request = request;
+    //            ShouldKeepAlive = shouldKeepAlive;
+    //            request.OnBody += request_OnBody;
+    //            request.OnEnd += request_OnEnd;
+    //            Buffer = new DataBuffer();
 
-            void request_OnBody(object sender, DataEventArgs e)
-            {
-                NumOnBodyEvents++;
-                e.WillInvokeContinuation = false;
+    //        }
 
-                Buffer.AddToBuffer(e.Data);
+    //        void request_OnBody(object sender, DataEventArgs e)
+    //        {
+    //            NumOnBodyEvents++;
+    //            e.WillInvokeContinuation = false;
 
-                if (OnData != null)
-                    e.WillInvokeContinuation = OnData(e.Data, e.Continuation);
-            }
+    //            Buffer.AddToBuffer(e.Data);
 
-            void request_OnEnd(object sender, EventArgs e)
-            {
-                NumOnEndEvents++;
-                if (OnEnd != null)
-                    OnEnd();
-            }
+    //            if (OnData != null)
+    //                e.WillInvokeContinuation = OnData(e.Data, e.Continuation);
+    //        }
 
-            public void Dispose()
-            {
-                Request.OnBody -= request_OnBody;
-                Request.OnEnd -= request_OnEnd;
-            }
-        }
-    }
+    //        void request_OnEnd(object sender, EventArgs e)
+    //        {
+    //            NumOnEndEvents++;
+    //            if (OnEnd != null)
+    //                OnEnd();
+    //        }
+
+    //        public void Dispose()
+    //        {
+    //            Request.OnBody -= request_OnBody;
+    //            Request.OnEnd -= request_OnEnd;
+    //        }
+    //    }
+    //}
 
 
 
@@ -162,20 +164,14 @@ namespace KayakTests.Http
     public class ParserToTransactionTransformTests
     {
         ParserToTransactionTransform del;
-        MockHttpDel httpDel;
+        MockHttpServerTransactionDelegate httpDel;
         
 
         [SetUp]
         public void SetUp()
         {
-            httpDel = new MockHttpDel();
+            httpDel = new MockHttpServerTransactionDelegate();
             del = new ParserToTransactionTransform(httpDel);
-        }
-
-        [TearDown]
-        public void TearDown()
-        {
-            httpDel.Dispose();
         }
 
         void WriteBody(string data)
@@ -186,7 +182,7 @@ namespace KayakTests.Http
         void Commit(bool shouldInvokeContinuation)
         {
             bool continuationInvoked = false;
-            var result = del.Commit(() => { continuationInvoked = true; });
+            var result = del.Commit(null, () => { continuationInvoked = true; });
 
             Assert.That(result, Is.EqualTo(shouldInvokeContinuation));
             Assert.That(continuationInvoked, Is.False);
@@ -199,18 +195,15 @@ namespace KayakTests.Http
             WriteBody("and so it begins.");
             del.OnRequestEnded();
 
-
             var requestDelegates = httpDel.Requests;
             Assert.That(requestDelegates, Is.Empty);
 
-            httpDel.OnDataFactory = () => (d, c) => { Assert.That(c, Is.Null); return false; };
+            httpDel.OnDataAction = (d, c) => { Assert.That(c, Is.Null); return false; };
 
             Commit(false);
 
             Assert.That(requestDelegates.Count, Is.EqualTo(1));
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(1));
-            Assert.That(requestDelegates[0].Buffer.ToString(), Is.EqualTo("and so it begins."));
-            Assert.That(requestDelegates[0].NumOnEndEvents, Is.EqualTo(1));
+            Assert.That(requestDelegates[0].Data.ToString(), Is.EqualTo("and so it begins."));
         }
 
         [Test]
@@ -226,16 +219,13 @@ namespace KayakTests.Http
 
             Assert.That(requestDelegates, Is.Empty);
 
-            httpDel.OnDataFactory = () => (d, c) => { Assert.That(c, Is.Null); return false; };
+            httpDel.OnDataAction = (d, c) => { Assert.That(c, Is.Null); return false; };
 
             Commit(false);
 
             Assert.That(requestDelegates.Count, Is.EqualTo(2));
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(1));
-            Assert.That(requestDelegates[0].Buffer.ToString(), Is.EqualTo("another late, bleary night of procrastination"));
-            Assert.That(requestDelegates[0].NumOnEndEvents, Is.EqualTo(1));
-            Assert.That(requestDelegates[1].NumOnBodyEvents, Is.EqualTo(0));
-            Assert.That(requestDelegates[1].NumOnEndEvents, Is.EqualTo(1));
+            Assert.That(requestDelegates[0].Data.ToString(), Is.EqualTo("another late, bleary night of procrastination"));
+            Assert.That(requestDelegates[1].Data.ToString(), Is.Empty);
         }
 
         [Test]
@@ -250,23 +240,17 @@ namespace KayakTests.Http
             Commit(false);
 
             Assert.That(requestDelegates.Count, Is.EqualTo(1));
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(0));
-            Assert.That(requestDelegates[0].NumOnEndEvents, Is.EqualTo(1));
 
             del.OnRequestBegan(new HttpRequestHeaders() { }, false);
             WriteBody("under the guise of creativity, some lofty goal");
             del.OnRequestEnded();
 
-            httpDel.OnDataFactory = () => (d, c) => { Assert.That(c, Is.Null); return false; };
+            httpDel.OnDataAction = (d, c) => { Assert.That(c, Is.Null); return false; };
 
             Commit(false);
 
             Assert.That(requestDelegates.Count, Is.EqualTo(2));
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(0));
-            Assert.That(requestDelegates[0].NumOnEndEvents, Is.EqualTo(1));
-            Assert.That(requestDelegates[1].NumOnBodyEvents, Is.EqualTo(1));
-            Assert.That(requestDelegates[1].Buffer.ToString(), Is.EqualTo("under the guise of creativity, some lofty goal"));
-            Assert.That(requestDelegates[1].NumOnEndEvents, Is.EqualTo(1));
+            Assert.That(requestDelegates[1].Data.ToString(), Is.EqualTo("under the guise of creativity, some lofty goal"));
         }
 
         [Test]
@@ -278,18 +262,18 @@ namespace KayakTests.Http
             var requestDelegates = httpDel.Requests;
             Assert.That(requestDelegates, Is.Empty);
 
-            httpDel.OnDataFactory = () => (d, c) => { Assert.That(c, Is.Not.Null); return true; };
+            httpDel.OnDataAction = (d, c) => { Assert.That(c, Is.Not.Null); return true; };
 
             Commit(true);
 
-            Assert.That(requestDelegates.Count, Is.EqualTo(1));
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(1));
+            Assert.That(httpDel.current, Is.Not.Null);
+            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("hello world hello"));
 
             WriteBody("whatever gets you off, you bastard");
 
             Commit(true);
 
-            Assert.That(requestDelegates[0].Buffer.ToString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
+            Assert.That(requestDelegates[0].Data.ToString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
         }
 
         [Test]
@@ -298,26 +282,22 @@ namespace KayakTests.Http
             del.OnRequestBegan(new HttpRequestHeaders() { }, true);
             WriteBody("hello world hello");
 
-
             var requestDelegates = httpDel.Requests;
             Assert.That(requestDelegates, Is.Empty);
 
-            httpDel.OnDataFactory = () => (d, c) => { Assert.That(c, Is.Not.Null); return false; };
+            httpDel.OnDataAction = (d, c) => { Assert.That(c, Is.Not.Null); return false; };
 
             Commit(false);
 
-            Assert.That(requestDelegates.Count, Is.EqualTo(1));
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(1));
+            Assert.That(httpDel.current, Is.Not.Null);
+            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("hello world hello"));
 
             WriteBody("whatever gets you off, you bastard");
             del.OnRequestEnded();
 
-            requestDelegates[0].OnData = (d, c) => { Assert.That(c, Is.Null); return false; };
-
             Commit(false);
 
-            Assert.That(requestDelegates[0].Buffer.ToString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
-            Assert.That(requestDelegates[0].NumOnEndEvents, Is.EqualTo(1));
+            Assert.That(requestDelegates[0].Data.ToString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
         }
 
         [Test]
@@ -329,32 +309,28 @@ namespace KayakTests.Http
             var requestDelegates = httpDel.Requests;
             Assert.That(requestDelegates, Is.Empty);
 
-            httpDel.OnDataFactory = () => (d, c) => { Assert.That(c, Is.Not.Null); return true; };
+            httpDel.OnDataAction = (d, c) => { Assert.That(c, Is.Not.Null); return true; };
 
             Commit(true);
 
-            Assert.That(requestDelegates.Count, Is.EqualTo(1));
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(1));
+            Assert.That(httpDel.current, Is.Not.Null);
+            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("i am so incapable of stopping"));
 
             WriteBody("tired of this mandate");
 
-            requestDelegates[0].OnData = (d, c) => { Assert.That(c, Is.Not.Null); return true; };
-
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(1));
+            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("i am so incapable of stopping"));
 
             Commit(true);
 
-            Assert.That(requestDelegates[0].NumOnBodyEvents, Is.EqualTo(2));
-            Assert.That(requestDelegates[0].Buffer.ToString(), Is.EqualTo("i am so incapable of stoppingtired of this mandate"));
-
+            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("i am so incapable of stoppingtired of this mandate"));
 
             del.OnRequestEnded();
 
-            Assert.That(requestDelegates[0].NumOnEndEvents, Is.EqualTo(0));
+            Assert.That(requestDelegates.Count, Is.EqualTo(0));
 
             Commit(false);
 
-            Assert.That(requestDelegates[0].NumOnEndEvents, Is.EqualTo(1));
+            Assert.That(requestDelegates.Count, Is.EqualTo(1));
         }
     }
 }

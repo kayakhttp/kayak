@@ -8,24 +8,20 @@ using System.Diagnostics;
 namespace Kayak.Http
 {
     // transforms socket events into http server transaction events.
-    class HttpServerSocketDelegate
+    class HttpServerSocketDelegate : ISocketDelegate
     {
-        ISocket socket;
         HttpParser parser;
         ParserToTransactionTransform transactionTransform;
         IHttpServerTransactionDelegate transactionDelegate;
 
-        public HttpServerSocketDelegate(ISocket socket, IHttpServerTransactionDelegate transactionDelegate)
+        public HttpServerSocketDelegate(IHttpServerTransactionDelegate transactionDelegate)
         {
             this.transactionDelegate = transactionDelegate;
             transactionTransform = new ParserToTransactionTransform(transactionDelegate);
             parser = new HttpParser(new ParserDelegate(transactionTransform));
-
-            Attach(socket);
-            transactionDelegate.OnBegin(socket); // XXX really call this right here?
         }
 
-        bool OnData(ArraySegment<byte> data, Action continuation)
+        public bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation)
         {
             try
             {
@@ -35,85 +31,48 @@ namespace Kayak.Http
                 {
                     Trace.Write("Error while parsing request.");
 
-                    Detach();
+                    socket.Dispose();
 
                     // XXX forward to user?
                     throw new Exception("Error while parsing request.");
                 }
 
-                return transactionTransform.Commit(continuation);
+                // raises request events on transaction delegate
+                return transactionTransform.Commit(socket, continuation);
             }
             catch
             {
-                Detach();
+                socket.Dispose();
                 throw;
             }
         }
 
-        void OnEnd()
+        public void OnEnd(ISocket socket)
         {
             Debug.WriteLine("Socket OnEnd.");
 
             // parse EOF
-            OnData(default(ArraySegment<byte>), null);
+            OnData(socket, default(ArraySegment<byte>), null);
 
-            transactionDelegate.OnEnd();
+            transactionDelegate.OnEnd(socket);
         }
 
-        void OnClose()
+        public void OnClose(ISocket socket)
         {
             Debug.WriteLine("Socket OnClose.");
-            Detach();
+            socket.Dispose();
         }
 
-        void OnError(Exception e)
+        public void OnError(ISocket socket, Exception e)
         {
             // XXX forward to user?
             Debug.WriteLine("Socket OnError.");
             e.PrintStacktrace();
         }
 
-        void Attach(ISocket socket)
+        public void OnConnected(ISocket socket)
         {
-            this.socket = socket;
-            socket.OnData += socket_OnData;
-            socket.OnEnd += socket_OnEnd;
-            socket.OnError += socket_OnError;
-            socket.OnClose += socket_OnClose;
+            throw new NotImplementedException();
         }
-
-        void Detach()
-        {
-            socket.OnData -= socket_OnData;
-            socket.OnEnd -= socket_OnEnd;
-            socket.OnError -= socket_OnError;
-            socket.OnClose -= socket_OnClose;
-            socket.Dispose();
-            socket = null;
-        }
-
-        #region Socket Event Boilerplate
-
-        void socket_OnClose(object sender, EventArgs e)
-        {
-            OnClose();
-        }
-
-        void socket_OnError(object sender, ExceptionEventArgs e)
-        {
-            OnError(e.Exception);
-        }
-
-        void socket_OnEnd(object sender, EventArgs e)
-        {
-            OnEnd();
-        }
-
-        void socket_OnData(object sender, DataEventArgs e)
-        {
-            e.WillInvokeContinuation = OnData(e.Data, e.Continuation);
-        }
-
-        #endregion
     }
 }

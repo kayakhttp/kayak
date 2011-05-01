@@ -7,12 +7,13 @@ namespace Kayak
 {
     class KayakSocket : ISocket
     {
-        public event EventHandler OnConnected;
-        public event EventHandler<DataEventArgs> OnData;
-        public event EventHandler OnEnd;
-        public event EventHandler OnTimeout;
-        public event EventHandler<ExceptionEventArgs> OnError;
-        public event EventHandler OnClose;
+        //public event EventHandler OnConnected;
+        //public event EventHandler<DataEventArgs> OnData;
+        //public event EventHandler OnEnd;
+        //public event EventHandler OnTimeout;
+        //public event EventHandler<ExceptionEventArgs> OnError;
+        //public event EventHandler OnClose;
+        ISocketDelegate del;
 
         public int id;
         static int nextId;
@@ -29,9 +30,10 @@ namespace Kayak
         Action continuation;
         IScheduler scheduler;
 
-        public KayakSocket(IScheduler scheduler)
+        public KayakSocket(IScheduler scheduler, ISocketDelegate del)
         {
             this.scheduler = scheduler;
+            this.del = del;
             state = new KayakSocketState(true);
         }
 
@@ -82,8 +84,8 @@ namespace Kayak
                         state.SetConnected();
 
                         Debug.WriteLine("KayakSocket: connected to " + ep);
-                        if (OnConnected != null)
-                            OnConnected(this, EventArgs.Empty);
+
+                        del.OnConnected(this);
 
                         DoRead();
                     }
@@ -318,16 +320,7 @@ namespace Kayak
             }
             else
             {
-                var dataEventArgs = new DataEventArgs()
-                {
-                    Data = new ArraySegment<byte>(inputBuffer, 0, read),
-                    Continuation = DoRead
-                };
-
-                if (OnData != null)
-                    OnData(this, dataEventArgs);
-
-                if (!dataEventArgs.WillInvokeContinuation)
+                if (!del.OnData(this, new ArraySegment<byte>(inputBuffer, 0, read), DoRead))
                     DoRead();
             }
         }
@@ -390,8 +383,7 @@ namespace Kayak
             Debug.WriteLine("KayakSocket: peer hung up.");
             var close = state.SetReadEnded();
 
-            if (OnEnd != null)
-                OnEnd(this, EventArgs.Empty);
+            del.OnEnd(this);
 
             if (close)
                 RaiseClosed();
@@ -404,16 +396,14 @@ namespace Kayak
 
         void RaiseError(Exception e)
         {
-            if (OnError != null)
-                OnError(this, new ExceptionEventArgs() { Exception = e });
+            del.OnError(this, e);
 
             RaiseClosed();
         }
 
         void RaiseClosed()
         {
-            if (OnClose != null)
-                OnClose(this, ExceptionEventArgs.Empty);
+            del.OnClose(this);
         }
     }
 }

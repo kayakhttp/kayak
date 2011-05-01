@@ -51,13 +51,13 @@ namespace KayakTests.Net
                 Debug.WriteLine("server OnConnection");
                 serverSocketDelegate = new SocketDelegate(s);
 
-                serverSocketDelegate.OnEnd = () =>
+                serverSocketDelegate.OnEndAction = () =>
                 {
                     Debug.WriteLine("serverSocket OnEnd");
                     s.End();
                 };
 
-                serverSocketDelegate.OnClose = () =>
+                serverSocketDelegate.OnCloseAction = () =>
                 {
                     Debug.WriteLine("serverSocket OnClose");
                     s.Dispose();
@@ -66,12 +66,12 @@ namespace KayakTests.Net
 
             context.OnStarted = () =>
             {
-                clientSocketDelegate.OnConnected = () =>
+                clientSocketDelegate.OnConnectedAction = () =>
                 {
                     Debug.WriteLine("client End");
                     client.End();
                 };
-                clientSocketDelegate.OnClose = () =>
+                clientSocketDelegate.OnCloseAction = () =>
                 {
                     Debug.WriteLine("client OnClose");
                     server.Close();
@@ -94,13 +94,13 @@ namespace KayakTests.Net
                 Debug.WriteLine("server OnConnection");
                 serverSocketDelegate = new SocketDelegate(s);
 
-                serverSocketDelegate.OnEnd = () =>
+                serverSocketDelegate.OnEndAction = () =>
                 {
                     Debug.WriteLine("serverSocket OnEnd");
                     s.End();
                 };
 
-                serverSocketDelegate.OnClose = () =>
+                serverSocketDelegate.OnCloseAction = () =>
                 {
                     Debug.WriteLine("serverSocket OnClose");
                     s.Dispose();
@@ -109,7 +109,7 @@ namespace KayakTests.Net
 
             context.OnStarted = () =>
             {
-                clientSocketDelegate.OnConnected = () =>
+                clientSocketDelegate.OnConnectedAction = () =>
                 {
                     Debug.WriteLine("client OnConnected");
                     try
@@ -122,7 +122,7 @@ namespace KayakTests.Net
                     }
                 };
 
-                clientSocketDelegate.OnClose = () =>
+                clientSocketDelegate.OnCloseAction = () =>
                 {
                     Debug.WriteLine("client OnClose");
                     server.Close();
@@ -148,12 +148,12 @@ namespace KayakTests.Net
             {
                 serverSocketDelegate = new SocketDelegate(s);
 
-                serverSocketDelegate.OnEnd = () =>
+                serverSocketDelegate.OnEndAction = () =>
                 {
                     s.End();
                 };
 
-                serverSocketDelegate.OnClose = () =>
+                serverSocketDelegate.OnCloseAction = () =>
                 {
                     s.Dispose();
                 };
@@ -161,7 +161,7 @@ namespace KayakTests.Net
 
             context.OnStarted = () =>
             {
-                clientSocketDelegate.OnConnected = () =>
+                clientSocketDelegate.OnConnectedAction = () =>
                 {
                     try
                     {
@@ -173,7 +173,7 @@ namespace KayakTests.Net
                     }
                 };
 
-                clientSocketDelegate.OnClose = () =>
+                clientSocketDelegate.OnCloseAction = () =>
                 {
                     server.Close();
                     scheduler.Stop();
@@ -197,7 +197,7 @@ namespace KayakTests.Net
                 serverSocketDelegate = new SocketDelegate(s);
                 WriteDataSync(s);
 
-                serverSocketDelegate.OnClose = () =>
+                serverSocketDelegate.OnCloseAction = () =>
                 {
                     s.Dispose();
                     server.Close();
@@ -207,7 +207,7 @@ namespace KayakTests.Net
 
             context.OnStarted = () =>
             {
-                clientSocketDelegate.OnEnd = () =>
+                clientSocketDelegate.OnEndAction = () =>
                 {
                     client.End();
                 };
@@ -230,7 +230,7 @@ namespace KayakTests.Net
                 serverSocketDelegate = new SocketDelegate(s);
                 WriteDataSync(s);
 
-                serverSocketDelegate.OnClose = () =>
+                serverSocketDelegate.OnCloseAction = () =>
                 {
                     Debug.WriteLine("will dispose");
                     s.Dispose();
@@ -242,7 +242,7 @@ namespace KayakTests.Net
 
             context.OnStarted = () =>
             {
-                clientSocketDelegate.OnEnd = () =>
+                clientSocketDelegate.OnEndAction = () =>
                 {
                     client.End();
                 };

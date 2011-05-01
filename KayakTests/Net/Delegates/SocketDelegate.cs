@@ -6,16 +6,14 @@ using Kayak;
 
 namespace KayakTests.Net
 {
-    class SocketDelegate : IDisposable
+    class SocketDelegate
     {
-        ISocket socket;
-
-        public Action OnTimeout;
-        public Action<Exception> OnError;
-        public Action OnEnd;
-        public Func<ArraySegment<byte>, Action, bool> OnData;
-        public Action OnConnected;
-        public Action OnClose;
+        public Action OnTimeoutAction;
+        public Action<Exception> OnErrorAction;
+        public Action OnEndAction;
+        public Func<ArraySegment<byte>, Action, bool> OnDataAction;
+        public Action OnConnectedAction;
+        public Action OnCloseAction;
 
         public Exception Exception;
         public int NumOnConnectedEvents;
@@ -26,70 +24,52 @@ namespace KayakTests.Net
 
         public SocketDelegate(ISocket socket)
         {
-            this.socket = socket;
-            socket.OnClose += socket_OnClose;
-            socket.OnConnected += socket_OnConnected;
-            socket.OnData += socket_OnData;
-            socket.OnEnd += socket_OnEnd;
-            socket.OnError += socket_OnError;
-            //socket.OnTimeout += socket_OnTimeout;
             Buffer = new DataBuffer();
         }
 
-        public void Dispose()
+        void OnTimeout(IServer server)
         {
-            socket.OnClose -= socket_OnClose;
-            socket.OnConnected -= socket_OnConnected;
-            socket.OnData -= socket_OnData;
-            socket.OnEnd -= socket_OnEnd;
-            socket.OnError -= socket_OnError;
-            //socket.OnTimeout -= socket_OnTimeout;
-            socket = null;
+            if (OnTimeoutAction != null)
+                OnTimeoutAction();
         }
 
-        void socket_OnTimeout(object sender, EventArgs e)
+        void OnError(IServer server, Exception e)
         {
-            if (OnTimeout != null)
-                OnTimeout();
+            Exception = e;
+            if (OnErrorAction != null)
+                OnErrorAction(e);
         }
 
-        void socket_OnError(object sender, ExceptionEventArgs e)
-        {
-            Exception = e.Exception;
-            if (OnError != null)
-                OnError(e.Exception);
-        }
-
-        void socket_OnEnd(object sender, EventArgs e)
+        void OnEnd(IServer server)
         {
             NumOnEndEvents++;
-            if (OnEnd != null)
-                OnEnd();
+            if (OnEndAction != null)
+                OnEndAction();
         }
 
-        void socket_OnData(object sender, DataEventArgs e)
+        bool OnData(IServer server, ArraySegment<byte> data, Action continuation)
         {
-            e.WillInvokeContinuation = false;
+            Buffer.AddToBuffer(data);
 
-            Buffer.AddToBuffer(e.Data);
+            if (OnDataAction != null)
+                return OnDataAction(data, continuation);
 
-            if (OnData != null)
-                e.WillInvokeContinuation = OnData(e.Data, e.Continuation);
+            return false;
         }
 
 
-        void socket_OnConnected(object sender, EventArgs e)
+        void OnConnected(IServer server)
         {
             NumOnConnectedEvents++;
-            if (OnConnected != null)
-                OnConnected();
+            if (OnConnectedAction != null)
+                OnConnectedAction();
         }
 
-        void socket_OnClose(object sender, EventArgs e)
+        void OnClose(IServer server)
         {
             NumOnCloseEvents++;
-            if (OnClose != null)
-                OnClose();
+            if (OnCloseAction != null)
+                OnCloseAction();
         }
     }
 }

@@ -20,7 +20,7 @@ namespace Kayak.Http
 
         bool sentConnectionHeader;
 
-        public static ResponseState Create(IHttpServerRequest request, bool shouldKeepAlive)
+        public static ResponseState Create(HttpRequestHead request, bool shouldKeepAlive)
         {
             return new ResponseState()
             {

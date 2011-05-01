@@ -3,32 +3,62 @@ using System.Collections.Generic;
 
 namespace Kayak.Http
 {
-    public class HttpRequestEventArgs : EventArgs
+    public struct HttpRequestHead
     {
-        public IHttpServerRequest Request { get; internal set; }
-        public IHttpServerResponse Response { get; internal set; }
+        public string Method;
+        public string Uri;
+        public Version Version;
+        public IDictionary<string, string> Headers;
     }
 
-    public interface IHttpServer
+    public struct HttpResponseHead
     {
-        event EventHandler<HttpRequestEventArgs> OnRequest;
+        public string Status;
+        public IDictionary<string, string> Headers;
     }
 
-    public interface IHttpServerRequest
+    public interface IHttpServerFactory
     {
-        event EventHandler<DataEventArgs> OnBody;
-        event EventHandler OnEnd;
-
-        string Method { get; }
-        string Uri { get; }
-        Version Version { get; }
-        IDictionary<string, string> Headers { get; }
+        IServer Create(IHttpServerDelegate del, IScheduler scheduler);
     }
 
-    public interface IHttpServerResponse
+    public interface IHttpClientFactory
+    {
+        IHttpRequest Create(IHttpResponseDelegate del);
+    }
+
+    public interface IHttpServerDelegate
+    {
+        IHttpRequestDelegate OnRequest(IServer server, IHttpResponse response);
+        void OnClose(IServer server);
+    }
+
+    public interface IHttpRequest
+    {
+        void WriteHeaders(HttpRequestHead head);
+        bool WriteBody(ArraySegment<byte> data, Action continuation);
+        void End();
+    }
+
+    public interface IHttpResponseDelegate
+    {
+        void OnContinue();
+        void OnHeaders(HttpResponseHead head);
+        bool OnBody(ArraySegment<byte> data, Action continuation);
+        void OnEnd();
+    }
+
+    public interface IHttpRequestDelegate
+    {
+        void OnHeaders(HttpRequestHead head);
+        bool OnBody(ArraySegment<byte> data, Action continuation);
+        void OnEnd();
+    }
+
+    public interface IHttpResponse
     {
         void WriteContinue();
-        void WriteHeaders(string status, IDictionary<string, string> headers);
+        void WriteHeaders(HttpResponseHead head);
         bool WriteBody(ArraySegment<byte> data, Action continuation);
         void End();
     }
