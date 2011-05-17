@@ -72,8 +72,14 @@ namespace Kayak
         public void EnsureCanRead()
         {
             // these checks should never pass; they are here for safety.
-            if ((state & State.Disposed) > 0)
-                throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            
+            // disabled, after the callback for an async read is raised, the socket 
+            // may have been disposed, but there's no clean way for us to know this
+            // short of duplicating the System.Net.Sockets.Socket's state. instead
+            // we always loop and let it raise ObjectDisposedException, which we
+            // handle more cleanly.
+            //if ((state & State.Disposed) > 0)
+            //        throw new ObjectDisposedException(typeof(KayakSocket).Name);
 
             if ((state & State.Connected) == 0)
                 throw new InvalidOperationException("The socket was not connected.");

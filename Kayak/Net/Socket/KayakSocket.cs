@@ -246,48 +246,56 @@ namespace Kayak
             {
                 int read;
                 Exception error;
-                Debug.WriteLine("KayakSocket: reading.");
-                var ar0 = socket.BeginReceive(inputBuffer, 0, inputBuffer.Length, ar =>
+                while (true)
                 {
-                    if (ar.CompletedSynchronously) return;
-
-                    read = EndRead(ar, out error);
-
-                    if (error is ObjectDisposedException)
-                        return;
-                    
-                    scheduler.Post(() =>
+                    Debug.WriteLine("KayakSocket: reading.");
+                    var ar0 = socket.BeginReceive(inputBuffer, 0, inputBuffer.Length, ar =>
                     {
-                        Debug.WriteLine("KayakSocket: receive completed async");
+                        if (ar.CompletedSynchronously) return;
+
+                        read = EndRead(ar, out error);
+
+                        if (error is ObjectDisposedException)
+                            return;
+
+                        scheduler.Post(() =>
+                        {
+                            Debug.WriteLine("KayakSocket: receive completed async");
+
+                            if (error != null)
+                            {
+                                HandleReadError(error);
+                            }
+                            else
+                            {
+                                if (!HandleReadResult(read, false))
+                                    scheduler.Post(DoRead);
+                            }
+                        });
+
+                    });
+
+                    if (ar0.CompletedSynchronously)
+                    {
+                        Debug.WriteLine("KayakSocket: receive completed sync");
+                        read = EndRead(ar0, out error);
+
+                        if (error is ObjectDisposedException)
+                            return;
 
                         if (error != null)
                         {
                             HandleReadError(error);
+                            break;
                         }
                         else
                         {
-                            HandleReadResult(read, true);
+                            if (HandleReadResult(read, true))
+                                break;
                         }
-                    });
-
-                });
-
-                if (ar0.CompletedSynchronously)
-                {
-                    Debug.WriteLine("KayakSocket: receive completed sync");
-                    read = EndRead(ar0, out error);
-
-                    if (error is ObjectDisposedException)
-                        return;
-
-                    if (error != null)
-                    {
-                        HandleReadError(error);
                     }
                     else
-                    {
-                        HandleReadResult(read, false);
-                    }
+                        break;
                 }
             }
             catch (Exception e)
@@ -310,18 +318,18 @@ namespace Kayak
             }
         }
 
-        void HandleReadResult(int read, bool sync)
+        bool HandleReadResult(int read, bool sync)
         {
             Debug.WriteLine("KayakSocket: " + (sync ? "" : "a") + "sync read " + read);
 
             if (read == 0)
             {
                 PeerHungUp();
+                return false;
             }
             else
             {
-                if (!del.OnData(this, new ArraySegment<byte>(inputBuffer, 0, read), DoRead))
-                    DoRead();
+                return del.OnData(this, new ArraySegment<byte>(inputBuffer, 0, read), DoRead);
             }
         }
 
