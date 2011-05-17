@@ -26,35 +26,29 @@ namespace Kayak
 
         public void SetConnecting()
         {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            if ((state & State.Disposed) > 0)
+                throw new ObjectDisposedException(typeof(KayakSocket).Name);
 
-                if ((state & State.Connected) > 0)
-                    throw new InvalidOperationException("The socket was connected.");
+            if ((state & State.Connected) > 0)
+                throw new InvalidOperationException("The socket was connected.");
 
-                if ((state & State.Connecting) > 0)
-                    throw new InvalidOperationException("The socket was connecting.");
+            if ((state & State.Connecting) > 0)
+                throw new InvalidOperationException("The socket was connecting.");
 
-                state |= State.Connecting;
-            }
+            state |= State.Connecting;
         }
 
         public void SetConnected()
         {
-            lock (this)
-            {
-                // these checks should never pass; they are here for safety.
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            // these checks should never pass; they are here for safety.
+            if ((state & State.Disposed) > 0)
+                throw new ObjectDisposedException(typeof(KayakSocket).Name);
 
-                if ((state & State.Connecting) == 0)
-                    throw new Exception("The socket was not connecting.");
+            if ((state & State.Connecting) == 0)
+                throw new Exception("The socket was not connecting.");
 
-                state ^= State.Connecting;
-                state |= State.Connected;
-            }
+            state ^= State.Connecting;
+            state |= State.Connected;
         }
 
 
@@ -65,119 +59,98 @@ namespace Kayak
 
         public void EnsureCanWrite()
         {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            if ((state & State.Disposed) > 0)
+                throw new ObjectDisposedException("KayakSocket");
 
-                if ((state & State.Connected) == 0)
-                    throw new InvalidOperationException("The socket was not connected.");
+            if ((state & State.Connected) == 0)
+                throw new InvalidOperationException("The socket was not connected.");
 
-                if ((state & State.WriteEnded) > 0)
-                    throw new InvalidOperationException("The socket was previously ended.");
-            }
+            if ((state & State.WriteEnded) > 0)
+                throw new InvalidOperationException("The socket was previously ended.");
         }
 
         public void EnsureCanRead()
         {
-            lock (this)
-            {
-                // these checks should never pass; they are here for safety.
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            // these checks should never pass; they are here for safety.
+            if ((state & State.Disposed) > 0)
+                throw new ObjectDisposedException(typeof(KayakSocket).Name);
 
-                if ((state & State.Connected) == 0)
-                    throw new InvalidOperationException("The socket was not connected.");
+            if ((state & State.Connected) == 0)
+                throw new InvalidOperationException("The socket was not connected.");
 
-                if ((state & State.ReadEnded) > 0)
-                    throw new InvalidOperationException("The socket was previously ended by the peer.");
-            }
+            if ((state & State.ReadEnded) > 0)
+                throw new InvalidOperationException("The socket was previously ended by the peer.");
         }
 
         public bool SetReadEnded()
         {
-            lock (this)
+            EnsureCanRead();
+
+            state |= State.ReadEnded;
+
+            if ((state & State.WriteEnded) > 0)
             {
-                EnsureCanRead();
-
-                state |= State.ReadEnded;
-
-                if ((state & State.WriteEnded) > 0)
-                {
-                    state |= State.Closed;
-                    return true;
-                }
-                else
-                    return false;
+                state |= State.Closed;
+                return true;
             }
+            else
+                return false;
         }
 
         public bool WriteCompleted(out bool writeEnded)
         {
-            lock (this)
+            bool readEnded = (state & State.ReadEnded) > 0;
+            writeEnded = (state & State.WriteEnded) > 0;
+
+            Debug.WriteLine("KayakSocketState: WriteCompleted (readEnded = " + readEnded +
+                ", writeEnded = " + writeEnded + ")");
+
+            if (readEnded && writeEnded)
             {
-                bool readEnded = (state & State.ReadEnded) > 0;
-                writeEnded = (state & State.WriteEnded) > 0;
-
-                Debug.WriteLine("KayakSocketState: WriteCompleted (readEnded = " + readEnded +
-                    ", writeEnded = " + writeEnded + ")");
-
-                if (readEnded && writeEnded)
-                {
-                    state |= State.Closed;
-                    return true;
-                }
-                else
-                    return false;
+                state |= State.Closed;
+                return true;
             }
+            else
+                return false;
         }
 
         public bool SetWriteEnded()
         {
-            lock (this)
+            if ((state & State.Disposed) > 0)
+                throw new ObjectDisposedException(typeof(KayakSocket).Name);
+
+            if ((state & State.Connected) == 0)
+                throw new InvalidOperationException("The socket was not connected.");
+
+            if ((state & State.WriteEnded) > 0)
+                throw new InvalidOperationException("The socket was previously ended.");
+
+            state |= State.WriteEnded;
+
+            if ((state & State.ReadEnded) > 0)
             {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
-                if ((state & State.Connected) == 0)
-                    throw new InvalidOperationException("The socket was not connected.");
-
-                if ((state & State.WriteEnded) > 0)
-                    throw new InvalidOperationException("The socket was previously ended.");
-
-                state |= State.WriteEnded;
-
-                if ((state & State.ReadEnded) > 0)
-                {
-                    state |= State.Closed;
-                    return true;
-                }
-                else
-                    return false;
+                state |= State.Closed;
+                return true;
             }
+            else
+                return false;
         }
 
         public void SetError()
         {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            if ((state & State.Disposed) > 0)
+                throw new ObjectDisposedException(typeof(KayakSocket).Name);
 
-                state ^= State.Connecting | State.Connected;
-                state |= State.Closed;
-            }
+            state ^= State.Connecting | State.Connected;
+            state |= State.Closed;
         }
 
         public void SetDisposed()
         {
-            lock (this)
-            {
-                if ((state & State.Disposed) > 0)
-                    throw new ObjectDisposedException(typeof(KayakSocket).Name);
+            //if ((state & State.Disposed) > 0)
+            //    throw new ObjectDisposedException(typeof(KayakSocket).Name);
 
-                state |= State.Disposed;
-            }
+            state |= State.Disposed;
         }
     }
 }

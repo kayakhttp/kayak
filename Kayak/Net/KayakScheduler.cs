@@ -40,6 +40,7 @@ namespace Kayak
             if (dispatch != null)
                 throw new InvalidOperationException("The scheduler was already started.");
 
+            this.del = del;
             Dispatch();
         }
 
