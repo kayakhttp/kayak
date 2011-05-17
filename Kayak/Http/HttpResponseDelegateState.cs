@@ -59,7 +59,7 @@ namespace Kayak.Http
             }
             else
             {
-                indicateConnection = false;
+                indicateConnection = true;
                 indicateConnectionClose = false;
             }
         }

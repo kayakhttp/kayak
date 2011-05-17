@@ -157,6 +157,7 @@ namespace Kayak.Http
 
         void DrainBuffer()
         {
+            // XXX probably worthwhile to combine first two elements into a single packet
             foreach (var b in buffer)
                 socket.Write(new ArraySegment<byte>(b), null);
 
@@ -173,6 +174,7 @@ namespace Kayak.Http
             if (continuation != null)
                 throw new InvalidOperationException("Continuation was pending.");
 
+            // XXX probably worthwhile to always buffer first packet
             if (socket == null)
             {
                 AddToBuffer(data);
