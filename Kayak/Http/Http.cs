@@ -19,47 +19,16 @@ namespace Kayak.Http
 
     public interface IHttpServerFactory
     {
-        IServer Create(IHttpServerDelegate del, IScheduler scheduler);
+        IServer Create(IHttpChannel del, IScheduler scheduler);
     }
 
-    public interface IHttpClientFactory
+    public interface IHttpChannel
     {
-        IHttpRequest Create(IHttpResponseDelegate del);
-    }
-
-    public interface IHttpServerDelegate
-    {
-        IHttpRequestDelegate OnRequest(IServer server, IHttpResponse response);
-        void OnClose(IServer server);
-    }
-
-    public interface IHttpRequest
-    {
-        void WriteHeaders(HttpRequestHead head);
-        bool WriteBody(ArraySegment<byte> data, Action continuation);
-        void End();
+        void OnRequest(HttpRequestHead request, IDataProducer requestBody, IHttpResponseDelegate response);
     }
 
     public interface IHttpResponseDelegate
     {
-        void OnContinue();
-        void OnHeaders(HttpResponseHead head);
-        bool OnBody(ArraySegment<byte> data, Action continuation);
-        void OnEnd();
-    }
-
-    public interface IHttpRequestDelegate
-    {
-        void OnHeaders(HttpRequestHead head);
-        bool OnBody(ArraySegment<byte> data, Action continuation);
-        void OnEnd();
-    }
-
-    public interface IHttpResponse
-    {
-        void WriteContinue();
-        void WriteHeaders(HttpResponseHead head);
-        bool WriteBody(ArraySegment<byte> data, Action continuation);
-        void End();
+        void OnResponse(HttpResponseHead head, IDataProducer body);
     }
 }

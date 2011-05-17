@@ -115,7 +115,8 @@ namespace Kayak
                         var s = new KayakSocket(socket, this.scheduler);
                         state.IncrementConnections();
 
-                        del.OnConnection(this, s);
+                        var socketDelegate = del.OnConnection(this, s);
+                        s.del = socketDelegate;
                         s.DoRead();
                     });
 
@@ -142,7 +143,7 @@ namespace Kayak
             catch { }
 
             Debug.WriteLine("Error attempting to accept connection.");
-            e.PrintStacktrace();
+            e.DebugStacktrace();
 
             RaiseOnClose();
         }

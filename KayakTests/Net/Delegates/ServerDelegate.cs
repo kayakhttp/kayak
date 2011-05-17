@@ -6,7 +6,7 @@ namespace KayakTests.Net
     class ServerDelegate : IServerDelegate
     {
         IServer server;
-        public Func<ISocket, ISchedulerDelegate> OnConnectionAction;
+        public Func<IServer, ISocket, ISocketDelegate> OnConnectionAction;
         public Action OnCloseAction;
 
         public int NumOnConnectionEvents;
@@ -18,7 +18,7 @@ namespace KayakTests.Net
 
             if (OnConnectionAction != null)
             {
-                return OnConnectionAction(socket);
+                return OnConnectionAction(server, socket);
             }
             else
             {

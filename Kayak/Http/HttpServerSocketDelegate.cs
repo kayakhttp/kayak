@@ -30,19 +30,16 @@ namespace Kayak.Http
                 if (parsed != data.Count)
                 {
                     Trace.Write("Error while parsing request.");
-
-                    socket.Dispose();
-
-                    // XXX forward to user?
                     throw new Exception("Error while parsing request.");
                 }
 
                 // raises request events on transaction delegate
-                return transactionTransform.Commit(socket, continuation);
+                return transactionTransform.Commit(continuation);
             }
-            catch
+            catch (Exception e)
             {
-                socket.Dispose();
+                OnError(socket, e);
+                OnClose(socket);
                 throw;
             }
         }
@@ -54,20 +51,20 @@ namespace Kayak.Http
             // parse EOF
             OnData(socket, default(ArraySegment<byte>), null);
 
-            transactionDelegate.OnEnd(socket);
+            transactionDelegate.OnEnd();
+        }
+
+        public void OnError(ISocket socket, Exception e)
+        {
+            Debug.WriteLine("Socket OnError.");
+            e.DebugStacktrace();
+            transactionDelegate.OnError(e);
         }
 
         public void OnClose(ISocket socket)
         {
             Debug.WriteLine("Socket OnClose.");
-            socket.Dispose();
-        }
-
-        public void OnError(ISocket socket, Exception e)
-        {
-            // XXX forward to user?
-            Debug.WriteLine("Socket OnError.");
-            e.PrintStacktrace();
+            transactionDelegate.OnClose();
         }
 
         public void OnConnected(ISocket socket)

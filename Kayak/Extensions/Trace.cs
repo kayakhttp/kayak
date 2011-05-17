@@ -6,7 +6,7 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-        public static void PrintStacktrace(this Exception exception)
+        public static void DebugStacktrace(this Exception exception)
         {
 #if DEBUG
             var sb = new StringBuilder();

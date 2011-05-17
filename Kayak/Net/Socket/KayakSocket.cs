@@ -13,7 +13,7 @@ namespace Kayak
         //public event EventHandler OnTimeout;
         //public event EventHandler<ExceptionEventArgs> OnError;
         //public event EventHandler OnClose;
-        ISocketDelegate del;
+        internal ISocketDelegate del;
 
         public int id;
         static int nextId;

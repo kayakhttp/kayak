@@ -5,87 +5,54 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    class HttpServerFactory : IHttpServerFactory
+    public static class HttpServerExtensions
     {
-        public IServer Create(IHttpServerDelegate del, IScheduler scheduler)
+        public static IServer CreateHttp(this IServerFactory factory, IHttpChannel channel)
         {
-            return KayakServer.Factory.Create(new ServerDelegate(del), scheduler);
+            return CreateHttp(factory, channel, KayakScheduler.Current as KayakScheduler);
         }
 
-        class ServerDelegate : IServerDelegate
+        public static IServer CreateHttp(this IServerFactory factory, IHttpChannel channel, IScheduler scheduler)
         {
-            IHttpServerDelegate del;
-
-            public ServerDelegate(IHttpServerDelegate del)
-            {
-                this.del = del;
-            }
-
-            public ISocketDelegate OnConnection(IServer server, ISocket socket)
-            {
-                return new HttpServerSocketDelegate(new HttpServerTransactionDelegate(del));
-            }
-
-            public void OnClose(IServer server)
-            {
-                del.OnClose(server);
-            }
+            var f = new HttpServerFactory(factory);
+            return f.Create(channel, scheduler);
         }
-
     }
 
-    //class HttpServer : IHttpServer
-    //{
-    //    int listeners;
-    //    EventHandler<HttpRequestEventArgs> onRequest;
+    class HttpServerFactory : IHttpServerFactory
+    {
+        IServerFactory serverFactory;
 
-    //    public event EventHandler<HttpRequestEventArgs> OnRequest
-    //    {
-    //        add
-    //        {
-    //            onRequest = (EventHandler<HttpRequestEventArgs>)Delegate.Combine(onRequest, value);
-    //            listeners++;
+        public HttpServerFactory(IServerFactory serverFactory)
+        {
+            this.serverFactory = serverFactory;
+        }
 
-    //            if (listeners == 1)
-    //            {
-    //                server.OnConnection += OnConnection;
-    //            }
-    //        }
+        public IServer Create(IHttpChannel del, IScheduler scheduler)
+        {
+            return serverFactory.Create(new HttpServerDelegate(del), scheduler);
+        }
+    }
 
-    //        remove
-    //        {
-    //            onRequest = (EventHandler<HttpRequestEventArgs>)Delegate.Remove(onRequest, value);
-    //            listeners--;
+    class HttpServerDelegate : IServerDelegate
+    {
+        IResponseFactory responseFactory;
 
-    //            if (listeners == 0)
-    //            {
-    //                server.OnConnection -= OnConnection;
-    //            }
-    //        }
-    //    }
+        public HttpServerDelegate(IHttpChannel channel)
+        {
+            this.responseFactory = new ResponseFactory(channel);
+        }
 
-    //    IServer server;
+        public ISocketDelegate OnConnection(IServer server, ISocket socket)
+        {
+            var txDel = new HttpServerTransactionDelegate(responseFactory);
+            txDel.Subscribe(new OutputSegmentQueue(socket));
+            return new HttpServerSocketDelegate(txDel);
+        }
 
-    //    public HttpServer(IServer server)
-    //    {
-    //        this.server = server;
-    //    }
+        public void OnClose(IServer server)
+        {
 
-    //    void OnConnection(object sender, ConnectionEventArgs e)
-    //    {
-    //        var socket = e.Socket;
-
-    //        // XXX freelist
-    //        var del = new HttpServerSocketDelegate(socket, new HttpServerTransactionDelegate(RaiseOnRequest));
-    //    }
-
-    //    internal void RaiseOnRequest(IHttpServerRequest req, IHttpResponse res)
-    //    {
-    //        if (onRequest != null)
-    //            onRequest(this, new HttpRequestEventArgs() { Request = req, Response = res });
-    //        else
-    //            res.End();
-    //    }
-    //}
-
+        }
+    }
 }

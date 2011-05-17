@@ -9,163 +9,12 @@ using KayakTests.Net;
 
 namespace KayakTests.Http
 {
-    //[TestFixture]
-    //public class EventQueueTests
-    //{
-    //    bool error;
-
-    //    // same instance
-    //    IHttpEventQueue queue;
-    //    IParserDelegate parserDelegate;
-
-    //    [Test]
-    //    public void Transforms_to_events()
-    //    {
-    //        parserDelegate.OnRequestBegan(new HttpRequestHeaders(), false);
-    //        parserDelegate.OnRequestBody(new ArraySegment<byte>());
-    //        parserDelegate.OnRequestEnded();
-
-    //        var e = queue.Dequeue();
-    //        Assert.That(e.Type, Is.EqualTo(ParserEventType.RequestHeaders));
-    //        Assert.That(e.KeepAlive, Is.False);
-
-    //        e = queue.Dequeue();
-    //        Assert.That(e.Type, Is.EqualTo(ParserEventType.RequestBody));
-
-    //        e = queue.Dequeue();
-    //        Assert.That(e.Type, Is.EqualTo(ParserEventType.RequestEnded));
-
-    //        // etc. lots of permutations on when OnWhatever is called, when Dequeue is called,
-    //        // when Delay is called (and verify rebuffering), error.
-    //    }
-
-    //    // but that's not interesting really.
-
-    //}
-
-    //[TestFixture]
-    //public class EventConsumerTests
-    //{
-    //    bool willInvokeContinuation;
-    //    MockRequestDelegate requestDelegate;
-    //    IHttpEventHandler handler;
-
-
-
-    //    [Test]
-    //    public void Transforms_to_continuations()
-    //    {
-    //        willInvokeContinuation = handler.ProcessEvent(
-    //            new ParserEvent() { Type = ParserEventType.RequestHeaders }, requestDelegate, () => { });
-
-    //        Assert.That(willInvokeContinuation, Is.False);
-    //        // assert mock got OnRequestHeaders
-
-    //        willInvokeContinuation = handler.ProcessEvent(
-    //            new ParserEvent() { Type = ParserEventType.RequestBody }, requestDelegate, () => { });
-
-    //        Assert.That(willInvokeContinuation, Is.False);
-    //        // assert mock got OnRequestBody. vary on willInvokeContinuation
-
-    //        willInvokeContinuation = handler.ProcessEvent(
-    //            new ParserEvent() { Type = ParserEventType.RequestEnded }, requestDelegate, () => { });
-
-    //        Assert.That(willInvokeContinuation, Is.False);
-    //        // assert mock got OnRequestEnded. 
-    //        // assert error if ProcessEvent called before continuation invoked if previous call returned true. etc.
-    //    }
-    //}
-
-    
-
-    //class MockHttpDel : IHttpServerTransactionDelegate, IDisposable
-    //{
-    //    public List<MockIRequestDelegate> Requests;
-    //    public bool GotOnEnd;
-    //    public Func<Func<ArraySegment<byte>, Action, bool>> OnDataFactory;
-
-    //    public MockHttpDel()
-    //    {
-    //        Requests = new List<MockIRequestDelegate>();
-    //    }
-
-    //    public void OnBegin(ISocket socket)
-    //    {
-    //    }
-
-    //    public void OnRequest(ISocket socket, HttpRequestHead request, bool shouldKeepAlive)
-    //    {
-    //        Requests.Add(new MockIRequestDelegate(request, shouldKeepAlive) { OnData = OnDataFactory == null ? null : OnDataFactory() });
-    //    }
-
-    //    public void OnEnd(ISocket socket)
-    //    {
-    //        if (GotOnEnd)
-    //            throw new Exception("OnEnd was called more than once.");
-
-    //        GotOnEnd = true;
-    //    }
-
-    //    public void Dispose()
-    //    {
-    //        foreach (var di in Requests)
-    //            di.Dispose();
-    //    }
-
-    //    public class MockIRequestDelegate : IDisposable
-    //    {
-    //        public IHttpServerRequest Request;
-    //        public bool ShouldKeepAlive;
-    //        public Action OnEnd;
-    //        public Func<ArraySegment<byte>, Action, bool> OnData;
-    //        public int NumOnEndEvents;
-    //        public int NumOnBodyEvents;
-    //        public DataBuffer Buffer;
-
-    //        public MockIRequestDelegate(IHttpServerRequest request, bool shouldKeepAlive)
-    //        {
-    //            Request = request;
-    //            ShouldKeepAlive = shouldKeepAlive;
-    //            request.OnBody += request_OnBody;
-    //            request.OnEnd += request_OnEnd;
-    //            Buffer = new DataBuffer();
-
-    //        }
-
-    //        void request_OnBody(object sender, DataEventArgs e)
-    //        {
-    //            NumOnBodyEvents++;
-    //            e.WillInvokeContinuation = false;
-
-    //            Buffer.AddToBuffer(e.Data);
-
-    //            if (OnData != null)
-    //                e.WillInvokeContinuation = OnData(e.Data, e.Continuation);
-    //        }
-
-    //        void request_OnEnd(object sender, EventArgs e)
-    //        {
-    //            NumOnEndEvents++;
-    //            if (OnEnd != null)
-    //                OnEnd();
-    //        }
-
-    //        public void Dispose()
-    //        {
-    //            Request.OnBody -= request_OnBody;
-    //            Request.OnEnd -= request_OnEnd;
-    //        }
-    //    }
-    //}
-
-
-
     [TestFixture]
     public class ParserToTransactionTransformTests
     {
         ParserToTransactionTransform del;
         MockHttpServerTransactionDelegate httpDel;
-        
+
 
         [SetUp]
         public void SetUp()
@@ -182,7 +31,7 @@ namespace KayakTests.Http
         void Commit(bool shouldInvokeContinuation)
         {
             bool continuationInvoked = false;
-            var result = del.Commit(null, () => { continuationInvoked = true; });
+            var result = del.Commit(() => { continuationInvoked = true; });
 
             Assert.That(result, Is.EqualTo(shouldInvokeContinuation));
             Assert.That(continuationInvoked, Is.False);
@@ -273,7 +122,7 @@ namespace KayakTests.Http
 
             Commit(true);
 
-            Assert.That(requestDelegates[0].Data.ToString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
+            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
         }
 
         [Test]
@@ -294,6 +143,8 @@ namespace KayakTests.Http
 
             WriteBody("whatever gets you off, you bastard");
             del.OnRequestEnded();
+
+            httpDel.OnDataAction = (d, c) => { Assert.That(c, Is.Null); return false; };
 
             Commit(false);
 

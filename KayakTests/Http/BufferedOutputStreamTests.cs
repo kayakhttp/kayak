@@ -1,214 +1,214 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using NUnit.Framework;
-using Kayak.Http;
-using Kayak;
-using KayakTests.Net;
-using System.Diagnostics;
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Linq;
+//using System.Text;
+//using NUnit.Framework;
+//using Kayak.Http;
+//using Kayak;
+//using KayakTests.Net;
+//using System.Diagnostics;
 
-namespace KayakTests.Http
-{
-    [TestFixture]
-    public class BufferedOutputStreamTests
-    {
-        BufferedOutputStream buffer;
-        MockSocket socket;
-        bool drained;
+//namespace KayakTests.Http
+//{
+//    [TestFixture]
+//    public class BufferedOutputStreamTests
+//    {
+//        BufferedOutputStream buffer;
+//        MockSocket socket;
+//        bool drained;
 
-        class OutputStreamDelegate : IBufferedOutputStreamDelegate
-        {
-            public Action<Kayak.Http.IBufferedOutputStream> OnFlush;
+//        class OutputStreamDelegate : IBufferedOutputStreamDelegate
+//        {
+//            public Action<Kayak.Http.IBufferedOutputStream> OnFlush;
 
-            public void OnDrained(Kayak.Http.IBufferedOutputStream message)
-            {
-                OnFlush(message);
-            }
-        }
+//            public void OnDrained(Kayak.Http.IBufferedOutputStream message)
+//            {
+//                OnFlush(message);
+//            }
+//        }
 
-        [SetUp]
-        public void SetUp()
-        {
-            drained = false;
-            buffer = new BufferedOutputStream(new OutputStreamDelegate() { OnFlush = o => drained = true });
-            socket = new MockSocket();
-        }
+//        [SetUp]
+//        public void SetUp()
+//        {
+//            drained = false;
+//            buffer = new BufferedOutputStream(new OutputStreamDelegate() { OnFlush = o => drained = true });
+//            socket = new MockSocket();
+//        }
 
-        [Test]
-        public void Writes_data_received_synchronously_and_ended_before_attached_to_socket()
-        {
-            WriteDataSync();
-            buffer.End();
+//        [Test]
+//        public void Writes_data_received_synchronously_and_ended_before_attached_to_socket()
+//        {
+//            WriteDataSync();
+//            buffer.End();
 
-            Assert.That(drained, Is.False);
+//            Assert.That(drained, Is.False);
 
-            buffer.Attach(socket);
+//            buffer.Attach(socket);
 
-            Assert.That(drained, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
-        }
+//            Assert.That(drained, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
+//        }
 
-        [Test]
-        public void Writes_data_received_synchronously_and_ended_after_attached_to_socket()
-        {
-            buffer.Attach(socket);
+//        [Test]
+//        public void Writes_data_received_synchronously_and_ended_after_attached_to_socket()
+//        {
+//            buffer.Attach(socket);
 
-            WriteDataSync();
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
+//            WriteDataSync();
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
 
-            Assert.That(drained, Is.False);
-            buffer.End();
-            Assert.That(drained, Is.True);
+//            Assert.That(drained, Is.False);
+//            buffer.End();
+//            Assert.That(drained, Is.True);
 
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
-        }
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
+//        }
 
-        [Test]
-        public void Writes_data_received_synchronously_before_attached_to_socket()
-        {
-            WriteDataSync();
+//        [Test]
+//        public void Writes_data_received_synchronously_before_attached_to_socket()
+//        {
+//            WriteDataSync();
 
-            buffer.Attach(socket);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
+//            buffer.Attach(socket);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
 
-            Assert.That(drained, Is.False);
-            buffer.End();
-            Assert.That(drained, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
-        }
+//            Assert.That(drained, Is.False);
+//            buffer.End();
+//            Assert.That(drained, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
+//        }
 
-        [Test]
-        public void Writes_data_received_synchronously_before_and_after_attached_to_socket()
-        {
-            WriteDataSync();
+//        [Test]
+//        public void Writes_data_received_synchronously_before_and_after_attached_to_socket()
+//        {
+//            WriteDataSync();
 
-            buffer.Attach(socket);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
+//            buffer.Attach(socket);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString()));
 
-            WriteDataSync();
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString() + DataString()));
+//            WriteDataSync();
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString() + DataString()));
 
-            Assert.That(drained, Is.False);
-            buffer.End();
-            Assert.That(drained, Is.True);
+//            Assert.That(drained, Is.False);
+//            buffer.End();
+//            Assert.That(drained, Is.True);
 
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString() + DataString()));
-        }
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo(DataString() + DataString()));
+//        }
 
-        [Test]
-        public void Delays_continuation_of_async_write_until_attached()
-        {
-            bool continuationInvoked = false;
-            buffer.Write(
-                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
-                () => continuationInvoked = true);
+//        [Test]
+//        public void Delays_continuation_of_async_write_until_attached()
+//        {
+//            bool continuationInvoked = false;
+//            buffer.Write(
+//                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
+//                () => continuationInvoked = true);
 
-            Assert.That(continuationInvoked, Is.False);
-            buffer.Attach(socket);
-            Assert.That(continuationInvoked, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello."));
+//            Assert.That(continuationInvoked, Is.False);
+//            buffer.Attach(socket);
+//            Assert.That(continuationInvoked, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello."));
 
-            Assert.That(drained, Is.False);
-            buffer.End();
-            Assert.That(drained, Is.True);
+//            Assert.That(drained, Is.False);
+//            buffer.End();
+//            Assert.That(drained, Is.True);
 
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello."));
-        }
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello."));
+//        }
 
-        [Test]
-        public void Delays_continuation_of_async_write_until_attached_followed_by_sync_write()
-        {
-            bool continuationInvoked = false;
-            buffer.Write(
-                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
-                () => continuationInvoked = true);
+//        [Test]
+//        public void Delays_continuation_of_async_write_until_attached_followed_by_sync_write()
+//        {
+//            bool continuationInvoked = false;
+//            buffer.Write(
+//                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
+//                () => continuationInvoked = true);
 
-            Assert.That(continuationInvoked, Is.False);
+//            Assert.That(continuationInvoked, Is.False);
 
-            buffer.Attach(socket);
-            Assert.That(continuationInvoked, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello."));
+//            buffer.Attach(socket);
+//            Assert.That(continuationInvoked, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello."));
 
-            buffer.Write(
-                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
-                null);
+//            buffer.Write(
+//                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
+//                null);
 
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
 
-            Assert.That(drained, Is.False);
-            buffer.End();
-            Assert.That(drained, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
-        }
+//            Assert.That(drained, Is.False);
+//            buffer.End();
+//            Assert.That(drained, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
+//        }
 
-        [Test]
-        public void Delays_continuation_of_async_write_until_attached_followed_by_async_write()
-        {
-            bool continuation0Invoked = false;
-            buffer.Write(
-                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
-                () => continuation0Invoked = true);
+//        [Test]
+//        public void Delays_continuation_of_async_write_until_attached_followed_by_async_write()
+//        {
+//            bool continuation0Invoked = false;
+//            buffer.Write(
+//                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
+//                () => continuation0Invoked = true);
 
-            Assert.That(continuation0Invoked, Is.False);
+//            Assert.That(continuation0Invoked, Is.False);
 
-            buffer.Attach(socket);
-            Assert.That(continuation0Invoked, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello."));
+//            buffer.Attach(socket);
+//            Assert.That(continuation0Invoked, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello."));
 
-            bool continuation1Invoked = false;
-            buffer.Write(
-                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
-                () => continuation1Invoked = true);
+//            bool continuation1Invoked = false;
+//            buffer.Write(
+//                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
+//                () => continuation1Invoked = true);
 
-            Assert.That(socket.Continuation, Is.Not.Null);
-            socket.Continuation();
-            Assert.That(continuation1Invoked, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
+//            Assert.That(socket.Continuation, Is.Not.Null);
+//            socket.Continuation();
+//            Assert.That(continuation1Invoked, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
 
-            Assert.That(drained, Is.False);
-            buffer.End();
-            Assert.That(drained, Is.True);
+//            Assert.That(drained, Is.False);
+//            buffer.End();
+//            Assert.That(drained, Is.True);
 
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
-        }
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
+//        }
 
-        [Test]
-        public void Delays_continuation_of_async_write_until_attached_prefixed_by_sync_write()
-        {
-            buffer.Write(
-                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
-                null);
+//        [Test]
+//        public void Delays_continuation_of_async_write_until_attached_prefixed_by_sync_write()
+//        {
+//            buffer.Write(
+//                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
+//                null);
 
 
-            bool continuation0Invoked = false;
-            buffer.Write(
-                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
-                () => continuation0Invoked = true);
+//            bool continuation0Invoked = false;
+//            buffer.Write(
+//                new ArraySegment<byte>(Encoding.UTF8.GetBytes("Hello, hello.")),
+//                () => continuation0Invoked = true);
 
-            Assert.That(continuation0Invoked, Is.False);
+//            Assert.That(continuation0Invoked, Is.False);
 
-            buffer.Attach(socket);
-            Assert.That(continuation0Invoked, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
+//            buffer.Attach(socket);
+//            Assert.That(continuation0Invoked, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
 
-            Assert.That(drained, Is.False);
-            buffer.End();
-            Assert.That(drained, Is.True);
-            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
-        }
+//            Assert.That(drained, Is.False);
+//            buffer.End();
+//            Assert.That(drained, Is.True);
+//            Assert.That(socket.Buffer.ToString(), Is.EqualTo("Hello, hello.Hello, hello."));
+//        }
 
-        void WriteDataSync()
-        {
-            foreach (var d in NetTests.MakeData())
-            {
-                Assert.That(buffer.Write(new ArraySegment<byte>(d), null), Is.False, "Write did not return false");
-            }
-        }
+//        void WriteDataSync()
+//        {
+//            foreach (var d in NetTests.MakeData())
+//            {
+//                Assert.That(buffer.Write(new ArraySegment<byte>(d), null), Is.False, "Write did not return false");
+//            }
+//        }
 
-        string DataString()
-        {
-            return NetTests.MakeData().Aggregate("", (s, d) => s + Encoding.UTF8.GetString(d));
-        }
-    }
-}
+//        string DataString()
+//        {
+//            return NetTests.MakeData().Aggregate("", (s, d) => s + Encoding.UTF8.GetString(d));
+//        }
+//    }
+//}

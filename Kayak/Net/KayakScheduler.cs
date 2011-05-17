@@ -11,8 +11,7 @@ namespace Kayak
 {
     public class KayakScheduler : TaskScheduler, IScheduler
     {
-        public event EventHandler OnStarted;
-        public event EventHandler OnStopped;
+        ISchedulerDelegate del;
 
         Thread dispatch;
         ManualResetEventSlim wh;
@@ -26,7 +25,7 @@ namespace Kayak
             var task = new Task(action);
             task.ContinueWith(t =>
             {
-                // XXX invoke del.OnError(t.Exception)
+                del.OnException(this, t.Exception);
             }, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, this);
             task.Start(this);
         }
@@ -36,18 +35,15 @@ namespace Kayak
             queue = new ConcurrentQueue<Task>();
         }
 
-        public IDisposable Start()
+        public void Start(ISchedulerDelegate del)
         {
             if (dispatch != null)
                 throw new InvalidOperationException("The scheduler was already started.");
 
-            dispatch = new Thread(Dispatch);
-            dispatch.Start();
-
-            return new Disposable(() => Stop());
+            Dispatch();
         }
 
-        void Stop()
+        public void Stop()
         {
             Debug.WriteLine("Scheduler will stop.");
             Post(() => { stopped = true; });
@@ -56,9 +52,6 @@ namespace Kayak
         void Dispatch()
         {
             wh = new ManualResetEventSlim();
-
-            if (OnStarted != null)
-                OnStarted(this, EventArgs.Empty);
 
             while (true)
             {
@@ -77,8 +70,6 @@ namespace Kayak
                         queue = new ConcurrentQueue<Task>();
 
                         Debug.WriteLine("Scheduler stopped.");
-                        if (OnStopped != null)
-                            OnStopped(this, EventArgs.Empty);
 
                         break;
                     }

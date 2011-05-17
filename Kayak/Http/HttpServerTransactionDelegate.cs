@@ -1,125 +1,104 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
 namespace Kayak.Http
 {
-    using ResponseFactory =
-        Func<
-            HttpRequestHead, 
-            IBufferedOutputStreamDelegate, 
-            bool, 
-            Tuple<IHttpServerResponseInternal, IBufferedOutputStream>>;
-    using System.Diagnostics;
-
-    // ties it all together
-    class HttpServerTransactionDelegate : IHttpServerTransactionDelegate, IBufferedOutputStreamDelegate
+    interface IResponseFactory
     {
-        ResponseFactory responseFactory;
-        IHttpServerDelegate del;
-        IHttpRequestDelegate requestDelegate;
+        IDataProducer Create(HttpRequestHead head, IDataProducer body, bool shouldKeepAlive, Action end);
+    }
 
-        LinkedList<Tuple<IHttpServerResponseInternal, IBufferedOutputStream>> responses;
-        IHttpServerResponseInternal activeResponse;
-        ISocket socket;
-        bool ended;
+    class ResponseFactory : IResponseFactory
+    {
+        IHttpChannel channel;
 
-        public HttpServerTransactionDelegate(IHttpServerDelegate httpServerDelegate)
-            : this(httpServerDelegate, null) { }
-
-        public HttpServerTransactionDelegate(IHttpServerDelegate httpServerDelegate, ResponseFactory responseFactory)
+        public ResponseFactory(IHttpChannel channel)
         {
-            this.del = httpServerDelegate;
-            this.responseFactory = responseFactory ?? CreateResponse;
-            responses = new LinkedList<Tuple<IHttpServerResponseInternal, IBufferedOutputStream>>();
+            this.channel = channel;
         }
 
-        Tuple<IHttpServerResponseInternal, IBufferedOutputStream> CreateResponse(
-            HttpRequestHead request,
-            IBufferedOutputStreamDelegate del,
-            bool shouldKeepAlive)
+        public IDataProducer Create(HttpRequestHead request, IDataProducer body, bool shouldKeepAlive, Action end)
         {
-            IBufferedOutputStream output = new BufferedOutputStream(del);
-            IHttpServerResponseInternal response = new Response(output, request, shouldKeepAlive);
+            var del = new HttpResponseDelegate(
+                prohibitBody: request.Method.ToUpperInvariant() == "HEAD",
+                shouldKeepAlive: shouldKeepAlive,
+                expectContinue: request.IsContinueExpected(),
+                closeConnection: end);
 
-            return Tuple.Create(response, output);
+            channel.OnRequest(request, body, del);
+
+            return del;
+        }
+    }
+
+    class HttpServerTransactionDelegate : IHttpServerTransactionDelegate, IObservable<IDataProducer>
+    {
+        IResponseFactory responseFactory;
+        IObserver<IDataProducer> observer;
+        DataSubject subject;
+
+        public HttpServerTransactionDelegate(IResponseFactory responseFactory)
+        {
+            this.responseFactory = responseFactory;
         }
 
-        public void OnRequest(ISocket socket, HttpRequestHead request, bool shouldKeepAlive)
+        public IDisposable Subscribe(IObserver<IDataProducer> observer)
         {
-            this.socket = socket;
+            this.observer = observer;
 
-            // XXX will need to reset this state when we refactor for reuse
-            if (ended)
-                throw new InvalidOperationException("Transaction was ended.");
-            
-            var responseAndOutput = responseFactory(request, this, shouldKeepAlive);
-            var response = responseAndOutput.Item1;
-            var output = responseAndOutput.Item2;
-
-            // if no active response, attach
-            if (activeResponse == null)
-            {
-                Debug.WriteLine("Transaction: no active response, attaching");
-                activeResponse = response;
-                output.Attach(socket);
-            }
-            // else add to pending
-            else
-            {
-                Debug.WriteLine("Transaction: active response, queuing");
-                responses.AddLast(responseAndOutput);
-            }
-
-            requestDelegate = del.OnRequest(null, response);
+            return new Disposable(() => OnError(new Exception("Output stream cancelled")));
         }
 
-        public bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation)
+        void RequestBodyCancelled()
         {
-            return requestDelegate.OnBody(data, continuation);
+            observer.OnError(new Exception("Connection was aborted by user."));
         }
 
-        public void OnRequestEnd(ISocket socket)
+        bool closeConnection;
+
+        void CloseConnection()
         {
-            requestDelegate.OnEnd();
+            if (closeConnection) return;
+            closeConnection = true;
+            observer.OnCompleted();
         }
 
-        public void OnEnd(ISocket socket)
+        public void OnRequest(HttpRequestHead request, bool shouldKeepAlive)
         {
-            ended = true;
+            subject = new DataSubject(() => new Disposable(RequestBodyCancelled));
+
+            var producer = responseFactory.Create(request, subject, shouldKeepAlive, CloseConnection);
+
+            observer.OnNext(producer);
         }
 
-        public void OnDrained(IBufferedOutputStream message)
+        public bool OnRequestData(ArraySegment<byte> data, Action continuation)
         {
-            var keepAlive = activeResponse.KeepAlive;
+            return subject.OnData(data, continuation);
+        }
 
-            // if completed response indicates that connection should be closed,
-            // or if the client ended the connection and no further responses
-            // are queued, end/shutdown socket
-            if (!keepAlive || (ended && responses.Count == 0))
-            {
-                Debug.WriteLine("Transaction: ending socket");
-                socket.End();
-            }
-            // if pending responses, attach next
-            else if (responses.Count > 0)
-            {
-                Debug.WriteLine("Transaction: attaching next pending response");
-                var next = responses.First.Value;
-                var response = next.Item1;
-                var output = next.Item2;
-                responses.RemoveFirst();
+        public void OnRequestEnd()
+        {
+            subject.OnEnd();
+        }
 
-                activeResponse = response;
-                output.Attach(socket);
-            }
-            else
-            {
-                Debug.WriteLine("Transaction: no pending responses");
-                // if no pending, do nothing (either response was last on connection, or another request is coming later)
-                activeResponse = null;
-            }
+        public void OnError(Exception e)
+        {
+            subject.OnError(e);
+            observer.OnError(e);
+        }
+
+        public void OnEnd()
+        {
+            CloseConnection();
+        }
+
+        public void OnClose()
+        {
+            // XXX perhaps return self to freelist
         }
     }
 }

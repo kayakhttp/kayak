@@ -8,41 +8,10 @@ using KayakTests.Net;
 
 namespace KayakTests
 {
-    class MockResponse : IHttpResponse
-    {
-        public Action OnWriteContinue;
-        public Action<string, IDictionary<string, string>> OnWriteHeaders;
-        public Func<ArraySegment<byte>, Action, bool> OnWriteBody;
-        public Action OnEnd;
-
-        public void WriteContinue()
-        {
-            if (OnWriteContinue != null)
-                OnWriteContinue();
-        }
-
-        public void WriteHeaders(HttpResponseHead head)
-        {
-            if (OnWriteHeaders != null)
-                OnWriteHeaders(head.Status, head.Headers);
-        }
-
-        public bool WriteBody(ArraySegment<byte> data, Action complete)
-        {
-            if (OnWriteBody != null)
-                return OnWriteBody(data, complete);
-            return false;
-        }
-
-        public void End()
-        {
-            if (OnEnd != null)
-                OnEnd();
-        }
-    }
-
     class MockSocket : ISocket
     {
+        public bool GotEnd;
+        public bool GotDispose;
         public DataBuffer Buffer;
         public Action Continuation;
 
@@ -75,33 +44,70 @@ namespace KayakTests
             throw new NotImplementedException();
         }
 
-
         public void End()
         {
-            throw new NotImplementedException();
+            if (GotEnd)
+                throw new Exception("OnEnd was called more than once.");
+
+            GotEnd = true;
         }
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            if (GotDispose)
+                throw new Exception("Dispose was called more than once.");
+
+            GotDispose = true;
         }
     }
 
-    class MockOutputStream : IOutputStream
+    class MockDataProducer : IDataProducer
     {
+        public Action DisposeAction;
+        public bool WasDisposed;
+        Func<IDataConsumer, IDisposable> connect;
+
+        public MockDataProducer(Func<IDataConsumer, IDisposable> connect)
+        {
+            this.connect = connect;
+        }
+
+        public IDisposable Connect(IDataConsumer channel)
+        {
+            var d = connect(channel);
+            if (d == null)
+                return new Disposable(() =>
+                {    
+                    if (DisposeAction != null)
+                        DisposeAction();
+
+                    WasDisposed = true;
+                });
+            return d;
+        }
+    }
+
+    class MockDataConsumer : IDataConsumer
+    {
+        public Action<ArraySegment<byte>> OnDataAction;
+        public Action OnEndAction;
         public DataBuffer Buffer;
         public Action Continuation;
+        public Exception Exception;
         public bool GotEnd;
 
-        public MockOutputStream()
+        public MockDataConsumer()
         {
             Buffer = new DataBuffer();
         }
 
-        public bool Write(ArraySegment<byte> data, Action continuation)
+        public bool OnData(ArraySegment<byte> data, Action continuation)
         {
             // XXX do copy? 
             Buffer.AddToBuffer(data);
+
+            if (OnDataAction != null)
+                OnDataAction(data);
 
             if (continuation != null)
             {
@@ -111,13 +117,21 @@ namespace KayakTests
 
             return false;
         }
+
+        public void OnError(Exception e)
+        {
+            Exception = e;
+        }
         
-        public void End()
+        public void OnEnd()
         {
             if (GotEnd)
                 throw new Exception("End was already called.");
 
             GotEnd = true;
+
+            if (OnEndAction != null)
+                OnEndAction();
         }
     }
 
@@ -132,7 +146,9 @@ namespace KayakTests
 
         public List<HttpRequest> Requests;
         public Func<ArraySegment<byte>, Action, bool> OnDataAction;
+        public Exception Exception;
         public bool GotOnEnd;
+        public bool GotOnClose;
         public HttpRequest current; // XXX rename
 
         public MockHttpServerTransactionDelegate()
@@ -140,12 +156,12 @@ namespace KayakTests
             Requests = new List<HttpRequest>();
         }
 
-        public void OnRequest(ISocket socket, HttpRequestHead request, bool shouldKeepAlive)
+        public void OnRequest(HttpRequestHead request, bool shouldKeepAlive)
         {
             current = new HttpRequest() { Head = request, ShouldKeepAlive = shouldKeepAlive, Data = new DataBuffer() };
         }
 
-        public bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation)
+        public bool OnRequestData(ArraySegment<byte> data, Action continuation)
         {
             current.Data.AddToBuffer(data);
 
@@ -155,17 +171,30 @@ namespace KayakTests
             return false;
         }
 
-        public void OnRequestEnd(ISocket socket)
+        public void OnRequestEnd()
         {
             Requests.Add(current);
         }
 
-        public void OnEnd(ISocket socket)
+        public void OnError(Exception e)
+        {
+            Exception = e;
+        }
+
+        public void OnEnd()
         {
             if (GotOnEnd)
                 throw new Exception("OnEnd was called more than once.");
 
             GotOnEnd = true;
+        }
+
+        public void OnClose()
+        {
+            if (GotOnClose)
+                throw new Exception("OnEnd was called more than once.");
+
+            GotOnClose = true;
         }
     }
 

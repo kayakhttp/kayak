@@ -10,89 +10,70 @@ using System.Diagnostics;
 
 namespace KayakExamples
 {
-    class NewSimple : ISchedulerDelegate, IHttpServerDelegate
+    class NewSimple
     {
-        ManualResetEventSlim wh;
-        IDisposable unbind;
-        Action stopScheduler;
-
         public void Run()
         {
-            wh = new ManualResetEventSlim();
+            // oars or kayak
+            IScheduler scheduler = new KayakScheduler();
 
-            ISchedulerFactory schedulerFactory = null;
-            var scheduler = schedulerFactory.Create(this);
-            var stopper = scheduler.Start();
-            stopScheduler = () => { stopper.Dispose(); };
-            Console.ReadLine();
-            scheduler.Post(() => { unbind.Dispose(); });
+            scheduler.Post(() =>
+                {
+                    // finds the user's request delegate and serves it up (hot swap anyone?)
+                    var serverDelegate = new HttpServerDelegate();
 
-            wh.Wait();
-            wh.Dispose();
+                    // server <- (request_delegate <- (), scheduler <- ())
+                    IServer server = KayakServer.Factory.CreateHttp(serverDelegate, scheduler);
+
+                    var unbind = server.Listen(new IPEndPoint(IPAddress.Any, 8080));
+
+                    // XXX ought to wait for pending connections.
+                    Exit.Listen(scheduler, () => { 
+                        unbind.Dispose(); // server ought to automatically dispose all open sockets
+                        scheduler.Stop(); 
+                    });
+                });
+
+            // runs on calling thread
+            scheduler.Start(new SchedulerDelegate());
         }
 
-        public void OnStarted(IScheduler scheduler)
+        static class Exit
         {
-            IHttpServerFactory httpServerFactory = null;
-            IServer server = httpServerFactory.Create(this, scheduler);
-            server.Listen(new IPEndPoint(IPAddress.Any, 8080));
+            public static void Listen(IScheduler scheduler, Action fired)
+            {
+                var thread = new Thread(() =>
+                {
+                    // would be nice to wait for cmd-c/kill
+                    Console.WriteLine("Press enter to exit.");
+                    Console.ReadLine();
+                    scheduler.Post(fired);
+                });
+
+                thread.Start();
+            }
         }
 
-        public void OnStopped(IScheduler scheduler)
+        class SchedulerDelegate : ISchedulerDelegate
         {
-            wh.Set();
+            public void OnException(IScheduler scheduler, Exception e)
+            {
+                Debug.WriteLine("Error on scheduler.");
+                e.DebugStacktrace();
+            }
         }
 
-        public void OnException(IScheduler scheduler, Exception e)
+        class HttpServerDelegate : IHttpChannel
         {
-            Debug.WriteLine("Error on scheduler.");
-            e.PrintStacktrace();
-        }
-
-        public IHttpRequestDelegate OnRequest(IServer server, IHttpResponse response)
-        {
-            return new RequestDelegate() { Response = response };
-        }
-
-        class RequestDelegate : IHttpRequestDelegate
-        {
-            public IHttpResponse Response { get; set; }
-
-            IHttpRequestDelegate del;
-
-            public RequestDelegate() { }
-
-            public void OnHeaders(HttpRequestHead request)
+            public void OnRequest(HttpRequestHead request, IDataProducer requestBody, 
+                IHttpResponseDelegate response)
             {
                 Debug.WriteLine("OnRequest");
 
+                // hmmm...
                 if (request.Uri == "/")
                 {
-                    del = new HelloDelegate() { Response = Response };
-                }
-                else if (request.Uri == "/echo")
-                {
-                    del = new EchoDelegate() { Response = Response };
-                }
-            }
-
-            public bool OnBody(ArraySegment<byte> data, Action continuation)
-            {
-                return del.OnBody(data, continuation);
-            }
-
-            public void OnEnd()
-            {
-                del.OnEnd();
-            }
-
-            class HelloDelegate : IHttpRequestDelegate
-            {
-                public IHttpResponse Response { get; set; }
-
-                public void OnHeaders(HttpRequestHead head)
-                {
-                    Response.WriteHeaders(new HttpResponseHead()
+                    response.OnResponse(new HttpResponseHead()
                     {
                         Status = "200 OK",
                         Headers = new Dictionary<string, string>() 
@@ -100,26 +81,14 @@ namespace KayakExamples
                             { "Content-Type", "text/plain" },
                             { "Content-Length", "20" },
                         }
-                    });
-                    Response.WriteBody(new ArraySegment<byte>(Encoding.ASCII.GetBytes("Hello world.\r\nHello.")), null);
-                    Response.End();
-                    Debug.WriteLine("HelloDelegate.OnHeaders: Ended response.");
+                    },
+                    new StringBody("Hello world.\r\nHello."));
+
+                    Debug.WriteLine("OnRequest (hello): Ended response.");
                 }
-
-                public bool OnBody(ArraySegment<byte> data, Action continuation) { return false; }
-                public void OnEnd() { }
-            }
-
-            class EchoDelegate : IHttpRequestDelegate
-            {
-                public IHttpResponse Response { get; set; }
-
-                public void OnHeaders(HttpRequestHead request)
+                else if (request.Uri == "/echo")
                 {
-                    if (request.IsContinueExpected())
-                        Response.WriteContinue();
-
-                    Response.WriteHeaders(new HttpResponseHead()
+                    response.OnResponse(new HttpResponseHead()
                     {
                         Status = "200 OK",
                         Headers = new Dictionary<string, string>() 
@@ -127,26 +96,26 @@ namespace KayakExamples
                             { "Content-Type", "text/plain" },
                             { "Connection", "close" }
                         }
-                    });
-                }
-
-                public bool OnBody(ArraySegment<byte> data, Action continuation)
-                {
-                    return Response.WriteBody(data, continuation);
-                }
-
-                public void OnEnd()
-                {
-                    Response.End();
+                    }, requestBody);
                 }
             }
-
         }
 
-        public void OnClose(IServer server)
+        class StringBody : IDataProducer
         {
-            // ideally we wait until all connections are closed. XXX how?
-            stopScheduler();
+            string body;
+            public StringBody(string body)
+            {
+                this.body = body;
+            }
+
+            public IDisposable Connect(IDataConsumer channel)
+            {
+                channel.OnData(new ArraySegment<byte>(Encoding.ASCII.GetBytes(body)), null);
+                channel.OnEnd();
+
+                return null;
+            }
         }
     }
 }

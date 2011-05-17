@@ -3,21 +3,15 @@ using System.Net;
 
 namespace Kayak
 {
-    public interface ISchedulerFactory
-    {
-        IScheduler Create(ISchedulerDelegate del);
-    }
-
     public interface IScheduler : IDisposable
     {
-        IDisposable Start();
         void Post(Action action);
+        void Start(ISchedulerDelegate del);
+        void Stop();
     }
 
     public interface ISchedulerDelegate
     {
-        void OnStarted(IScheduler scheduler);
-        void OnStopped(IScheduler scheduler);
         void OnException(IScheduler scheduler, Exception e);
     }
 
@@ -28,7 +22,6 @@ namespace Kayak
     
     public interface IServer : IDisposable
     {
-        IPEndPoint ListenEndPoint { get; }
         IDisposable Listen(IPEndPoint ep);
     }
 
@@ -50,7 +43,6 @@ namespace Kayak
         void OnEnd(ISocket socket);
         void OnError(ISocket socket, Exception e);
         void OnClose(ISocket socket);
-        // OnWriteError? (i.e., cancel writing)
     }
 
     public interface ISocket : IDisposable
@@ -61,9 +53,15 @@ namespace Kayak
         void End();
     }
 
-    interface IOutputStream
+    public interface IDataProducer
     {
-        bool Write(ArraySegment<byte> data, Action continuation);
-        void End();
+        IDisposable Connect(IDataConsumer channel);
+    }
+
+    public interface IDataConsumer
+    {
+        void OnError(Exception e);
+        bool OnData(ArraySegment<byte> data, Action continuation);
+        void OnEnd();
     }
 }

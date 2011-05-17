@@ -9,10 +9,12 @@ namespace Kayak.Http
 {
     interface IHttpServerTransactionDelegate
     {
-        void OnRequest(ISocket socket, HttpRequestHead request, bool shouldKeepAlive);
-        bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation);
-        void OnRequestEnd(ISocket socket);
-        void OnEnd(ISocket socket);
+        void OnRequest(HttpRequestHead request, bool shouldKeepAlive);
+        bool OnRequestData(ArraySegment<byte> data, Action continuation);
+        void OnRequestEnd();
+        void OnError(Exception e);
+        void OnEnd();
+        void OnClose();
     }
 
     // adapts flat parser events to OnRequest, Request.OnData, and
@@ -57,7 +59,7 @@ namespace Kayak.Http
             queue.OnRequestEnded();
         }
 
-        public bool Commit(ISocket socket, Action continuation)
+        public bool Commit(Action continuation)
         {
             while (queue.HasEvents)
             {
@@ -66,7 +68,7 @@ namespace Kayak.Http
                 switch (e.Type)
                 {
                     case ParserEventType.RequestHeaders:
-                        transactionDelegate.OnRequest(socket, new HttpRequestHead() { 
+                        transactionDelegate.OnRequest(new HttpRequestHead() { 
                             Method = e.Request.Method,
                             Uri = e.Request.Uri,
                             Version = e.Request.Version,
@@ -75,12 +77,12 @@ namespace Kayak.Http
                         break;
                     case ParserEventType.RequestBody:
                         if (!queue.HasEvents)
-                            return transactionDelegate.OnData(socket, e.Data, continuation);
+                            return transactionDelegate.OnRequestData(e.Data, continuation);
 
-                        transactionDelegate.OnData(socket, e.Data, null);
+                        transactionDelegate.OnRequestData(e.Data, null);
                         break;
                     case ParserEventType.RequestEnded:
-                        transactionDelegate.OnRequestEnd(socket);
+                        transactionDelegate.OnRequestEnd();
                         break;
                 }
             }
