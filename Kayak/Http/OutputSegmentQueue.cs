@@ -19,13 +19,14 @@ namespace Kayak.Http
         public void OnNext(IDataProducer message)
         {
             var c = new MessageConsumer(tail, message);
+            var t = tail;
+            tail = c;
 
-            if (tail == null)
+            if (t == null)
                 c.AttachSocket(socket);
             else
-                tail.AttachNextSegment(c);
+                t.AttachNextSegment(c);
 
-            tail = c;
         }
 
         // called if error on socket or whilst parsing, or if user code cancels request input
@@ -52,8 +53,9 @@ namespace Kayak.Http
             }
             else
             {
-                tail.AttachNextSegment(c);
+                var t = tail;
                 tail = c;
+                t.AttachNextSegment(c);
             }
         }
     }

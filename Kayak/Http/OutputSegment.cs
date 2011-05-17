@@ -34,7 +34,11 @@ namespace Kayak.Http
         public virtual void Dispose()
         {
             if (socket != null)
-                socket.Dispose();
+            {
+                var s = socket;
+                socket = null;
+                s.Dispose();
+            }
 
             if (previous != null)
             {
@@ -71,9 +75,9 @@ namespace Kayak.Http
         {
             if (socket != null)
             {
-                socket.End();
                 var s = socket;
                 socket = null;
+                s.End();
                 s.Dispose();
             }
         }
@@ -82,6 +86,7 @@ namespace Kayak.Http
 
     class MessageConsumer : BaseConsumer, IDataConsumer
     {
+        IDataProducer message;
         IOutputSegment next;
         IDisposable abortMessage;
         List<byte[]> buffer;
@@ -90,18 +95,21 @@ namespace Kayak.Http
 
         public MessageConsumer(IOutputSegment previous, IDataProducer message) : base(previous)
         {
-            abortMessage = message.Connect(this);
+            this.message = message;
         }
 
         public override void AttachNextSegment(IOutputSegment c)
         {
             next = c;
+            DoConnect();
             HandOffSocketIfPossible();
         }
 
         public override void AttachSocket(ISocket socket)
         {
             base.AttachSocket(socket);
+            
+            DoConnect();
 
             if (buffer != null)
                 DrainBuffer();
@@ -115,11 +123,22 @@ namespace Kayak.Http
             AbortProducer();
         }
 
+        void DoConnect()
+        {
+            if (message != null)
+            {
+                var m = message;
+                message = null;
+                abortMessage = m.Connect(this);
+            }
+        }
+
         void HandOffSocketIfPossible()
         {
             if (next == null || !gotEnd) return;
 
-            abortMessage.Dispose();
+            if (abortMessage != null)
+                abortMessage.Dispose();
 
             var s = socket;
             socket = null;
