@@ -17,12 +17,11 @@ namespace Kayak.Http
         void OnClose();
     }
 
-    // adapts flat parser events to OnRequest, Request.OnData, and
-    // Request.OnEnd events.
+    // adapts synchronous parser events to asynchronous "socket-like" events.
     // 
     // in so doing it introduces the backpressure mechanism to support the 
     // OnData event. this requires a "commit" phase after all the data 
-    // currently in memory has been feed through the parser.
+    // currently in memory has been fed through the parser.
     // 
     // bundles data events such that if more events are queued, the next event 
     // cannot be deferred (i.e., ensures continuation is null). essentially, 

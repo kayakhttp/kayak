@@ -9,7 +9,7 @@ namespace Kayak.Http
     {
         public static IServer CreateHttp(this IServerFactory factory, IHttpChannel channel)
         {
-            return CreateHttp(factory, channel, KayakScheduler.Current as KayakScheduler);
+            return CreateHttp(factory, channel, KayakScheduler.Current);
         }
 
         public static IServer CreateHttp(this IServerFactory factory, IHttpChannel channel, IScheduler scheduler)

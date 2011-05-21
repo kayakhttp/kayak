@@ -18,6 +18,10 @@ namespace Kayak
         ConcurrentQueue<Task> queue;
         bool stopped;
 
+        [ThreadStatic]
+        static KayakScheduler current;
+        public static KayakScheduler Current { get { return current; } }
+
         public void Post(Action action)
         {
             Debug.WriteLine("--- Posted task.");
@@ -52,6 +56,7 @@ namespace Kayak
 
         void Dispatch()
         {
+            current = this;
             wh = new ManualResetEventSlim();
 
             while (true)
@@ -86,6 +91,7 @@ namespace Kayak
             dispatch = null;
             wh.Dispose();
             wh = null;
+            current = null;
         }
 
         protected override IEnumerable<Task> GetScheduledTasks()

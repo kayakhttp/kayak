@@ -174,7 +174,9 @@ namespace Kayak.Http
             if (continuation != null)
                 throw new InvalidOperationException("Continuation was pending.");
 
-            // XXX probably worthwhile to always buffer first packet
+            // XXX probably worthwhile to always buffer first packet,
+            // being as this is an HTTP implementation, and it will usually
+            // be headers.
             if (socket == null)
             {
                 AddToBuffer(data);
