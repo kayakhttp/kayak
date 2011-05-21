@@ -25,11 +25,6 @@ namespace KayakTests.Http
             mockConsumer = new MockDataConsumer();
         }
 
-        IDataProducer Producer(Func<IDataConsumer, Action> p)
-        {
-            return new MockDataProducer(c => new Disposable(p(c)));
-        }
-
         void WriteSync(IDataConsumer c, string str)
         {
             c.OnData(new ArraySegment<byte>(Encoding.UTF8.GetBytes(str)), null);
@@ -45,52 +40,202 @@ namespace KayakTests.Http
         }
 
         [Test]
-        public void Delegate_connected_immediately__sync_producer()
+        public void transport_connected_after_on_response()
         {
             del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
+            del.OnResponse(Head(), null);
+
+            Assert.That(connectionClosed, Is.False);
+
             var abort = del.Connect(mockConsumer);
 
-            producerAbort = () => { };
-
-            del.OnResponse(Head(), Producer(c =>
-            {
-                WriteSync(c, "Chunk1");
-                WriteSync(c, "Chunk2");
-                WriteSync(c, "Chunk3");
-                c.OnEnd();
-                return producerAbort;
-            }));
-
-            Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo("[headers]Chunk1Chunk2Chunk3"));
+            Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo("[headers]"));
             Assert.That(mockConsumer.GotEnd, Is.True);
             Assert.That(connectionClosed, Is.True);
         }
 
         [Test]
-        public void Delegate_connected_later__sync_producer()
+        public void transport_connected_before_on_response()
         {
             del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
-            producerAbort = () => { };
+            var abort = del.Connect(mockConsumer);
+            del.OnResponse(Head(), null);
 
-            del.OnResponse(Head(), Producer(c =>
-            {
-                WriteSync(c, "Chunk1");
-                WriteSync(c, "Chunk2");
-                WriteSync(c, "Chunk3");
-                c.OnEnd();
-                return producerAbort;
-            }));
+            Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo("[headers]"));
+            Assert.That(mockConsumer.GotEnd, Is.True);
+            Assert.That(connectionClosed, Is.True);
+        }
 
-            Assert.That(mockConsumer.Buffer.ToString(), Is.Empty);
-            Assert.That(mockConsumer.GotEnd, Is.False);
+        [Test]
+        public void transport_connected_after_on_response__async_producer__begin_producing_after_on_connect()
+        {
+            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del.renderer = new MockHeaderRender();
+
+            Action startProducing = null;
+            del.OnResponse(Head(), MockDataProducer.Create(new string[] {
+                "Chunk1",
+                "Chunk2",
+                "Chunk3"
+            }, false, () => { }, s => startProducing = s));
+
+            Assert.That(connectionClosed, Is.False);
+
+            var abort = del.Connect(mockConsumer);
+            startProducing();
+            mockConsumer.Continuation();
+            mockConsumer.Continuation();
+            mockConsumer.Continuation();
+
+            AssertConsumer();
+        }
+
+        [Test]
+        public void transport_connected_after_on_response__sync_producer__begin_producing_after_on_connect()
+        {
+            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del.renderer = new MockHeaderRender();
+
+            Action startProducing = null;
+            del.OnResponse(Head(), MockDataProducer.Create(new string[] {
+                "Chunk1",
+                "Chunk2",
+                "Chunk3"
+            }, true, () => { }, s => startProducing = s));
+
+            Assert.That(connectionClosed, Is.False);
+
+            var abort = del.Connect(mockConsumer);
+            startProducing();
+
+            AssertConsumer();
+        }
+
+        [Test]
+        public void transport_connected_before_on_response__async_producer__begin_producing_after_on_request()
+        {
+            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del.renderer = new MockHeaderRender();
+
+            var abort = del.Connect(mockConsumer);
+
+            Action startProducing = null;
+            del.OnResponse(Head(), MockDataProducer.Create(new string[] {
+                "Chunk1",
+                "Chunk2",
+                "Chunk3"
+            }, false, () => { }, s => startProducing = s));
+            startProducing();
+            mockConsumer.Continuation();
+            mockConsumer.Continuation();
+            mockConsumer.Continuation();
+
+            AssertConsumer();
+        }
+
+        [Test]
+        public void transport_connected_before_on_response__sync_producer__begin_producing_after_on_request()
+        {
+            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del.renderer = new MockHeaderRender();
+
+            var abort = del.Connect(mockConsumer);
+
+            Action startProducing = null;
+            del.OnResponse(Head(), MockDataProducer.Create(new string[] {
+                "Chunk1",
+                "Chunk2",
+                "Chunk3"
+            }, true, () => { }, s => startProducing = s));
+            startProducing();
+
+            AssertConsumer();
+        }
+
+        [Test]
+        public void transport_connected_after_on_response__async_producer__begin_producing_on_connect()
+        {
+            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del.renderer = new MockHeaderRender();
+
+            del.OnResponse(Head(), MockDataProducer.Create(new string[] {
+                "Chunk1",
+                "Chunk2",
+                "Chunk3"
+            }, false, () => { }, s => s()));
+
+            Assert.That(connectionClosed, Is.False);
+
+            var abort = del.Connect(mockConsumer);
+            mockConsumer.Continuation();
+            mockConsumer.Continuation();
+            mockConsumer.Continuation();
+
+            AssertConsumer();
+        }
+
+        [Test]
+        public void transport_connected_after_on_response__sync_producer__begin_producing_on_connect()
+        {
+            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del.renderer = new MockHeaderRender();
+
+            del.OnResponse(Head(), MockDataProducer.Create(new string[] {
+                "Chunk1",
+                "Chunk2",
+                "Chunk3"
+            }, true, () => { }, s => s()));
+
             Assert.That(connectionClosed, Is.False);
 
             var abort = del.Connect(mockConsumer);
 
+            AssertConsumer();
+        }
+
+        [Test]
+        public void transport_connected_before_on_response__async_producer__begin_producing_on_connect()
+        {
+            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del.renderer = new MockHeaderRender();
+
+            var abort = del.Connect(mockConsumer);
+
+            del.OnResponse(Head(), MockDataProducer.Create(new string[] {
+                "Chunk1",
+                "Chunk2",
+                "Chunk3"
+            }, false, () => { }, s => s()));
+            mockConsumer.Continuation();
+            mockConsumer.Continuation();
+            mockConsumer.Continuation();
+
+            AssertConsumer();
+        }
+
+        [Test]
+        public void transport_connected_before_on_response__sync_producer__begin_producing_on_connect()
+        {
+            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del.renderer = new MockHeaderRender();
+
+            var abort = del.Connect(mockConsumer);
+
+            del.OnResponse(Head(), MockDataProducer.Create(new string[] {
+                "Chunk1",
+                "Chunk2",
+                "Chunk3"
+            }, true, () => { }, s => s()));
+
+            AssertConsumer();
+        }
+
+        void AssertConsumer()
+        {
             Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo("[headers]Chunk1Chunk2Chunk3"));
             Assert.That(mockConsumer.GotEnd, Is.True);
             Assert.That(connectionClosed, Is.True);

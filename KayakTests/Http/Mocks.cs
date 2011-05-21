@@ -67,6 +67,42 @@ namespace KayakTests
         public bool WasDisposed;
         Func<IDataConsumer, IDisposable> connect;
 
+        public static MockDataProducer Create(IEnumerable<string> data, bool sync, Action dispose, Action<Action> subscribe)
+        {
+            return new MockDataProducer(dc =>
+            {
+                subscribe(() =>
+                    WriteNext(data.GetEnumerator(), dc, sync));
+
+                return new Disposable(dispose);
+            });
+        }
+
+        static void WriteNext(IEnumerator<string> data, IDataConsumer c, bool sync)
+        {
+            while (true)
+            {
+                if (!data.MoveNext())
+                {
+                    c.OnEnd();
+                    data.Dispose();
+                    break;
+                }
+
+                var seg = new ArraySegment<byte>(Encoding.UTF8.GetBytes(data.Current));
+                if (sync)
+                {
+                    if (c.OnData(seg, null))
+                        throw new Exception("sync write should have returned false");
+                }
+                else
+                    if (c.OnData(
+                        seg, 
+                        () => WriteNext(data, c, sync)))
+                        break;
+            }
+        }
+
         public MockDataProducer(Func<IDataConsumer, IDisposable> connect)
         {
             this.connect = connect;
