@@ -94,7 +94,6 @@
     <Compile Include="Net\Delegates\ServerDelegate.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Net\EventContext.cs" />
     <Compile Include="Net\NetTests.cs" />
     <Compile Include="Net\SchedulerTests.cs" />
     <Compile Include="Net\ServerTests.cs" />

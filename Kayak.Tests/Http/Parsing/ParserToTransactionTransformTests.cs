@@ -5,7 +5,7 @@ using System.Text;
 using NUnit.Framework;
 using Kayak.Http;
 using Kayak;
-using KayakTests.Net;
+using Kayak.Tests.Net;
 
 namespace Kayak.Tests.Http
 {

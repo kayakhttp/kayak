@@ -28,6 +28,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Performance2.psess = Performance2.psess
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Kayak.Tests", "Kayak.Tests\Kayak.Tests.csproj", "{DA201FE7-FDAF-4B9E-821D-589F93F7245F}"
+EndProject
 Global
 	GlobalSection(TestCaseManagementSettings) = postSolution
 		CategoryFile = Kayak.vsmdi
@@ -187,6 +189,26 @@ Global
 		{AFD5AD70-263E-4162-9A0D-FC892D6480BE}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{AFD5AD70-263E-4162-9A0D-FC892D6480BE}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{AFD5AD70-263E-4162-9A0D-FC892D6480BE}.Release|x86.ActiveCfg = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug 4.0|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug 4.0|Any CPU.Build.0 = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug 4.0|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug 4.0|Mixed Platforms.Build.0 = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug 4.0|x86.ActiveCfg = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release 4.0|Any CPU.ActiveCfg = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release 4.0|Any CPU.Build.0 = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release 4.0|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release 4.0|Mixed Platforms.Build.0 = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release 4.0|x86.ActiveCfg = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F}.Release|x86.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -194,6 +216,7 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{79DDD0CE-6F79-4212-A972-8618AD6E405F} = {865AB8B9-60B2-4EDA-AEF3-939CA14ECD80}
 		{0E7F7FFF-6C35-4D1C-8ACD-6E7F966DFD89} = {865AB8B9-60B2-4EDA-AEF3-939CA14ECD80}
+		{DA201FE7-FDAF-4B9E-821D-589F93F7245F} = {865AB8B9-60B2-4EDA-AEF3-939CA14ECD80}
 		{76FB25C5-15B1-4541-8D19-D78790257C95} = {0E7F7FFF-6C35-4D1C-8ACD-6E7F966DFD89}
 		{75BEA10B-761A-474F-9522-57E8974B52D6} = {0E7F7FFF-6C35-4D1C-8ACD-6E7F966DFD89}
 		{DD0C9BC5-4181-4ADC-92EB-9E638C9C38A8} = {EE63DCE9-92FB-4F24-BDC5-7B3F1E3FD755}

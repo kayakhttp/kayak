@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Kayak;
 using Kayak.Http;
-using KayakTests.Net;
+using Kayak.Tests.Net;
 
 namespace Kayak.Tests
 {
