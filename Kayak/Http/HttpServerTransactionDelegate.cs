@@ -13,11 +13,11 @@ namespace Kayak.Http
 
     class ResponseFactory : IResponseFactory
     {
-        IHttpChannel channel;
+        IHttpRequestDelegate requestDelegate;
 
-        public ResponseFactory(IHttpChannel channel)
+        public ResponseFactory(IHttpRequestDelegate requestDelegate)
         {
-            this.channel = channel;
+            this.requestDelegate = requestDelegate;
         }
 
         public IDataProducer Create(HttpRequestHead request, IDataProducer body, bool shouldKeepAlive, Action end)
@@ -28,7 +28,7 @@ namespace Kayak.Http
                 expectContinue: request.IsContinueExpected(),
                 closeConnection: end);
 
-            channel.OnRequest(request, body, del);
+            requestDelegate.OnRequest(request, body, del);
 
             return del;
         }

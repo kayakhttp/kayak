@@ -19,12 +19,12 @@ namespace Kayak.Http
 
     public interface IHttpServerFactory
     {
-        IServer Create(IHttpChannel del, IScheduler scheduler);
+        IServer Create(IHttpRequestDelegate del, IScheduler scheduler);
     }
 
-    public interface IHttpChannel
+    public interface IHttpRequestDelegate
     {
-        void OnRequest(HttpRequestHead request, IDataProducer requestBody, IHttpResponseDelegate response);
+        void OnRequest(HttpRequestHead head, IDataProducer body, IHttpResponseDelegate response);
     }
 
     public interface IHttpResponseDelegate

@@ -7,12 +7,6 @@ namespace Kayak
 {
     class KayakSocket : ISocket
     {
-        //public event EventHandler OnConnected;
-        //public event EventHandler<DataEventArgs> OnData;
-        //public event EventHandler OnEnd;
-        //public event EventHandler OnTimeout;
-        //public event EventHandler<ExceptionEventArgs> OnError;
-        //public event EventHandler OnClose;
         internal ISocketDelegate del;
 
         public int id;

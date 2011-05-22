@@ -83,8 +83,8 @@
     <Compile Include="Http\Parsing\ParserHandler.cs" />
     <Compile Include="Http\HttpResponseHeaderRenderer.cs" />
     <Compile Include="Http\HttpResponseDelegateState.cs" />
-    <Compile Include="Net.cs" />
     <Compile Include="Net\KayakScheduler.cs" />
+    <Compile Include="Net\Net.cs" />
     <Compile Include="Net\Server\KayakServer.cs" />
     <Compile Include="Net\Server\KayakServerState.cs" />
     <Compile Include="Net\Socket\KayakSocket.cs" />

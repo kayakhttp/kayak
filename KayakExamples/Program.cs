@@ -19,7 +19,7 @@ namespace KayakExamples
             scheduler.Post(() =>
             {
                 KayakServer.Factory
-                    .CreateHttp(new HttpChannel())
+                    .CreateHttp(new Channel())
                     .Listen(new IPEndPoint(IPAddress.Any, 8080));
             });
 

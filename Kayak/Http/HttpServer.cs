@@ -7,12 +7,12 @@ namespace Kayak.Http
 {
     public static class HttpServerExtensions
     {
-        public static IServer CreateHttp(this IServerFactory factory, IHttpChannel channel)
+        public static IServer CreateHttp(this IServerFactory factory, IHttpRequestDelegate channel)
         {
             return CreateHttp(factory, channel, KayakScheduler.Current);
         }
 
-        public static IServer CreateHttp(this IServerFactory factory, IHttpChannel channel, IScheduler scheduler)
+        public static IServer CreateHttp(this IServerFactory factory, IHttpRequestDelegate channel, IScheduler scheduler)
         {
             var f = new HttpServerFactory(factory);
             return f.Create(channel, scheduler);
@@ -28,7 +28,7 @@ namespace Kayak.Http
             this.serverFactory = serverFactory;
         }
 
-        public IServer Create(IHttpChannel del, IScheduler scheduler)
+        public IServer Create(IHttpRequestDelegate del, IScheduler scheduler)
         {
             return serverFactory.Create(new HttpServerDelegate(del), scheduler);
         }
@@ -38,9 +38,9 @@ namespace Kayak.Http
     {
         IResponseFactory responseFactory;
 
-        public HttpServerDelegate(IHttpChannel channel)
+        public HttpServerDelegate(IHttpRequestDelegate requestDelegate)
         {
-            this.responseFactory = new ResponseFactory(channel);
+            this.responseFactory = new ResponseFactory(requestDelegate);
         }
 
         public ISocketDelegate OnConnection(IServer server, ISocket socket)
