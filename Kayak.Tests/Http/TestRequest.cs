@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using Kayak;
-using NUnit.Framework;
 using Kayak.Http;
+using NUnit.Framework;
 
 namespace Kayak.Tests
 {

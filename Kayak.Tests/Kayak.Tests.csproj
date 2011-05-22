@@ -83,9 +83,6 @@
     <Compile Include="Http\TestRequest.cs">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Http\TransactionTests.cs">
-      <SubType>Code</SubType>
-    </Compile>
     <Compile Include="Mocks.cs" />
     <Compile Include="Net\DataBuffer.cs" />
     <Compile Include="Net\Delegates\SchedulerDelegate.cs">
@@ -136,9 +133,7 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Extensions\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
