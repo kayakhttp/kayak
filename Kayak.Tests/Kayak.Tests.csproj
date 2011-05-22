@@ -8,8 +8,8 @@
     <ProjectGuid>{DA201FE7-FDAF-4B9E-821D-589F93F7245F}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>KayakTests</RootNamespace>
-    <AssemblyName>KayakTests</AssemblyName>
+    <RootNamespace>Kayak.Tests</RootNamespace>
+    <AssemblyName>Kayak.Tests</AssemblyName>
     <FileAlignment>512</FileAlignment>
     <FileUpgradeFlags>
     </FileUpgradeFlags>
