@@ -23,7 +23,6 @@ namespace Kayak.Tests.Net
 
         ManualResetEventSlim wh;
         Action schedulerStartedAction;
-        Action stopServer;
 
         [SetUp]
         public void SetUp()
@@ -32,20 +31,19 @@ namespace Kayak.Tests.Net
 
             wh = new ManualResetEventSlim();
 
+            IDisposable d = null;
+
             schedulerDelegate = new SchedulerDelegate();
-            schedulerDelegate.OnStoppedAction = () => wh.Set();
+            schedulerDelegate.OnStoppedAction = () =>
+            {
+                d.Dispose();
+                wh.Set();
+            };
 
             scheduler = new KayakScheduler(schedulerDelegate);
             scheduler.Post(() =>
             {
-                var d = server.Listen(ep);
-
-                stopServer = () =>
-                {
-                    d.Dispose();
-                    scheduler.Stop();
-                };
-
+                d = server.Listen(ep);
                 schedulerStartedAction();
             });
 
@@ -103,7 +101,7 @@ namespace Kayak.Tests.Net
                 clientSocketDelegate.OnCloseAction = () =>
                 {
                     Debug.WriteLine("client OnClose");
-                    stopServer();
+                    scheduler.Stop();
                 };
 
                 client.Connect(ep);
@@ -155,7 +153,7 @@ namespace Kayak.Tests.Net
                 clientSocketDelegate.OnCloseAction = () =>
                 {
                     Debug.WriteLine("client OnClose");
-                    stopServer();
+                    scheduler.Stop();
 
                 };
 
@@ -206,7 +204,7 @@ namespace Kayak.Tests.Net
 
                 clientSocketDelegate.OnCloseAction = () =>
                 {
-                    stopServer();
+                    scheduler.Stop();
                 };
 
                 client.Connect(ep);
@@ -229,7 +227,7 @@ namespace Kayak.Tests.Net
                 serverSocketDelegate.OnCloseAction = () =>
                 {
                     socket.Dispose();
-                    stopServer();
+                    scheduler.Stop();
                 };
 
                 WriteDataSync(socket);
@@ -266,7 +264,7 @@ namespace Kayak.Tests.Net
                     Debug.WriteLine("will dispose");
                     socket.Dispose();
                     Debug.WriteLine("did dispose");
-                    stopServer();
+                    scheduler.Stop();
                 };
 
                 WriteDataSync(socket);

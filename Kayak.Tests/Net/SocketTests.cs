@@ -1,305 +1,344 @@
-﻿//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-//using Kayak;
-//using NUnit.Framework;
-//using System.Net;
+﻿using System;
+using System.Net;
+using System.Text;
+using Kayak;
+using Kayak.Tests;
+using Kayak.Tests.Net;
+using NUnit.Framework;
+using System.Threading;
 
-//namespace KayakTests.Net
-//{
-//    // TODO
-//    // - ISocket.Close is always dispatched (i.e., after error) (how to test?)
-//    // - OnData continuation semantics: if handler will invoke, event not fired until continuation
-//    // - access after dispose throws exception
-//    // Question mark/internal considerations:
-//    // - how to test that no data is read until OnData is listened to?
-//    // - how to test for write behavior when continuation is provided/write returns true?
-//    class SocketTests
-//    {
-//        EventContext context;
-//        ISocket client;
-//        SocketDelegate clientSocketDelegate;
-//        IScheduler scheduler;
-//        IServer server;
-//        IPEndPoint ep;
+namespace Kayak.Tests.Net
+{
+    // TODO
+    // - ISocket.Close is always dispatched (i.e., after error) (how to test?)
+    // - OnData continuation semantics: if handler will invoke, event not fired until continuation
+    // - access after dispose throws exception
+    // Question mark/internal considerations:
+    // - how to test that no data is read until OnData is listened to?
+    // - how to test for write behavior when continuation is provided/write returns true?
+    class SocketTests
+    {
+        ISocket client;
+        SocketDelegate clientSocketDelegate;
+        IScheduler scheduler;
+        IServer server;
+        IPEndPoint ep;
 
-//        [SetUp]
-//        public void SetUp()
-//        {
-//            ep = new IPEndPoint(IPAddress.Loopback, Config.Port);
-//            scheduler = new KayakScheduler();
-//            context = new EventContext(scheduler);
-//            client = new KayakSocket(scheduler);
-//            clientSocketDelegate = new SocketDelegate(client);
-//            server = new KayakServer(scheduler);
-//        }
+        ManualResetEventSlim wh;
+        Action schedulerStartedAction;
 
-//        void ListenAndRun()
-//        {
-//            server.Listen(ep);
-//            context.Run();
-//        }
+        [SetUp]
+        public void SetUp()
+        {
+            ep = new IPEndPoint(IPAddress.Loopback, Config.Port);
 
-//        [TearDown]
-//        public void TearDown()
-//        {
-//            context.Dispose();
-//            server.Dispose();
-//            client.Dispose();
-//            clientSocketDelegate.Dispose();
-//        }
+            wh = new ManualResetEventSlim();
 
-//        [Test]
-//        public void Connect_after_connect_throws_exception()
-//        {
-//            Exception ex = null;
+            IDisposable d = null;
 
-//            client.Connect(ep);
+            var schedulerDelegate = new SchedulerDelegate();
+            schedulerDelegate.OnStoppedAction = () =>
+            {
+                d.Dispose();
+                wh.Set();
+            };
 
-//            try
-//            {
-//                client.Connect(ep);
-//            }
-//            catch (InvalidOperationException e)
-//            {
-//                ex = e;
-//            }
+            scheduler = new KayakScheduler(schedulerDelegate);
+            scheduler.Post(() => 
+            {
+                d = server.Listen(ep);
+                schedulerStartedAction();
+            });
 
-//            Assert.That(ex, Is.Not.Null);
-//            Assert.That(ex.Message, Is.EqualTo("The socket was connecting."));
-//        }
+            var serverDelegate = new ServerDelegate();
+            server = new KayakServer(serverDelegate, scheduler);
 
-//        [Test]
-//        public void Connect_after_connected_throws_exception()
-//        {
-//            Exception ex = null;
+            clientSocketDelegate = new SocketDelegate();
+            client = new KayakSocket(clientSocketDelegate, scheduler);
+        }
 
-//            context.OnStarted = () =>
-//            {
-//                client.Connect(ep);
-//                clientSocketDelegate.OnConnectedAction = () =>
-//                {
-//                    try
-//                    {
-//                        client.Connect(ep);
-//                    }
-//                    catch (InvalidOperationException e)
-//                    {
-//                        ex = e;
-//                    }
-//                    scheduler.Stop();
-//                };
-//            };
+        [TearDown]
+        public void TearDown()
+        {
+            wh.Dispose();
+            client.Dispose();
+        }
 
-//            ListenAndRun();
+        void RunScheduler()
+        {
+            new Thread(() => scheduler.Start()).Start();
+            wh.Wait();
+        }
 
-//            Assert.That(ex, Is.Not.Null);
-//            Assert.That(ex.Message, Is.EqualTo("The socket was connected."));
-//        }
+        [Test]
+        public void Connect_after_connect_throws_exception()
+        {
+            Exception ex = null;
 
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
 
-//        [Test]
-//        public void End_before_connect_throws_exception()
-//        {
-//            Exception ex = null;
+                try
+                {
+                    client.Connect(ep);
+                }
+                catch (InvalidOperationException e)
+                {
+                    ex = e;
+                }
 
-//            try
-//            {
-//                client.End();
-//            }
-//            catch (InvalidOperationException e)
-//            {
-//                ex = e;
-//            }
+                scheduler.Stop();
+            };
 
-//            Assert.That(ex, Is.Not.Null);
-//            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
-//        }
+            RunScheduler();
 
-//        [Test]
-//        public void Write_before_connect_throws_exception()
-//        {
-//            Exception ex = null;
+            Assert.That(ex, Is.Not.Null);
+            Assert.That(ex.Message, Is.EqualTo("The socket was connecting."));
+        }
 
-//            try
-//            {
-//                client.Write(default(ArraySegment<byte>), null);
-//            }
-//            catch (InvalidOperationException e)
-//            {
-//                ex = e;
-//            }
+        [Test]
+        public void Connect_after_connected_throws_exception()
+        {
+            Exception ex = null;
 
-//            Assert.That(ex, Is.Not.Null);
-//            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
-//        }
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    try
+                    {
+                        client.Connect(ep);
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        ex = e;
+                    }
+                    scheduler.Stop();
+                };
+            };
 
-//        [Test]
-//        public void End_after_end_throws_exception()
-//        {
-//            Exception ex = null;
+            RunScheduler();
 
-//            context.OnStarted = () =>
-//            {
-//                client.Connect(ep);
-//                clientSocketDelegate.OnConnectedAction = () =>
-//                {
-//                    client.End();
-
-//                    try
-//                    {
-//                        client.End();
-//                    }
-//                    catch (InvalidOperationException e)
-//                    {
-//                        ex = e;
-//                    }
-
-//                    scheduler.Stop();
-//                };
-//            };
-
-//            ListenAndRun();
-
-//            Assert.That(ex, Is.Not.Null);
-//            Assert.That(ex.Message, Is.EqualTo("The socket was previously ended."));
-//        }
-
-//        [Test]
-//        public void Write_after_end_throws_exception()
-//        {
-//            Exception ex = null;
-
-//            context.OnStarted = () =>
-//            {
-//                client.Connect(ep);
-//                clientSocketDelegate.OnConnectedAction = () =>
-//                {
-//                    client.End();
-
-//                    try
-//                    {
-//                        client.Write(default(ArraySegment<byte>), null);
-//                    }
-//                    catch (InvalidOperationException e)
-//                    {
-//                        ex = e;
-//                    }
-
-//                    scheduler.Stop();
-//                };
-//            };
-
-//            ListenAndRun();
-
-//            Assert.That(ex, Is.Not.Null);
-//            Assert.That(ex.Message, Is.EqualTo("The socket was previously ended."));
-//        }
-
-//        #region Temporary behavior
-//        // TODO eventually it would probably be nice to support a fire-and-forget use-case:
-//        // socket.Connect(ep);
-//        // socket.Write(...);
-//        // socket.End();
-
-//        [Test]
-//        public void Write_before_connected_throws_exception()
-//        {
-//            Exception ex = null;
-
-//            context.OnStarted = () =>
-//            {
-//                client.Connect(ep);
-//                try
-//                {
-//                    client.Write(default(ArraySegment<byte>), null);
-//                }
-//                catch (InvalidOperationException e)
-//                {
-//                    ex = e;
-//                }
-//                scheduler.Stop();
-//            };
-
-//            ListenAndRun();
-
-//            Assert.That(ex, Is.Not.Null);
-//            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
-//        }
+            Assert.That(ex, Is.Not.Null);
+            Assert.That(ex.Message, Is.EqualTo("The socket was connected."));
+        }
 
 
-//        [Test]
-//        public void End_before_connected_throws_exception()
-//        {
-//            Exception ex = null;
+        [Test]
+        public void End_before_connect_throws_exception()
+        {
+            Exception ex = null;
 
-//            context.OnStarted = () =>
-//            {
-//                client.Connect(ep);
-//                try
-//                {
-//                    client.End();
-//                }
-//                catch (InvalidOperationException e)
-//                {
-//                    ex = e;
-//                }
-//                scheduler.Stop();
-//            };
+            schedulerStartedAction = () =>
+            {
+                try
+                {
+                    client.End();
+                }
+                catch (InvalidOperationException e)
+                {
+                    ex = e;
+                }
+                scheduler.Stop();
+            };
 
-//            ListenAndRun();
+            RunScheduler();
 
-//            Assert.That(ex, Is.Not.Null);
-//            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
-//        }
+            Assert.That(ex, Is.Not.Null);
+            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
+        }
 
-//        #endregion
+        [Test]
+        public void Write_before_connect_throws_exception()
+        {
+            Exception ex = null;
 
-//        [Test]
-//        public void Write_with_null_continuation_returns_false()
-//        {
-//            bool writeResult = false;
-//            bool connected = false;
+            schedulerStartedAction = () =>
+            {
+                try
+                {
+                    client.Write(default(ArraySegment<byte>), null);
+                }
+                catch (InvalidOperationException e)
+                {
+                    ex = e;
+                }
+                scheduler.Stop();
+            };
 
-//            context.OnStarted = () =>
-//            {
-//                client.Connect(ep);
-//                clientSocketDelegate.OnConnectedAction = () =>
-//                {
-//                    connected = true;
-//                    writeResult = client.Write(new ArraySegment<byte>(Encoding.ASCII.GetBytes("hello socket.Write")), null);
-//                    scheduler.Stop();
-//                };
-//            };
+            RunScheduler();
 
-//            ListenAndRun();
+            Assert.That(ex, Is.Not.Null);
+            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
+        }
 
-//            Assert.That(connected, Is.True);
-//            Assert.That(writeResult, Is.False);
-//        }
+        [Test]
+        public void End_after_end_throws_exception()
+        {
+            Exception ex = null;
 
-//        [Test]
-//        public void Write_with_zero_length_buffer_returns_false()
-//        {
-//            bool writeResult = false;
-//            bool connected = false;
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    client.End();
 
-//            context.OnStarted = () =>
-//            {
-//                client.Connect(ep);
-//                clientSocketDelegate.OnConnectedAction = () =>
-//                {
-//                    connected = true;
-//                    writeResult = client.Write(default(ArraySegment<byte>), () => { });
-//                    scheduler.Stop();
-//                };
-//            };
+                    try
+                    {
+                        client.End();
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        ex = e;
+                    }
 
-//            ListenAndRun();
+                    scheduler.Stop();
+                };
+            };
 
-//            Assert.That(connected, Is.True);
-//            Assert.That(writeResult, Is.False);
-//        }
-//    }
-//}
+            RunScheduler();
+
+            Assert.That(ex, Is.Not.Null);
+            Assert.That(ex.Message, Is.EqualTo("The socket was previously ended."));
+        }
+
+        [Test]
+        public void Write_after_end_throws_exception()
+        {
+            Exception ex = null;
+
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    client.End();
+
+                    try
+                    {
+                        client.Write(default(ArraySegment<byte>), null);
+                    }
+                    catch (InvalidOperationException e)
+                    {
+                        ex = e;
+                    }
+
+                    scheduler.Stop();
+                };
+            };
+
+            RunScheduler();
+
+            Assert.That(ex, Is.Not.Null);
+            Assert.That(ex.Message, Is.EqualTo("The socket was previously ended."));
+        }
+
+        #region Temporary behavior
+        // TODO eventually it would probably be nice to support a fire-and-forget use-case:
+        // socket.Connect(ep);
+        // socket.Write(...);
+        // socket.End();
+
+        [Test]
+        public void Write_before_connected_throws_exception()
+        {
+            Exception ex = null;
+
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
+                try
+                {
+                    client.Write(default(ArraySegment<byte>), null);
+                }
+                catch (InvalidOperationException e)
+                {
+                    ex = e;
+                }
+                scheduler.Stop();
+            };
+
+            RunScheduler();
+
+            Assert.That(ex, Is.Not.Null);
+            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
+        }
+
+
+        [Test]
+        public void End_before_connected_throws_exception()
+        {
+            Exception ex = null;
+
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
+                try
+                {
+                    client.End();
+                }
+                catch (InvalidOperationException e)
+                {
+                    ex = e;
+                }
+                scheduler.Stop();
+            };
+
+            RunScheduler();
+
+            Assert.That(ex, Is.Not.Null);
+            Assert.That(ex.Message, Is.EqualTo("The socket was not connected."));
+        }
+
+        #endregion
+
+        [Test]
+        public void Write_with_null_continuation_returns_false()
+        {
+            bool writeResult = false;
+            bool connected = false;
+
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    connected = true;
+                    writeResult = client.Write(new ArraySegment<byte>(Encoding.ASCII.GetBytes("hello socket.Write")), null);
+                    scheduler.Stop();
+                };
+            };
+
+            RunScheduler();
+
+            Assert.That(connected, Is.True);
+            Assert.That(writeResult, Is.False);
+        }
+
+        [Test]
+        public void Write_with_zero_length_buffer_returns_false()
+        {
+            bool writeResult = false;
+            bool connected = false;
+
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    connected = true;
+                    writeResult = client.Write(default(ArraySegment<byte>), () => { });
+                    scheduler.Stop();
+                };
+            };
+
+            RunScheduler();
+
+            Assert.That(connected, Is.True);
+            Assert.That(writeResult, Is.False);
+        }
+    }
+}

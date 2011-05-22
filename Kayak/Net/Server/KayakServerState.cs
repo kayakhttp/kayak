@@ -30,7 +30,6 @@ namespace Kayak
         {
             lock (this)
             {
-                Debug.WriteLine("state is " + state);
                 if ((state & State.Disposed) > 0)
                     throw new ObjectDisposedException(typeof(KayakServer).Name);
 
