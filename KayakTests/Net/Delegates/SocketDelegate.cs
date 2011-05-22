@@ -6,7 +6,7 @@ using Kayak;
 
 namespace KayakTests.Net
 {
-    class SocketDelegate
+    class SocketDelegate : ISocketDelegate
     {
         public Action OnTimeoutAction;
         public Action<Exception> OnErrorAction;
@@ -17,12 +17,12 @@ namespace KayakTests.Net
 
         public Exception Exception;
         public int NumOnConnectedEvents;
-        public int NumOnEndEvents;
-        public int NumOnCloseEvents;
+        public bool GotOnEnd;
+        public bool GotOnClose;
 
         public DataBuffer Buffer;
 
-        public SocketDelegate(ISocket socket)
+        public SocketDelegate()
         {
             Buffer = new DataBuffer();
         }
@@ -33,21 +33,25 @@ namespace KayakTests.Net
                 OnTimeoutAction();
         }
 
-        void OnError(IServer server, Exception e)
+        public void OnError(ISocket socket, Exception e)
         {
             Exception = e;
             if (OnErrorAction != null)
                 OnErrorAction(e);
         }
 
-        void OnEnd(IServer server)
+        public void OnEnd(ISocket socket)
         {
-            NumOnEndEvents++;
+            if (GotOnEnd)
+                throw new Exception("Socket delegate previously got OnEnd");
+
+            GotOnEnd = true;
+
             if (OnEndAction != null)
                 OnEndAction();
         }
 
-        bool OnData(IServer server, ArraySegment<byte> data, Action continuation)
+        public bool OnData(ISocket server, ArraySegment<byte> data, Action continuation)
         {
             Buffer.AddToBuffer(data);
 
@@ -58,16 +62,20 @@ namespace KayakTests.Net
         }
 
 
-        void OnConnected(IServer server)
+        public void OnConnected(ISocket socket)
         {
             NumOnConnectedEvents++;
             if (OnConnectedAction != null)
                 OnConnectedAction();
         }
 
-        void OnClose(IServer server)
+        public void OnClose(ISocket socket)
         {
-            NumOnCloseEvents++;
+            if (GotOnClose)
+                throw new Exception("Socket delegate previously got OnClose");
+
+            GotOnClose = true;
+
             if (OnCloseAction != null)
                 OnCloseAction();
         }

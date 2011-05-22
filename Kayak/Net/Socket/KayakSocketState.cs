@@ -69,29 +69,25 @@ namespace Kayak
                 throw new InvalidOperationException("The socket was previously ended.");
         }
 
-        public void EnsureCanRead()
+        // okay, so.
+        //
+        // need to check this every time we're about to do a read.
+        // since we potentially do this in a loop, we return false
+        // to indicate that the loop should break out. however, if the 
+        // socket was never connected...well, that's an error, bro.
+        public bool CanRead()
         {
-            // these checks should never pass; they are here for safety.
-            
-            // disabled, after the callback for an async read is raised, the socket 
-            // may have been disposed, but there's no clean way for us to know this
-            // short of duplicating the System.Net.Sockets.Socket's state. instead
-            // we always loop and let it raise ObjectDisposedException, which we
-            // handle more cleanly.
-            //if ((state & State.Disposed) > 0)
-            //        throw new ObjectDisposedException(typeof(KayakSocket).Name);
-
             if ((state & State.Connected) == 0)
                 throw new InvalidOperationException("The socket was not connected.");
 
             if ((state & State.ReadEnded) > 0)
-                throw new InvalidOperationException("The socket was previously ended by the peer.");
+                return false;
+
+            return true;
         }
 
         public bool SetReadEnded()
         {
-            EnsureCanRead();
-
             state |= State.ReadEnded;
 
             if ((state & State.WriteEnded) > 0)

@@ -1,319 +1,348 @@
-﻿//using System;
-//using System.Collections.Generic;
-//using System.Diagnostics;
-//using System.Net;
-//using System.Text;
-//using System.Threading;
-//using Kayak;
-//using NUnit.Framework;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Net;
+using System.Text;
+using System.Threading;
+using Kayak;
+using NUnit.Framework;
 
-//namespace KayakTests.Net
-//{
-//    class NetTests
-//    {
-//        IScheduler scheduler;
-//        IServer server;
-//        ServerDelegate serverDelegate;
-//        ISocket client;
-//        SocketDelegate clientSocketDelegate;
-//        SocketDelegate serverSocketDelegate;
-//        EventContext context;
-//        IPEndPoint ep;
-        
-//        [SetUp]
-//        public void SetUp()
-//        {
-//            ep = new IPEndPoint(IPAddress.Loopback, Config.Port);
-//            scheduler = new KayakScheduler();
-//            server = new KayakServer(scheduler);
-//            serverDelegate = new ServerDelegate(server);
-//            client = new KayakSocket(scheduler);
-//            clientSocketDelegate = new SocketDelegate(client);
-//            context = new EventContext(scheduler);
-//        }
+namespace KayakTests.Net
+{
+    class NetTests
+    {
+        IScheduler scheduler;
+        SchedulerDelegate schedulerDelegate;
+        IServer server;
+        ServerDelegate serverDelegate;
+        ISocket client;
+        SocketDelegate clientSocketDelegate;
+        SocketDelegate serverSocketDelegate;
+        //EventContext context;
+        IPEndPoint ep;
 
-//        [TearDown]
-//        public void TearDown()
-//        {
-//            serverDelegate.Dispose();
-//            server.Dispose();
-//            context.Dispose();
-//            clientSocketDelegate.Dispose();
-//            client.Dispose();
-//        }
+        ManualResetEventSlim wh;
+        Action schedulerStartedAction;
+        Action stopServer;
 
+        [SetUp]
+        public void SetUp()
+        {
+            ep = new IPEndPoint(IPAddress.Loopback, Config.Port);
 
-//        [Test]
-//        public void Simple_handshake_client_closes_connection()
-//        {
-//            serverDelegate.OnConnection = s =>
-//            {
-//                Debug.WriteLine("server OnConnection");
-//                serverSocketDelegate = new SocketDelegate(s);
+            wh = new ManualResetEventSlim();
 
-//                serverSocketDelegate.OnEndAction = () =>
-//                {
-//                    Debug.WriteLine("serverSocket OnEnd");
-//                    s.End();
-//                };
+            schedulerDelegate = new SchedulerDelegate();
+            schedulerDelegate.OnStoppedAction = () => wh.Set();
 
-//                serverSocketDelegate.OnCloseAction = () =>
-//                {
-//                    Debug.WriteLine("serverSocket OnClose");
-//                    s.Dispose();
-//                };
-//            };
+            scheduler = new KayakScheduler(schedulerDelegate);
+            scheduler.Post(() =>
+            {
+                var d = server.Listen(ep);
 
-//            context.OnStarted = () =>
-//            {
-//                clientSocketDelegate.OnConnectedAction = () =>
-//                {
-//                    Debug.WriteLine("client End");
-//                    client.End();
-//                };
-//                clientSocketDelegate.OnCloseAction = () =>
-//                {
-//                    Debug.WriteLine("client OnClose");
-//                    server.Close();
-//                    scheduler.Stop();
-//                };
+                stopServer = () =>
+                {
+                    d.Dispose();
+                    scheduler.Stop();
+                };
 
-//                client.Connect(ep);
-//            };
+                schedulerStartedAction();
+            });
 
-//            ListenAndRun();
+            serverDelegate = new ServerDelegate();
+            server = new KayakServer(serverDelegate, scheduler);
+            
+            clientSocketDelegate = new SocketDelegate();
+            client = new KayakSocket(clientSocketDelegate, scheduler);
+        }
 
-//            AssertConnectionAndCleanShutdown();
-//        }
+        [TearDown]
+        public void TearDown()
+        {
+            wh.Dispose();
+            server.Dispose();
+            client.Dispose();
+        }
 
-//        [Test]
-//        public void Client_writes_synchronously_server_buffers_synchronously()
-//        {
-//            serverDelegate.OnConnection = s =>
-//            {
-//                Debug.WriteLine("server OnConnection");
-//                serverSocketDelegate = new SocketDelegate(s);
+        void RunScheduler()
+        {
+            new Thread(() => scheduler.Start()).Start();
+            wh.Wait();
+        }
 
-//                serverSocketDelegate.OnEndAction = () =>
-//                {
-//                    Debug.WriteLine("serverSocket OnEnd");
-//                    s.End();
-//                };
+        [Test]
+        public void Simple_handshake_client_closes_connection()
+        {
+            serverDelegate.OnConnectionAction = (server, socket) =>
+            {
+                Debug.WriteLine("server OnConnection");
+                serverSocketDelegate = new SocketDelegate();
 
-//                serverSocketDelegate.OnCloseAction = () =>
-//                {
-//                    Debug.WriteLine("serverSocket OnClose");
-//                    s.Dispose();
-//                };
-//            };
+                serverSocketDelegate.OnEndAction = () =>
+                {
+                    Debug.WriteLine("serverSocket OnEnd");
+                    socket.End();
+                };
 
-//            context.OnStarted = () =>
-//            {
-//                clientSocketDelegate.OnConnectedAction = () =>
-//                {
-//                    Debug.WriteLine("client OnConnected");
-//                    try
-//                    {
-//                        WriteDataSync(client);
-//                    }
-//                    catch (Exception e)
-//                    {
-//                        e.DebugStacktrace();
-//                    }
-//                };
+                serverSocketDelegate.OnCloseAction = () =>
+                {
+                    Debug.WriteLine("serverSocket OnClose");
+                    socket.Dispose();
+                };
 
-//                clientSocketDelegate.OnCloseAction = () =>
-//                {
-//                    Debug.WriteLine("client OnClose");
-//                    server.Close();
-//                    scheduler.Stop();
+                return serverSocketDelegate;
+            };
 
-//                };
+            schedulerStartedAction = () =>
+            {
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    Debug.WriteLine("client End");
+                    client.End();
+                };
+                clientSocketDelegate.OnCloseAction = () =>
+                {
+                    Debug.WriteLine("client OnClose");
+                    stopServer();
+                };
 
-//                client.Connect(ep);
-//            };
+                client.Connect(ep);
+            };
 
-//            ListenAndRun();
+            RunScheduler();
 
-//            AssertConnectionAndCleanShutdown();
-//            Assert.That(
-//                serverSocketDelegate.Buffer.ToString(),
-//                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
-//        }
+            AssertConnectionAndCleanShutdown();
+        }
 
-//        [Test]
-//        public void Client_writes_asynchronously_server_buffers_synchronously()
-//        {
-//            serverDelegate.OnConnection = s =>
-//            {
-//                serverSocketDelegate = new SocketDelegate(s);
+        [Test]
+        public void Client_writes_synchronously_server_buffers_synchronously()
+        {
+            serverDelegate.OnConnectionAction = (server, socket) =>
+            {
+                Debug.WriteLine("server OnConnection");
+                serverSocketDelegate = new SocketDelegate();
 
-//                serverSocketDelegate.OnEndAction = () =>
-//                {
-//                    s.End();
-//                };
+                serverSocketDelegate.OnEndAction = () =>
+                {
+                    Debug.WriteLine("serverSocket OnEnd");
+                    socket.End();
+                };
 
-//                serverSocketDelegate.OnCloseAction = () =>
-//                {
-//                    s.Dispose();
-//                };
-//            };
+                serverSocketDelegate.OnCloseAction = () =>
+                {
+                    Debug.WriteLine("serverSocket OnClose");
+                    socket.Dispose();
+                };
 
-//            context.OnStarted = () =>
-//            {
-//                clientSocketDelegate.OnConnectedAction = () =>
-//                {
-//                    try
-//                    {
-//                        WriteDataAsync(client);
-//                    }
-//                    catch (Exception e)
-//                    {
-//                        e.DebugStacktrace();
-//                    }
-//                };
+                return serverSocketDelegate;
+            };
 
-//                clientSocketDelegate.OnCloseAction = () =>
-//                {
-//                    server.Close();
-//                    scheduler.Stop();
-//                };
+            schedulerStartedAction = () =>
+            {
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    Debug.WriteLine("client OnConnected");
+                    try
+                    {
+                        WriteDataSync(client);
+                    }
+                    catch (Exception e)
+                    {
+                        e.DebugStacktrace();
+                    }
+                };
 
-//                client.Connect(ep);
-//            };
+                clientSocketDelegate.OnCloseAction = () =>
+                {
+                    Debug.WriteLine("client OnClose");
+                    stopServer();
 
-//            ListenAndRun();
+                };
 
-//            AssertConnectionAndCleanShutdown();
-//            Assert.That(serverSocketDelegate.Buffer.ToString(),
-//                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
-//        }
+                client.Connect(ep);
+            };
 
-//        [Test]
-//        public void Server_writes_synchronously_client_buffers_synchronously()
-//        {
-//            serverDelegate.OnConnection = s =>
-//            {
-//                serverSocketDelegate = new SocketDelegate(s);
-//                WriteDataSync(s);
+            RunScheduler();
 
-//                serverSocketDelegate.OnCloseAction = () =>
-//                {
-//                    s.Dispose();
-//                    server.Close();
-//                    scheduler.Stop();
-//                };
-//            };
+            AssertConnectionAndCleanShutdown();
+            Assert.That(
+                serverSocketDelegate.Buffer.ToString(),
+                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
+        }
 
-//            context.OnStarted = () =>
-//            {
-//                clientSocketDelegate.OnEndAction = () =>
-//                {
-//                    client.End();
-//                };
+        [Test]
+        public void Client_writes_asynchronously_server_buffers_synchronously()
+        {
+            serverDelegate.OnConnectionAction = (server, socket) =>
+            {
+                serverSocketDelegate = new SocketDelegate();
 
-//                client.Connect(ep);
-//            };
+                serverSocketDelegate.OnEndAction = () =>
+                {
+                    socket.End();
+                };
 
-//            ListenAndRun();
+                serverSocketDelegate.OnCloseAction = () =>
+                {
+                    socket.Dispose();
+                };
 
-//            AssertConnectionAndCleanShutdown();
-//            Assert.That(clientSocketDelegate.Buffer.ToString(),
-//                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
-//        }
+                return serverSocketDelegate;
+            };
 
-//        [Test]
-//        public void Server_writes_asynchronously_client_buffers_synchronously()
-//        {
-//            serverDelegate.OnConnection = s =>
-//            {
-//                serverSocketDelegate = new SocketDelegate(s);
-//                WriteDataSync(s);
+            schedulerStartedAction = () =>
+            {
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    try
+                    {
+                        WriteDataAsync(client);
+                    }
+                    catch (Exception e)
+                    {
+                        e.DebugStacktrace();
+                    }
+                };
 
-//                serverSocketDelegate.OnCloseAction = () =>
-//                {
-//                    Debug.WriteLine("will dispose");
-//                    s.Dispose();
-//                    Debug.WriteLine("did dispose");
-//                    server.Close();
-//                    scheduler.Stop();
-//                };
-//            };
+                clientSocketDelegate.OnCloseAction = () =>
+                {
+                    stopServer();
+                };
 
-//            context.OnStarted = () =>
-//            {
-//                clientSocketDelegate.OnEndAction = () =>
-//                {
-//                    client.End();
-//                };
+                client.Connect(ep);
+            };
 
-//                client.Connect(ep);
-//            };
+            RunScheduler();
 
-//            ListenAndRun();
+            AssertConnectionAndCleanShutdown();
+            Assert.That(serverSocketDelegate.Buffer.ToString(),
+                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
+        }
 
-//            AssertConnectionAndCleanShutdown();
-//            Assert.That(clientSocketDelegate.Buffer.ToString(),
-//                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
-//        }
+        [Test]
+        public void Server_writes_synchronously_client_buffers_synchronously()
+        {
+            serverDelegate.OnConnectionAction = (server, socket) =>
+            {
+                serverSocketDelegate = new SocketDelegate();
 
-//        void WriteDataSync(ISocket socket)
-//        {
-//            foreach (var d in MakeData())
-//            {
-//                Debug.WriteLine("Client writing data sync.");
-//                socket.Write(new ArraySegment<byte>(d), null);
-//            }
-//            Debug.WriteLine("Client ending connection.");
-//            socket.End();
-//        }
+                serverSocketDelegate.OnCloseAction = () =>
+                {
+                    socket.Dispose();
+                    stopServer();
+                };
 
-//        void WriteDataAsync(ISocket socket)
-//        {
-//            var en = MakeData().GetEnumerator();
-//            WriteDataAsync(socket, en);
-//        }
+                WriteDataSync(socket);
 
-//        void WriteDataAsync(ISocket socket, IEnumerator<byte[]> ds)
-//        {
-//            if (ds.MoveNext())
-//            {
-//                Debug.WriteLine("Client writing data async.");
-//                if (!socket.Write(new ArraySegment<byte>(ds.Current), () => WriteDataAsync(socket, ds)))
-//                    WriteDataAsync(socket, ds);
-//            }
-//            else
-//            {
-//                Debug.WriteLine("Client ending connection.");
-//                ds.Dispose();
-//                socket.End();
-//            }
-//        }
+                return serverSocketDelegate;
+            };
 
-//        void ListenAndRun()
-//        {
-//            server.Listen(ep);
-//            context.Run();
-//        }
+            schedulerStartedAction = () =>
+            {
+                clientSocketDelegate.OnEndAction = () =>
+                {
+                    client.End();
+                };
 
-//        void AssertConnectionAndCleanShutdown()
-//        {
-//            Assert.That(clientSocketDelegate.Exception, Is.Null, "Client got error.");
-//            Assert.That(serverDelegate.NumOnConnectionEvents, Is.EqualTo(1), "Server did not get OnConnection.");
-//            Assert.That(clientSocketDelegate.NumOnConnectedEvents, Is.EqualTo(1), "Client did not connect.");
-//            Assert.That(serverSocketDelegate.NumOnEndEvents, Is.EqualTo(1), "Server did not get OnEnd.");
-//            Assert.That(serverSocketDelegate.NumOnCloseEvents, Is.EqualTo(1), "Server did not get OnClose.");
-//            Assert.That(clientSocketDelegate.NumOnEndEvents, Is.EqualTo(1), "Client did not get OnEnd.");
-//            Assert.That(clientSocketDelegate.NumOnCloseEvents, Is.EqualTo(1), "Client did not get OnClose.");
-//            Assert.That(serverDelegate.NumOnCloseEvents, Is.EqualTo(1), "Server did not raise OnClose.");
-//        }
+                client.Connect(ep);
+            };
 
-//        // XXX pull out to somewhere else
-//        public static IEnumerable<byte[]> MakeData()
-//        {
-//            yield return Encoding.UTF8.GetBytes("hailey is a stinky ");
-//            yield return Encoding.UTF8.GetBytes("punky butt ");
-//            yield return Encoding.UTF8.GetBytes("nugget dot com");
-//        }
-//    }
-//}
+            RunScheduler();
+
+            AssertConnectionAndCleanShutdown();
+            Assert.That(clientSocketDelegate.Buffer.ToString(),
+                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
+        }
+
+        [Test]
+        public void Server_writes_asynchronously_client_buffers_synchronously()
+        {
+            serverDelegate.OnConnectionAction = (server, socket) =>
+            {
+                serverSocketDelegate = new SocketDelegate();
+
+                serverSocketDelegate.OnCloseAction = () =>
+                {
+                    Debug.WriteLine("will dispose");
+                    socket.Dispose();
+                    Debug.WriteLine("did dispose");
+                    stopServer();
+                };
+
+                WriteDataSync(socket);
+
+                return serverSocketDelegate;
+            };
+
+            schedulerStartedAction = () =>
+            {
+                clientSocketDelegate.OnEndAction = () =>
+                {
+                    client.End();
+                };
+
+                client.Connect(ep);
+            };
+
+            RunScheduler();
+
+            AssertConnectionAndCleanShutdown();
+            Assert.That(clientSocketDelegate.Buffer.ToString(),
+                Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
+        }
+
+        void WriteDataSync(ISocket socket)
+        {
+            foreach (var d in MakeData())
+            {
+                Debug.WriteLine("Client writing data sync.");
+                socket.Write(new ArraySegment<byte>(d), null);
+            }
+            Debug.WriteLine("Client ending connection.");
+            socket.End();
+        }
+
+        void WriteDataAsync(ISocket socket)
+        {
+            var en = MakeData().GetEnumerator();
+            WriteDataAsync(socket, en);
+        }
+
+        void WriteDataAsync(ISocket socket, IEnumerator<byte[]> ds)
+        {
+            if (ds.MoveNext())
+            {
+                Debug.WriteLine("Client writing data async.");
+                if (!socket.Write(new ArraySegment<byte>(ds.Current), () => WriteDataAsync(socket, ds)))
+                    WriteDataAsync(socket, ds);
+            }
+            else
+            {
+                Debug.WriteLine("Client ending connection.");
+                ds.Dispose();
+                socket.End();
+            }
+        }
+
+        void AssertConnectionAndCleanShutdown()
+        {
+            Assert.That(schedulerDelegate.Exception, Is.Null, "Scheduler got exception.");
+            Assert.That(clientSocketDelegate.Exception, Is.Null, "Client got error.");
+            Assert.That(serverDelegate.NumOnConnectionEvents, Is.EqualTo(1), "Server did not get OnConnection.");
+            Assert.That(clientSocketDelegate.NumOnConnectedEvents, Is.EqualTo(1), "Client did not connect.");
+            Assert.That(serverSocketDelegate.GotOnEnd, Is.True, "Server did not get OnEnd.");
+            Assert.That(serverSocketDelegate.GotOnClose, Is.True, "Server did not get OnClose.");
+            Assert.That(clientSocketDelegate.GotOnEnd, Is.True, "Client did not get OnEnd.");
+            Assert.That(clientSocketDelegate.GotOnClose, Is.True, "Client did not get OnClose.");
+            Assert.That(serverDelegate.NumOnCloseEvents, Is.EqualTo(1), "Server did not raise OnClose.");
+        }
+
+        // XXX pull out to somewhere else
+        public static IEnumerable<byte[]> MakeData()
+        {
+            yield return Encoding.UTF8.GetBytes("hailey is a stinky ");
+            yield return Encoding.UTF8.GetBytes("punky butt ");
+            yield return Encoding.UTF8.GetBytes("nugget dot com");
+        }
+    }
+}

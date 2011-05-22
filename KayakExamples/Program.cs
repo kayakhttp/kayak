@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Net;
 using Kayak;
 using Kayak.Http;
-using System.Net;
 
 namespace KayakExamples
 {
@@ -15,7 +15,7 @@ namespace KayakExamples
             Debug.AutoFlush = true;
 #endif
 
-            var scheduler = new KayakScheduler();
+            var scheduler = new KayakScheduler(new SchedulerDelegate());
             scheduler.Post(() =>
             {
                 KayakServer.Factory
@@ -23,7 +23,7 @@ namespace KayakExamples
                     .Listen(new IPEndPoint(IPAddress.Any, 8080));
             });
 
-            scheduler.Start(new SchedulerDelegate());
+            scheduler.Start();
         }
 
         class SchedulerDelegate : ISchedulerDelegate
@@ -32,6 +32,11 @@ namespace KayakExamples
             {
                 Debug.WriteLine("Error on scheduler.");
                 e.DebugStacktrace();
+            }
+
+            public void OnStop(IScheduler scheduler)
+            {
+
             }
         }
     }

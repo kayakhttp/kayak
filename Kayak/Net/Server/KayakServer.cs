@@ -28,7 +28,7 @@ namespace Kayak
 
         public static IServerFactory Factory { get { return factory; } }
 
-        KayakServer(IServerDelegate del, IScheduler scheduler)
+        internal KayakServer(IServerDelegate del, IScheduler scheduler)
         {
             this.del = del;
             this.scheduler = scheduler;

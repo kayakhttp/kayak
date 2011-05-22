@@ -30,7 +30,7 @@ namespace Kayak
         Action continuation;
         IScheduler scheduler;
 
-        public KayakSocket(IScheduler scheduler, ISocketDelegate del)
+        public KayakSocket(ISocketDelegate del, IScheduler scheduler)
         {
             this.scheduler = scheduler;
             this.del = del;
@@ -219,6 +219,7 @@ namespace Kayak
             bool writeEnded = false;
 
             bool closed = state.WriteCompleted(out writeEnded);
+
             if (writeEnded && socket != null && BufferIsEmpty())
             {
                 Debug.WriteLine("KayakSocket: shutting down after send.");
@@ -237,8 +238,6 @@ namespace Kayak
 
         internal void DoRead()
         {
-            state.EnsureCanRead();
-
             if (inputBuffer == null)
                 inputBuffer = new byte[1024 * 4];
 
@@ -248,6 +247,8 @@ namespace Kayak
                 Exception error;
                 while (true)
                 {
+                    if (!state.CanRead()) return;
+
                     Debug.WriteLine("KayakSocket: reading.");
                     var ar0 = socket.BeginReceive(inputBuffer, 0, inputBuffer.Length, ar =>
                     {
@@ -346,7 +347,7 @@ namespace Kayak
 
                 if (socketException.ErrorCode == 10053 || socketException.ErrorCode == 10054)
                 {
-                    Console.WriteLine("KayakSocket: peer reset (" + socketException.ErrorCode + ")");
+                    Debug.WriteLine("KayakSocket: peer reset (" + socketException.ErrorCode + ")");
                     PeerHungUp();
                     return;
                 }

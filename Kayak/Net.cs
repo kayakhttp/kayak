@@ -3,16 +3,22 @@ using System.Net;
 
 namespace Kayak
 {
+    public interface ISchedulerFactory
+    {
+        IScheduler Create(ISchedulerDelegate del);
+    }
+
     public interface IScheduler : IDisposable
     {
         void Post(Action action);
-        void Start(ISchedulerDelegate del);
+        void Start();
         void Stop();
     }
 
     public interface ISchedulerDelegate
     {
         void OnException(IScheduler scheduler, Exception e);
+        void OnStop(IScheduler scheduler);
     }
 
     public interface IServerFactory

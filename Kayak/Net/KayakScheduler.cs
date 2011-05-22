@@ -34,17 +34,17 @@ namespace Kayak
             task.Start(this);
         }
 
-        public KayakScheduler()
+        public KayakScheduler(ISchedulerDelegate del)
         {
+            this.del = del;
             queue = new ConcurrentQueue<Task>();
         }
 
-        public void Start(ISchedulerDelegate del)
+        public void Start()
         {
             if (dispatch != null)
                 throw new InvalidOperationException("The scheduler was already started.");
 
-            this.del = del;
             Dispatch();
         }
 
@@ -76,6 +76,7 @@ namespace Kayak
                         queue = new ConcurrentQueue<Task>();
 
                         Debug.WriteLine("Scheduler stopped.");
+                        del.OnStop(this);
 
                         break;
                     }

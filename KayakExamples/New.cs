@@ -1,12 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
+using System.Diagnostics;
 using System.Text;
 using Kayak;
-using System.Net;
 using Kayak.Http;
-using System.Threading;
-using System.Diagnostics;
 
 namespace KayakExamples
 {
