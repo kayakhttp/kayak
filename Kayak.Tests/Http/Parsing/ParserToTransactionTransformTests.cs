@@ -7,7 +7,7 @@ using Kayak.Http;
 using Kayak;
 using KayakTests.Net;
 
-namespace KayakTests.Http
+namespace Kayak.Tests.Http
 {
     [TestFixture]
     public class ParserToTransactionTransformTests

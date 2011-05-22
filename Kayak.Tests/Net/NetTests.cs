@@ -7,7 +7,7 @@ using System.Threading;
 using Kayak;
 using NUnit.Framework;
 
-namespace KayakTests.Net
+namespace Kayak.Tests.Net
 {
     class NetTests
     {

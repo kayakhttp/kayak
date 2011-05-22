@@ -6,7 +6,7 @@ using Kayak;
 using Kayak.Http;
 using KayakTests.Net;
 
-namespace KayakTests
+namespace Kayak.Tests
 {
     class MockSocket : ISocket
     {

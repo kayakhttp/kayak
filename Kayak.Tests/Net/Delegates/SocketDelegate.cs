@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Kayak;
 
-namespace KayakTests.Net
+namespace Kayak.Tests.Net
 {
     class SocketDelegate : ISocketDelegate
     {

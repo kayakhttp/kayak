@@ -6,7 +6,7 @@ using NUnit.Framework;
 using Kayak.Http;
 using Kayak;
 
-namespace KayakTests.Http
+namespace Kayak.Tests.Http
 {
     [TestFixture]
     public class HttpResponseDelegateTests

@@ -6,7 +6,7 @@ using Kayak;
 using System.Threading;
 using System.Diagnostics;
 
-namespace KayakTests.Net
+namespace Kayak.Tests.Net
 {
     class EventContext : IDisposable
     {

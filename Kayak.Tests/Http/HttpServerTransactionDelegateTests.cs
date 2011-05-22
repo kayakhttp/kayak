@@ -5,7 +5,7 @@ using NUnit.Framework;
 using System.Collections.Generic;
 using System.Text;
 
-namespace KayakTests.Http
+namespace Kayak.Tests.Http
 {
     [TestFixture]
     public class HttpServerTransactionDelegateTests

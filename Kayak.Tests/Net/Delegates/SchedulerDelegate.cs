@@ -1,7 +1,7 @@
 ﻿using System;
 using Kayak;
 
-namespace KayakTests.Net
+namespace Kayak.Tests.Net
 {
     class SchedulerDelegate : ISchedulerDelegate
     {

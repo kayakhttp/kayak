@@ -6,9 +6,8 @@ using Kayak;
 using NUnit.Framework;
 using Kayak.Http;
 
-namespace KayakTests
+namespace Kayak.Tests
 {
-
     class TestRequest
     {
         public string Method, Uri;
