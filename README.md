@@ -1,6 +1,6 @@
-Kayak is a lightweight C# web server. Natively support the [OWIN](http://owin.github.com) specification.
+Kayak is an event-driven networking library for .NET. It allows you to easily create TCP clients and servers. Kayak contains an HTTP/1.1 server implementation.
 
-Kayak is Copyright (c) 2010 Benjamin van der Veen. Kayak is licensed under the 
+Kayak is Copyright (c) 2007-2011 Benjamin van der Veen. Kayak is licensed under the 
 MIT License. See LICENSE.txt.
 
 [http://kayakhttp.com](http://kayakhttp.com)<br>
@@ -8,42 +8,4 @@ MIT License. See LICENSE.txt.
 
 # Dependencies
 
-Kayak depends on [Coroutine](http://github.com/bvanderveen/coroutine).
-
-# Example
-
-To run an OWIN app:
-
-
-    public delegate void
-        OwinApplication(IDictionary<string, object> env,
-        Action<string, IDictionary<string, IList<string>>, IEnumerable<object>> completed,
-        Action<Exception> faulted); 
-
-    class Simple
-    {
-        public static void Run()
-        {
-            var server = new DotNetServer();
-
-            var pipe = server.Start();
-
-            server.Host((env, respond, error) =>
-                {
-                    respond(
-                            "200 OK",
-                            new Dictionary<string, IList<string>>() 
-                            {
-                                { "Content-Type",  new string[] { "text/html" } }
-                            },
-                            new object[] { Encoding.ASCII.GetBytes("Hello world.") }
-                        );
-                });
-
-            Console.WriteLine("Listening on " + server.ListenEndPoint);
-            Console.WriteLine("Press enter to exit.");
-            Console.ReadLine();
-
-            pipe.Dispose();
-        }
-    }
+Kayak depends on [HttpMachine](http://github.com/bvanderveen/httpmachine).

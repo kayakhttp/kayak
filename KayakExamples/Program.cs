@@ -8,7 +8,6 @@ using Kayak.Http;
 
 namespace KayakExamples
 {
-
     // demonstrates how to use kayak.
     //
     // important bits: kayak uses a single worker thread, represented
@@ -22,10 +21,10 @@ namespace KayakExamples
     // method receives the request headers and body as well as an
     // IHttpResponseDelegate which can be used to generate a response.
     //
-    // Request and response body streams are represented with IDataProducer.
+    // Request and response body streams are represented by IDataProducer.
     // the semantics of IDataProducer are nearly identical to those of
-    // IObservable, the difference being the OnNext (OnData) method of
-    // IDataConsumer (analogous to IObservable) takes an additional 
+    // IObservable, the difference being the OnData method of IDataConsumer 
+    // (analogous to the OnNext method of IObserver) takes an additional 
     // continuation argument and returns a bool. this is a mechanism to
     // enable a consumer to 'throttle back' a producer.
     //
