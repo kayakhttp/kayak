@@ -7,6 +7,7 @@
         <NupkgPath>$(ConfigurationOutputPath)\nupkg\</NupkgPath>
         <NupkgLibPath>$(NupkgPath)\lib\</NupkgLibPath>
         <NupkgSpecName>Kayak.nuspec</NupkgSpecName>
+        <NugetExeLocation>$(MSBuildProjectDirectory)\tools\nuget</NugetExeLocation>
     </PropertyGroup>
     <ItemGroup>
         <Projects Include="$(MSBuildProjectDirectory)\Kayak\Kayak.csproj"/>
@@ -39,7 +40,7 @@
     
     <Target Name="Build">
         <MakeDir Directories="$(CompileOutputPath)"/>
-        <MSBuild Projects="@(Projects)" Properties="OutputPath=$(CompileOutputPath)" />
+        <MSBuild Projects="@(Projects)" Properties="OutputPath=$(CompileOutputPath);NugetExeLocation=$(NugetExeLocation)" />
     </Target>
     
     <Target Name="DistNuget" DependsOnTargets="Build">
@@ -53,6 +54,6 @@
             XmlInputPath="$(NupkgPath)\$(NupkgSpecName)"
             Query="//version"
             Value="%(AssemblyInfo.Version)"/>
-        <Exec WorkingDirectory="$(NupkgPath)" Command="nuget pack $(NupkgSpecName)"/>
+        <Exec WorkingDirectory="$(NupkgPath)" Command="$(NugetExeLocation) pack $(NupkgSpecName)"/>
     </Target>
 </Project>
