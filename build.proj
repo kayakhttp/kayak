@@ -1,0 +1,58 @@
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <Configuration Condition=" '$(Configuration)'=='' ">Release</Configuration>
+        <OutputPath Condition=" '$(OutputPath)'=='' ">$(MSBuildProjectDirectory)\build\</OutputPath>
+        <ConfigurationOutputPath>$(OutputPath)\$(Configuration)\</ConfigurationOutputPath>
+        <CompileOutputPath>$(ConfigurationOutputPath)\out\</CompileOutputPath>
+        <NupkgPath>$(ConfigurationOutputPath)\nupkg\</NupkgPath>
+        <NupkgLibPath>$(NupkgPath)\lib\</NupkgLibPath>
+        <NupkgSpecName>Kayak.nuspec</NupkgSpecName>
+    </PropertyGroup>
+    <ItemGroup>
+        <Projects Include="$(MSBuildProjectDirectory)\Kayak\Kayak.csproj"/>
+        <Projects Include="$(MSBuildProjectDirectory)\Kayak.Tests\Kayak.Tests.csproj"/>
+    </ItemGroup>
+    
+    <!-- all of this for recursively deleting a directory. still doesn't work on any directory that doesn't contain
+        files. what a load of crap. <\3 MSBuild. -->
+        
+    <ItemGroup>
+        <!-- list all files under output path -->
+        <CleanFiles Include="$(OutputPath)\**\*"/>
+    </ItemGroup>
+    <ItemGroup>
+        <!-- list parent dirs of all files -->
+        <CleanDirectories Include="@(CleanFiles->'%(RelativeDir)')"/>
+    </ItemGroup>
+    <Target Name="RemoveDuplicateCleanDirectories">
+        <!-- remove duplicates (happens when dir contains more than one file) -->
+        <RemoveDuplicates Inputs="@(CleanDirectories)">
+            <Output TaskParameter="Filtered" ItemName="FilteredCleanDirectories"/>
+        </RemoveDuplicates>
+    </Target>
+    
+    <Target Name="Clean" DependsOnTargets="RemoveDuplicateCleanDirectories">
+        <Delete Files="@(CleanFiles)"/>
+        <RemoveDir Directories="@(FilteredCleanDirectories)"/>
+        <RemoveDir Directories="$(OutputPath)" Condition="Exists('$(OutputPath)')"/>
+    </Target>
+    
+    <Target Name="Build">
+        <MakeDir Directories="$(CompileOutputPath)"/>
+        <MSBuild Projects="@(Projects)" Properties="OutputPath=$(CompileOutputPath)" />
+    </Target>
+    
+    <Target Name="DistNuget" DependsOnTargets="Build">
+        <MakeDir Directories="$(NupkgLibPath)"/>
+        <Copy SourceFiles="$(CompileOutputPath)\Kayak.dll" DestinationFolder="$(NupkgLibPath)"/>
+        <Copy SourceFiles="$(NupkgSpecName)" DestinationFolder="$(NupkgPath)"/>
+        <GetAssemblyIdentity AssemblyFiles="$(CompileOutputPath)\Kayak.dll">
+            <Output TaskParameter="Assemblies" ItemName="AssemblyInfo" />
+        </GetAssemblyIdentity>
+        <XmlPoke
+            XmlInputPath="$(NupkgPath)\$(NupkgSpecName)"
+            Query="//version"
+            Value="%(AssemblyInfo.Version)"/>
+        <Exec WorkingDirectory="$(NupkgPath)" Command="nuget pack $(NupkgSpecName)"/>
+    </Target>
+</Project>

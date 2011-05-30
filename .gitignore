@@ -5,3 +5,5 @@ obj
 *.vsp
 *.psess
 *.suo
+.DS_Store
+build
