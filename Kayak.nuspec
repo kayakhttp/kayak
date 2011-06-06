@@ -9,5 +9,8 @@
     <language>en-US</language>
     <projectUrl>https://github.com/kayak/kayak</projectUrl>
     <licenseUrl>https://github.com/kayak/kayak/raw/HEAD/LICENSE</licenseUrl>
+    <dependencies>
+        <dependency id="HttpMachine" version="0.9.0.0"/>
+    </dependencies>
   </metadata>
 </package>
