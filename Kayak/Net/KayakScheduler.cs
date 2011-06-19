@@ -36,6 +36,9 @@ namespace Kayak
 
         public KayakScheduler(ISchedulerDelegate del)
         {
+            if (del == null)
+                throw new ArgumentNullException("del");
+
             this.del = del;
             queue = new ConcurrentQueue<Task>();
         }

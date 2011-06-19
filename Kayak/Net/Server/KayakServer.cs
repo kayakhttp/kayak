@@ -30,6 +30,12 @@ namespace Kayak
 
         internal KayakServer(IServerDelegate del, IScheduler scheduler)
         {
+            if (del == null)
+                throw new ArgumentNullException("del");
+
+            if (scheduler == null)
+                throw new ArgumentNullException("scheduler");
+
             this.del = del;
             this.scheduler = scheduler;
             listener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.IP);
@@ -143,7 +149,7 @@ namespace Kayak
             catch { }
 
             Debug.WriteLine("Error attempting to accept connection.");
-            e.DebugStacktrace();
+            Console.Error.WriteStacktrace(e);
 
             RaiseOnClose();
         }
