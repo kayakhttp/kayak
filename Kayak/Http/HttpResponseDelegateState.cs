@@ -52,7 +52,7 @@ namespace Kayak.Http
         public void OnRenderHeaders(bool givenConnectionHeader, bool givenConnectionHeaderIsClose, out bool indicateConnection, out bool indicateConnectionClose)
         {
             // XXX incorporate request version
-            if (!shouldKeepAlive)
+            if (!shouldKeepAlive || givenConnectionHeaderIsClose)
             {
                 indicateConnection = true;
                 indicateConnectionClose = true;
