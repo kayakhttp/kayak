@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Text;
+using System.IO;
 
 namespace Kayak
 {
@@ -9,6 +10,19 @@ namespace Kayak
         public static void DebugStacktrace(this Exception exception)
         {
 #if DEBUG
+            Debug.WriteLine(GetStackTrace(exception));
+#endif
+        }
+
+        public static void WriteStacktrace(this TextWriter writer, Exception exception)
+        {
+#if DEBUG
+            writer.WriteLine(GetStackTrace(exception));
+#endif
+        }
+
+        public static string GetStackTrace(Exception exception)
+        {
             var sb = new StringBuilder();
 
             int i = 0;
@@ -26,8 +40,7 @@ namespace Kayak
                 sb.AppendLine();
             }
 
-            Debug.WriteLine(sb.ToString());
-#endif
+            return sb.ToString();
         }
     }
 
