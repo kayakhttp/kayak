@@ -20,7 +20,7 @@ namespace Kayak
 
         [ThreadStatic]
         static KayakScheduler current;
-        public static KayakScheduler Current { get { return current; } }
+        public new static KayakScheduler Current { get { return current; } }
 
         public void Post(Action action)
         {

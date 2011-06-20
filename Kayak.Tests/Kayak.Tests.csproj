@@ -11,24 +11,7 @@
     <RootNamespace>Kayak.Tests</RootNamespace>
     <AssemblyName>Kayak.Tests</AssemblyName>
     <FileAlignment>512</FileAlignment>
-    <FileUpgradeFlags>
-    </FileUpgradeFlags>
-    <OldToolsVersion>3.5</OldToolsVersion>
-    <UpgradeBackupLocation>
-    </UpgradeBackupLocation>
-    <IsWebBootstrapper>false</IsWebBootstrapper>
-    <StartupObject>
-    </StartupObject>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
-    <PublishUrl>publish\</PublishUrl>
-    <Install>true</Install>
-    <InstallFrom>Disk</InstallFrom>
-    <UpdateEnabled>false</UpdateEnabled>
-    <UpdateMode>Foreground</UpdateMode>
-    <UpdateInterval>7</UpdateInterval>
-    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
-    <UpdatePeriodically>false</UpdatePeriodically>
-    <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
@@ -75,29 +58,18 @@
     <Compile Include="Config.cs" />
     <Compile Include="Http\Parsing\HttpResponseDelegateTests.cs" />
     <Compile Include="Http\HttpServerTransactionDelegateTests.cs" />
-    <Compile Include="Http\Mocks.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Http\Mocks.cs" />
     <Compile Include="Http\OutputSegmentQueueTests.cs" />
     <Compile Include="Http\Parsing\ParserToTransactionTransformTests.cs" />
-    <Compile Include="Http\TestRequest.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Mocks.cs" />
+    <Compile Include="Http\TestRequest.cs" />
     <Compile Include="Net\DataBuffer.cs" />
-    <Compile Include="Net\Delegates\SchedulerDelegate.cs">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Net\Delegates\ServerDelegate.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Net\Delegates\SchedulerDelegate.cs" />
+    <Compile Include="Net\Delegates\ServerDelegate.cs" />
     <Compile Include="Net\ManualResetEventSlip.cs" />
     <Compile Include="Net\NetTests.cs" />
     <Compile Include="Net\SchedulerTests.cs" />
     <Compile Include="Net\ServerTests.cs" />
-    <Compile Include="Net\Delegates\SocketDelegate.cs">
-      <SubType>Code</SubType>
-    </Compile>
+    <Compile Include="Net\Delegates\SocketDelegate.cs" />
     <Compile Include="Net\SocketTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -108,48 +80,14 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
-      <Install>true</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
-      <Visible>False</Visible>
-      <ProductName>.NET Framework 3.5 SP1</ProductName>
-      <Install>false</Install>
-    </BootstrapperPackage>
-  </ItemGroup>
-  <ItemGroup />
-  <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <Target Name="BeforeBuild">
-    <Exec Command="&quot;$(MSBuildProjectDirectory)\..\tools\nuget&quot; install &quot;$(ProjectDir)packages.config&quot; -o &quot;$(MSBuildProjectDirectory)\..\packages&quot;"/>
+    <Exec Command="&quot;$(MSBuildProjectDirectory)\..\tools\nuget&quot; install &quot;$(ProjectDir)packages.config&quot; -o &quot;$(MSBuildProjectDirectory)\..\packages&quot;" />
   </Target>
   <!--
   <Target Name="AfterBuild">
   </Target>
   -->
-  <ProjectExtensions>
-    <MonoDevelop>
-      <Properties InternalTargetFrameworkVersion="3.5" />
-    </MonoDevelop>
-    <VisualStudio />
-  </ProjectExtensions>
 </Project>

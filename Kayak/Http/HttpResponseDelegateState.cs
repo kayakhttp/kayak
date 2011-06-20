@@ -12,7 +12,7 @@ namespace Kayak.Http
         bool gotAbort;
         bool shouldKeepAlive;
         bool prohibitBody;
-        bool expectContinue;
+        //bool expectContinue;
 
         public static HttpResponseDelegateState Create(bool prohibitBody, bool shouldKeepAlive, bool expectContinue)
         {
@@ -20,7 +20,7 @@ namespace Kayak.Http
             {
                 prohibitBody = prohibitBody,
                 shouldKeepAlive = shouldKeepAlive,
-                expectContinue = expectContinue
+                //expectContinue = expectContinue
             };
         }
 

@@ -15,7 +15,7 @@ namespace Kayak.Tests.Http
         bool connectionClosed;
         Action connectionClosedAction;
         MockDataConsumer mockConsumer;
-        Action producerAbort;
+        //Action producerAbort;
 
         [SetUp]
         public void SetUp()

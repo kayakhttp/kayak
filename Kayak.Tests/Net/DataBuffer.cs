@@ -9,7 +9,7 @@ namespace Kayak.Tests.Net
     {
         public List<byte[]> Buffer = new List<byte[]>();
 
-        public string ToString()
+        public new string ToString()
         {
             return Buffer.Aggregate("", (acc, next) => acc + Encoding.UTF8.GetString(next));
         }

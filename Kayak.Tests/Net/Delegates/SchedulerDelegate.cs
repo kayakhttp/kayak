@@ -8,8 +8,8 @@ namespace Kayak.Tests.Net
         public bool GotOnStopped;
         public Exception Exception;
 
-        public Action OnStoppedAction;
-        public Action<Exception> OnExceptionAction;
+        public Action OnStoppedAction = null;
+        public Action<Exception> OnExceptionAction = null;
 
         public void OnStop(IScheduler scheduler)
         {

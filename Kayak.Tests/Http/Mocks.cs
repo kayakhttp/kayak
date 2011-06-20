@@ -61,7 +61,7 @@ namespace Kayak.Tests
 
     class MockDataProducer : IDataProducer
     {
-        public Action DisposeAction;
+        public Action DisposeAction = null;
         public bool WasDisposed;
         Func<IDataConsumer, IDisposable> connect;
 

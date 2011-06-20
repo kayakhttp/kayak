@@ -8,12 +8,12 @@ namespace Kayak.Tests.Net
 {
     class SocketDelegate : ISocketDelegate
     {
-        public Action OnTimeoutAction;
-        public Action<Exception> OnErrorAction;
-        public Action OnEndAction;
-        public Func<ArraySegment<byte>, Action, bool> OnDataAction;
-        public Action OnConnectedAction;
-        public Action OnCloseAction;
+        //public Action OnTimeoutAction;
+        public Action<Exception> OnErrorAction = null;
+        public Action OnEndAction = null;
+        public Func<ArraySegment<byte>, Action, bool> OnDataAction = null;
+        public Action OnConnectedAction = null;
+        public Action OnCloseAction = null;
 
         public Exception Exception;
         public int NumOnConnectedEvents;
@@ -27,11 +27,11 @@ namespace Kayak.Tests.Net
             Buffer = new DataBuffer();
         }
 
-        void OnTimeout(IServer server)
-        {
-            if (OnTimeoutAction != null)
-                OnTimeoutAction();
-        }
+        //void OnTimeout(IServer server)
+        //{
+        //    if (OnTimeoutAction != null)
+        //        OnTimeoutAction();
+        //}
 
         public void OnError(ISocket socket, Exception e)
         {

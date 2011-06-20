@@ -5,9 +5,8 @@ namespace Kayak.Tests.Net
 {
     class ServerDelegate : IServerDelegate
     {
-        IServer server;
-        public Func<IServer, ISocket, ISocketDelegate> OnConnectionAction;
-        public Action OnCloseAction;
+        public Func<IServer, ISocket, ISocketDelegate> OnConnectionAction = null;
+        public Action OnCloseAction = null;
 
         public int NumOnConnectionEvents;
         public int NumOnCloseEvents;

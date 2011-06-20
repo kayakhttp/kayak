@@ -128,7 +128,7 @@ namespace Kayak
 
                 }, null);
             }
-            catch (ObjectDisposedException e)
+            catch (ObjectDisposedException)
             {
                 return;
             }
