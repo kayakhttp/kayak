@@ -146,7 +146,7 @@ namespace Kayak.Tests.Net
                     }
                     catch (Exception e)
                     {
-                        e.DebugStacktrace();
+                        Console.Error.WriteStacktrace(e);
                     }
                 };
 
@@ -198,7 +198,7 @@ namespace Kayak.Tests.Net
                     }
                     catch (Exception e)
                     {
-                        e.DebugStacktrace();
+                        Console.Error.WriteStacktrace(e);
                     }
                 };
 

@@ -14,7 +14,8 @@ namespace Kayak
             WriteEnded = 1 << 3,
             ReadEnded = 1 << 4,
             Closed = 1 << 5,
-            Disposed = 1 << 6
+            Disposed = 1 << 6,
+            BufferIsNotEmpty = 1 << 7
         }
 
         State state;
@@ -51,13 +52,7 @@ namespace Kayak
             state |= State.Connected;
         }
 
-
-        //public bool IsWriteEnded()
-        //{
-        //    return writeEnded == 1;
-        //}
-
-        public void EnsureCanWrite()
+        public void BeginWrite(bool nonZeroData)
         {
             if ((state & State.Disposed) > 0)
                 throw new ObjectDisposedException("KayakSocket");
@@ -67,6 +62,38 @@ namespace Kayak
 
             if ((state & State.WriteEnded) > 0)
                 throw new InvalidOperationException("The socket was previously ended.");
+
+            if (nonZeroData)
+                state |= State.BufferIsNotEmpty;
+        }
+
+
+        void CanShutdownAndClose(out bool shutdownSocket, out bool raiseClosed)
+        {
+            bool bufferIsEmpty = (state & State.BufferIsNotEmpty) == 0;
+            bool readEnded = (state & State.ReadEnded) > 0;
+            bool writeEnded = (state & State.WriteEnded) > 0;
+
+            Debug.WriteLine("KayakSocketState: CanShutdownAndClose (readEnded = " + readEnded +
+                ", writeEnded = " + writeEnded +
+                ", bufferIsEmpty = " + bufferIsEmpty + ")");
+
+            shutdownSocket = writeEnded && bufferIsEmpty;
+
+            if (readEnded && shutdownSocket)
+            {
+                state |= State.Closed;
+                raiseClosed = true;
+            }
+            else
+                raiseClosed = false;
+        }
+        public void EndWrite(bool bufferIsEmpty, out bool shutdownSocket, out bool raiseClosed)
+        {
+            if (bufferIsEmpty)
+                state ^= State.BufferIsNotEmpty;
+
+            CanShutdownAndClose(out shutdownSocket, out raiseClosed);
         }
 
         // okay, so.
@@ -86,37 +113,20 @@ namespace Kayak
             return true;
         }
 
-        public bool SetReadEnded()
+        public void SetReadEnded(out bool raiseClosed)
         {
             state |= State.ReadEnded;
 
-            if ((state & State.WriteEnded) > 0)
+            if ((state & State.WriteEnded) > 0 && (state & State.BufferIsNotEmpty) == 0)
             {
                 state |= State.Closed;
-                return true;
+                raiseClosed = true;
             }
             else
-                return false;
+                raiseClosed = false;
         }
 
-        public bool WriteCompleted(out bool writeEnded)
-        {
-            bool readEnded = (state & State.ReadEnded) > 0;
-            writeEnded = (state & State.WriteEnded) > 0;
-
-            Debug.WriteLine("KayakSocketState: WriteCompleted (readEnded = " + readEnded +
-                ", writeEnded = " + writeEnded + ")");
-
-            if (readEnded && writeEnded)
-            {
-                state |= State.Closed;
-                return true;
-            }
-            else
-                return false;
-        }
-
-        public bool SetWriteEnded()
+        public void SetEnded(out bool shutdownSocket, out bool raiseClosed)
         {
             if ((state & State.Disposed) > 0)
                 throw new ObjectDisposedException(typeof(KayakSocket).Name);
@@ -129,13 +139,7 @@ namespace Kayak
 
             state |= State.WriteEnded;
 
-            if ((state & State.ReadEnded) > 0)
-            {
-                state |= State.Closed;
-                return true;
-            }
-            else
-                return false;
+            CanShutdownAndClose(out shutdownSocket, out raiseClosed);
         }
 
         public void SetError()

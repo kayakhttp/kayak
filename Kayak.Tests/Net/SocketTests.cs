@@ -219,7 +219,7 @@ namespace Kayak.Tests.Net
 
                     try
                     {
-                        client.Write(default(ArraySegment<byte>), null);
+                        client.Write(new ArraySegment<byte>(Encoding.UTF8.GetBytes("yo dawg")), null);
                     }
                     catch (InvalidOperationException e)
                     {
