@@ -152,7 +152,8 @@ namespace Kayak
                             return;
 
                         written = EndSend(ar, out error);
-
+						
+						// small optimization
                         if (error is ObjectDisposedException)
                             return;
 
@@ -174,9 +175,7 @@ namespace Kayak
                 }
                 catch (Exception e)
                 {
-                    if (!(e is ObjectDisposedException))
-                        HandleSendError(e);
-
+                    HandleSendError(e);
                     break;
                 }
 
@@ -184,9 +183,6 @@ namespace Kayak
                     return true;
 
                 written = EndSend(ar0, out error);
-
-                if (error is ObjectDisposedException)
-                    break;
 
                 if (error != null)
                 {
@@ -237,6 +233,8 @@ namespace Kayak
 
         void HandleSendError(Exception error)
         {
+			if (error is ObjectDisposedException) return;
+			
             state.SetError();
             RaiseError(new Exception("Exception on write.", error));
         }
@@ -263,7 +261,8 @@ namespace Kayak
                         if (ar.CompletedSynchronously) return;
 
                         read = EndRead(ar, out error);
-
+						
+						// small optimization
                         if (error is ObjectDisposedException)
                             return;
 
@@ -285,9 +284,7 @@ namespace Kayak
                 }
                 catch (Exception e)
                 {
-                    if (!(e is ObjectDisposedException))
-                        HandleSendError(e);
-
+                    HandleReadError(e);
                     break;
                 }
 
@@ -296,9 +293,6 @@ namespace Kayak
 
                 Debug.WriteLine("KayakSocket: receive completed sync");
                 read = EndRead(ar0, out error);
-
-                if (error is ObjectDisposedException)
-                    break;
 
                 if (error != null)
                 {
