@@ -37,7 +37,7 @@ namespace Kayak.Http
             {
                 var s = socket;
                 socket = null;
-                s.Dispose();
+                s.End();
             }
 
             if (previous != null)
@@ -78,7 +78,6 @@ namespace Kayak.Http
                 var s = socket;
                 socket = null;
                 s.End();
-                s.Dispose();
             }
         }
 
@@ -137,8 +136,7 @@ namespace Kayak.Http
         {
             if (next == null || !gotEnd) return;
 
-            if (abortMessage != null)
-                abortMessage.Dispose();
+            AbortProducer();
 
             var s = socket;
             socket = null;
@@ -199,7 +197,11 @@ namespace Kayak.Http
         {
             Debug.WriteLine("Error during response.");
             e.DebugStacktrace();
-            socket.Dispose();
+            // XXX what to do? for now it's an error to have an error :S
+            // probably the right thing to do is end the socket
+            // and discard any pending responses.
+            //socket.End()
+            //socket.Dispose();
         }
 
         public void OnEnd()

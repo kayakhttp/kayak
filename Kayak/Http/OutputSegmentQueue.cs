@@ -33,9 +33,9 @@ namespace Kayak.Http
         public void OnError(Exception e)
         {
             if (tail == null)
-                socket.Dispose();
+                socket.End();
             else
-                // dispose all pending responses, last of which should dispose the socket
+                // dispose all pending responses, last of which should end the socket
                 tail.Dispose();
         }
 
@@ -48,7 +48,7 @@ namespace Kayak.Http
 
             if (tail == null)
             {
-                // implicitly end and dispose socket
+                // implicitly end socket
                 c.AttachSocket(socket);
             }
             else

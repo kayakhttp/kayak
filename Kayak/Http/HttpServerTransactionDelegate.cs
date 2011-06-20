@@ -54,7 +54,10 @@ namespace Kayak.Http
 
         void RequestBodyCancelled()
         {
-            observer.OnError(new Exception("Connection was aborted by user."));
+            // XXX really need to think about this behavior more.
+            // ideally we stop reading from the socket.
+
+            //observer.OnError(new Exception("Connection was aborted by user."));
         }
 
         bool closeConnection;
@@ -70,6 +73,7 @@ namespace Kayak.Http
         {
             subject = new DataSubject(() => new Disposable(RequestBodyCancelled));
 
+            // the subject could be subscribed to and immediately cancelled from within this call!
             var producer = responseFactory.Create(request, subject, shouldKeepAlive, CloseConnection);
 
             observer.OnNext(producer);
@@ -87,7 +91,9 @@ namespace Kayak.Http
 
         public void OnError(Exception e)
         {
-            subject.OnError(e);
+            if (subject != null)
+                subject.OnError(e);
+
             observer.OnError(e);
         }
 
@@ -96,7 +102,7 @@ namespace Kayak.Http
             CloseConnection();
         }
 
-        public void OnClose()
+        public void Dispose()
         {
             // XXX perhaps return self to freelist
         }

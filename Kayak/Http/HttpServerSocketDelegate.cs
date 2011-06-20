@@ -64,7 +64,9 @@ namespace Kayak.Http
         public void OnClose(ISocket socket)
         {
             Debug.WriteLine("Socket OnClose.");
-            transactionDelegate.OnClose();
+            transactionDelegate.Dispose();
+            // XXX return self to freelist
+            socket.Dispose();
         }
 
         public void OnConnected(ISocket socket)

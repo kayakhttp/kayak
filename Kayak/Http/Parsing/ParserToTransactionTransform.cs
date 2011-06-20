@@ -7,14 +7,13 @@ using System.Diagnostics;
 
 namespace Kayak.Http
 {
-    interface IHttpServerTransactionDelegate
+    interface IHttpServerTransactionDelegate : IDisposable
     {
         void OnRequest(HttpRequestHead request, bool shouldKeepAlive);
         bool OnRequestData(ArraySegment<byte> data, Action continuation);
         void OnRequestEnd();
         void OnError(Exception e);
         void OnEnd();
-        void OnClose();
     }
 
     // adapts synchronous parser events to asynchronous "socket-like" events.

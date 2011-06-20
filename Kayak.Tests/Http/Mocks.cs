@@ -182,7 +182,7 @@ namespace Kayak.Tests
         public Func<ArraySegment<byte>, Action, bool> OnDataAction;
         public Exception Exception;
         public bool GotOnEnd;
-        public bool GotOnClose;
+        public bool GotDispose;
         public HttpRequest current; // XXX rename
 
         public MockHttpServerTransactionDelegate()
@@ -223,12 +223,12 @@ namespace Kayak.Tests
             GotOnEnd = true;
         }
 
-        public void OnClose()
+        public void Dispose()
         {
-            if (GotOnClose)
+            if (GotDispose)
                 throw new Exception("OnEnd was called more than once.");
 
-            GotOnClose = true;
+            GotDispose = true;
         }
     }
 }
