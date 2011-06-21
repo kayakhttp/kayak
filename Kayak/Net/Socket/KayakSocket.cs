@@ -81,7 +81,7 @@ namespace Kayak
 
                         del.OnConnected(this);
 
-                        DoRead();
+                        BeginRead();
                     }
                 });
             });
@@ -239,7 +239,7 @@ namespace Kayak
             RaiseError(new Exception("Exception on write.", error));
         }
 
-        internal void DoRead()
+        internal void BeginRead()
         {
             if (inputBuffer == null)
                 inputBuffer = new byte[1024 * 4];
@@ -277,7 +277,7 @@ namespace Kayak
                             else
                             {
                                 if (!HandleReadResult(read, false))
-                                    scheduler.Post(DoRead);
+                                    BeginRead();
                             }
                         });
                     });
@@ -332,7 +332,7 @@ namespace Kayak
             }
             else
             {
-                return del.OnData(this, new ArraySegment<byte>(inputBuffer, 0, read), DoRead);
+                return del.OnData(this, new ArraySegment<byte>(inputBuffer, 0, read), BeginRead);
             }
         }
 
@@ -384,9 +384,6 @@ namespace Kayak
         public void Dispose()
         {
             state.SetDisposed();
-
-            //if (reads == 0 || readsCompleted == 0 || !readZero)
-            //    Console.WriteLine("Connection " + id + ": reset");
 
             if (socket != null) // i. e., never connected
                 socket.Dispose();

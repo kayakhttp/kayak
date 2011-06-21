@@ -123,7 +123,7 @@ namespace Kayak
 
                         var socketDelegate = del.OnConnection(this, s);
                         s.del = socketDelegate;
-                        s.DoRead();
+                        s.BeginRead();
                     });
 
                 }, null);
