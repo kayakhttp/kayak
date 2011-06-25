@@ -9,22 +9,44 @@ namespace Kayak.Tests.Http
     [TestFixture]
     public class HttpServerTransactionDelegateTests
     {
-        MockResponseFactory responseFactory;
         HttpServerTransactionDelegate txDel;
+        MockResponseFactory responseFactory;
+        MockResponseDelegate responseDelegate;
         MockObserver<IDataProducer> outgoingMessageObserver;
-        
+
+        HttpRequestHead CreateHead(bool expectContinue)
+        {
+            var head = default(HttpRequestHead);
+
+            if (expectContinue)
+            {
+                head.Version = new Version(1, 1);
+                head.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) { { "Expect", "100-continue" } };
+            }
+
+            return head;
+        }
+
+        void AssertResponseDelegate(bool expectContinue)
+        {
+            if (expectContinue)
+                Assert.That(responseDelegate.GotWriteContinue, Is.True);
+            else
+                Assert.That(responseDelegate.GotWriteContinue, Is.Not.True);
+        }
 
         [SetUp]
         public void SetUp()
         {
             responseFactory = new MockResponseFactory();
+            responseDelegate = new MockResponseDelegate();
             txDel = new HttpServerTransactionDelegate(responseFactory);
             outgoingMessageObserver = new MockObserver<IDataProducer>();
             txDel.Subscribe(outgoingMessageObserver);
         }
 
         [Test]
-        public void connect_on_request__end_on_request()
+        public void connect_on_request__end_on_request([Values(true, false)] bool expectContinue)
         {
             MockDataConsumer requestConsumer = new MockDataConsumer();
             IDisposable requestAbort = null;
@@ -32,23 +54,24 @@ namespace Kayak.Tests.Http
             {
                 requestAbort = body.Connect(requestConsumer);
                 end();
-                return null;
+                return responseDelegate;
             };
 
-            txDel.OnRequest(default(HttpRequestHead), false);
+            txDel.OnRequest(CreateHead(expectContinue), false);
             txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
             txDel.OnRequestEnd();
 
             Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.Null);
+            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
             Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
             Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
             Assert.That(requestConsumer.GotEnd, Is.True);
             Assert.That(outgoingMessageObserver.Error, Is.Null);
+            AssertResponseDelegate(expectContinue);
         }
 
         [Test]
-        public void connect_on_request__end_on_data()
+        public void connect_on_request__end_on_data([Values(true, false)] bool expectContinue)
         {
             MockDataConsumer requestConsumer = new MockDataConsumer();
             IDisposable requestAbort = null;
@@ -58,23 +81,24 @@ namespace Kayak.Tests.Http
             {
                 requestAbort = body.Connect(requestConsumer);
                 endAction = end;
-                return null;
+                return responseDelegate;
             };
 
-            txDel.OnRequest(default(HttpRequestHead), false);
+            txDel.OnRequest(CreateHead(expectContinue), false);
             txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
             txDel.OnRequestEnd();
 
             Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.Null);
+            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
             Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
             Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
             Assert.That(requestConsumer.GotEnd, Is.True);
             Assert.That(outgoingMessageObserver.Error, Is.Null);
+            AssertResponseDelegate(expectContinue);
         }
 
         [Test]
-        public void connect_on_request__end_on_end()
+        public void connect_on_request__end_on_end([Values(true, false)] bool expectContinue)
         {
             MockDataConsumer requestConsumer = new MockDataConsumer();
             IDisposable requestAbort = null;
@@ -84,23 +108,24 @@ namespace Kayak.Tests.Http
             {
                 requestAbort = body.Connect(requestConsumer);
                 endAction = end;
-                return null;
+                return responseDelegate;
             };
 
-            txDel.OnRequest(default(HttpRequestHead), false);
+            txDel.OnRequest(CreateHead(expectContinue), false);
             txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
             txDel.OnRequestEnd();
 
             Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.Null);
+            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
             Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
             Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
             Assert.That(requestConsumer.GotEnd, Is.True);
             Assert.That(outgoingMessageObserver.Error, Is.Null);
+            AssertResponseDelegate(expectContinue);
         }
 
         [Test]
-        public void connect_after_on_request__end_on_request()
+        public void connect_after_on_request__end_on_request([Values(true, false)] bool expectContinue)
         {
             MockDataConsumer requestConsumer = new MockDataConsumer();
             IDisposable requestAbort = null;
@@ -109,10 +134,10 @@ namespace Kayak.Tests.Http
             {
                 end();
                 bodyProducer = body;
-                return null;
+                return responseDelegate;
             };
 
-            txDel.OnRequest(default(HttpRequestHead), false);
+            txDel.OnRequest(CreateHead(expectContinue), false);
 
             requestAbort = bodyProducer.Connect(requestConsumer);
 
@@ -120,15 +145,16 @@ namespace Kayak.Tests.Http
             txDel.OnRequestEnd();
 
             Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.Null);
+            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
             Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
             Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
             Assert.That(requestConsumer.GotEnd, Is.True);
             Assert.That(outgoingMessageObserver.Error, Is.Null);
+            AssertResponseDelegate(expectContinue);
         }
 
         [Test]
-        public void connect_afer_on_request__end_on_data()
+        public void connect_after_on_request__end_on_data([Values(true, false)] bool expectContinue)
         {
             MockDataConsumer requestConsumer = new MockDataConsumer();
             IDisposable requestAbort = null;
@@ -137,13 +163,12 @@ namespace Kayak.Tests.Http
             requestConsumer.OnDataAction = data => endAction();
             responseFactory.OnRequest = (head, body, keepAlive, end) =>
             {
-                requestAbort = body.Connect(requestConsumer);
                 endAction = end;
                 bodyProducer = body;
-                return null;
+                return responseDelegate;
             };
 
-            txDel.OnRequest(default(HttpRequestHead), false);
+            txDel.OnRequest(CreateHead(expectContinue), false);
 
             requestAbort = bodyProducer.Connect(requestConsumer);
 
@@ -151,15 +176,16 @@ namespace Kayak.Tests.Http
             txDel.OnRequestEnd();
 
             Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.Null);
+            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
             Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
             Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
             Assert.That(requestConsumer.GotEnd, Is.True);
             Assert.That(outgoingMessageObserver.Error, Is.Null);
+            AssertResponseDelegate(expectContinue);
         }
 
         [Test]
-        public void connect_after_on_request__end_on_end()
+        public void connect_after_on_request__end_on_end([Values(true, false)] bool expectContinue)
         {
             MockDataConsumer requestConsumer = new MockDataConsumer();
             IDisposable requestAbort = null;
@@ -168,13 +194,12 @@ namespace Kayak.Tests.Http
             requestConsumer.OnEndAction = () => endAction();
             responseFactory.OnRequest = (head, body, keepAlive, end) =>
             {
-                requestAbort = body.Connect(requestConsumer);
                 endAction = end;
                 bodyProducer = body;
-                return null;
+                return responseDelegate;
             };
 
-            txDel.OnRequest(default(HttpRequestHead), false);
+            txDel.OnRequest(CreateHead(expectContinue), false);
 
             requestAbort = bodyProducer.Connect(requestConsumer);
 
@@ -182,11 +207,12 @@ namespace Kayak.Tests.Http
             txDel.OnRequestEnd();
 
             Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.Null);
+            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
             Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
             Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
             Assert.That(requestConsumer.GotEnd, Is.True);
             Assert.That(outgoingMessageObserver.Error, Is.Null);
+            AssertResponseDelegate(expectContinue);
         }
     }
 
@@ -229,6 +255,24 @@ namespace Kayak.Tests.Http
         public IResponse Create(HttpRequestHead head, IDataProducer body, bool shouldKeepAlive, Action end)
         {
             return OnRequest(head, body, shouldKeepAlive, end);
+        }
+    }
+
+    class MockResponseDelegate : IResponse
+    {
+        public bool GotWriteContinue;
+
+        public void WriteContinue()
+        {
+            if (GotWriteContinue)
+                throw new Exception("Already got WriteContinue()");
+
+            GotWriteContinue = true;
+        }
+
+        public IDisposable Connect(IDataConsumer channel)
+        {
+            throw new NotImplementedException();
         }
     }
 }

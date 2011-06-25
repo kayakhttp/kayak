@@ -27,14 +27,14 @@ namespace Kayak.Http
 
         public IResponse Create(HttpRequestHead request, IDataProducer body, bool shouldKeepAlive, Action end)
         {
-            var del = new HttpResponseDelegate(
+            var responseDelegate = new HttpResponseDelegate(
                 prohibitBody: request.Method.ToUpperInvariant() == "HEAD",
                 shouldKeepAlive: shouldKeepAlive,
                 closeConnection: end);
 
-            requestDelegate.OnRequest(request, body, del);
+            requestDelegate.OnRequest(request, body, responseDelegate);
 
-            return del;
+            return responseDelegate;
         }
     }
 
@@ -75,17 +75,33 @@ namespace Kayak.Http
 
         public void OnRequest(HttpRequestHead request, bool shouldKeepAlive)
         {
-            IResponse response = null;
+            IResponse responseConsumer = null;
+            bool shouldWriteContinue = false;
+            bool requestBodyConnected = false;
 
+            // not very happy with this inside-out state manipulating logic.
             subject = new DataSubject(() => {
-                response.WriteContinue();
+                if (requestBodyConnected) throw new InvalidOperationException("Request body was already connected.");
+                requestBodyConnected = true;
+
+                if (request.IsContinueExpected())
+                {
+                    if (responseConsumer == null)
+                        shouldWriteContinue = true;
+                    else
+                        responseConsumer.WriteContinue();
+                }
                 return new Disposable(RequestBodyCancelled);
             });
 
             // the subject could be subscribed to and immediately cancelled from within this call!
-            response = responseFactory.Create(request, subject, shouldKeepAlive, CloseConnection);
+            responseConsumer = responseFactory.Create(request, subject, shouldKeepAlive, CloseConnection);
 
-            observer.OnNext(response);
+            // hate this flag in particular
+            if (shouldWriteContinue)
+                responseConsumer.WriteContinue();
+
+            observer.OnNext(responseConsumer);
         }
 
         public bool OnRequestData(ArraySegment<byte> data, Action continuation)
