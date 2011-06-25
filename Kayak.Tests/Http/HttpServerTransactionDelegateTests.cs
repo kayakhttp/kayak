@@ -224,9 +224,9 @@ namespace Kayak.Tests.Http
 
     class MockResponseFactory : IResponseFactory
     {
-        public Func<HttpRequestHead, IDataProducer, bool, Action, IDataProducer> OnRequest;
+        public Func<HttpRequestHead, IDataProducer, bool, Action, IResponse> OnRequest;
 
-        public IDataProducer Create(HttpRequestHead head, IDataProducer body, bool shouldKeepAlive, Action end)
+        public IResponse Create(HttpRequestHead head, IDataProducer body, bool shouldKeepAlive, Action end)
         {
             return OnRequest(head, body, shouldKeepAlive, end);
         }

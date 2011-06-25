@@ -7,24 +7,32 @@ namespace Kayak.Http
 {
     class HttpResponseDelegateState
     {
+        bool gotContinue;
         bool gotResponse;
         bool gotConnect;
         bool gotAbort;
         bool shouldKeepAlive;
         bool prohibitBody;
-        //bool expectContinue;
 
-        public static HttpResponseDelegateState Create(bool prohibitBody, bool shouldKeepAlive, bool expectContinue)
+        public HttpResponseDelegateState(bool prohibitBody, bool shouldKeepAlive)
         {
-            return new HttpResponseDelegateState()
-            {
-                prohibitBody = prohibitBody,
-                shouldKeepAlive = shouldKeepAlive,
-                //expectContinue = expectContinue
-            };
+            this.prohibitBody = prohibitBody;
+            this.shouldKeepAlive = shouldKeepAlive;
         }
 
-        public void OnResponse(bool hasBody, out bool begin)
+        // called when user connects to request body.
+        public void OnWriteContinue(out bool writeContinue)
+        {
+            if (gotAbort)
+                throw new InvalidOperationException("The response was aborted by the server.");
+
+            gotContinue = true;
+            
+            // if we already have a response, don't send 100-continue, just send the response
+            writeContinue = gotConnect && !gotResponse;
+        }
+
+        public void OnResponse(bool hasBody, out bool writeResponse)
         {
             if (gotAbort)
                 throw new InvalidOperationException("The response was aborted by the server.");
@@ -37,16 +45,17 @@ namespace Kayak.Http
             if (prohibitBody && hasBody)
                 throw new InvalidOperationException("Response body is prohibited for this response type.");
 
-            begin = gotConnect;
+            writeResponse = gotConnect;
         }
 
-        public void OnConnect(out bool begin)
+        public void OnConnect(out bool writeResponse, out bool writeContinue)
         {
             if (gotConnect)
                 throw new InvalidOperationException("Connect was already called.");
 
             gotConnect = true;
-            begin = gotResponse;
+            writeContinue = /* !gotResponse && */ gotContinue;
+            writeResponse = gotResponse;
         }
 
         public void OnRenderHeaders(bool givenConnectionHeader, bool givenConnectionHeaderIsClose, out bool indicateConnection, out bool indicateConnectionClose)

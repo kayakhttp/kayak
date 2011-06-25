@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    class HttpResponseDelegate : IHttpResponseDelegate, IDataProducer
+    class HttpResponseDelegate : IHttpResponseDelegate, IResponse
     {
         HttpResponseDelegateState state;
         Action closeConnection;
@@ -23,24 +23,34 @@ namespace Kayak.Http
 
         internal IHeaderRenderer renderer = defaultRenderer;
 
-        public HttpResponseDelegate(bool prohibitBody, bool shouldKeepAlive, bool expectContinue, Action closeConnection)
+        public HttpResponseDelegate(bool prohibitBody, bool shouldKeepAlive, Action closeConnection)
         {
-            state = HttpResponseDelegateState.Create(prohibitBody, shouldKeepAlive, expectContinue);
+            state = new HttpResponseDelegateState(prohibitBody, shouldKeepAlive);
             this.closeConnection = closeConnection;
+        }
+
+        public void WriteContinue()
+        {
+            var writeContinue = false;
+
+            state.OnWriteContinue(out writeContinue);
+
+            if (writeContinue)
+                RenderContinue();
         }
 
         public void OnResponse(HttpResponseHead head, IDataProducer body)
         {
-            var begin = false;
+            var writeResponse = false;
             var hasBody = body != null;
 
-            state.OnResponse(hasBody, out begin);
+            state.OnResponse(hasBody, out writeResponse);
 
             this.head = head;
             this.body = body;
 
-            if (begin)
-                Begin();
+            if (writeResponse)
+                BeginResponse();
         }
 
         public IDisposable Connect(IDataConsumer consumer)
@@ -50,12 +60,16 @@ namespace Kayak.Http
 
             this.consumer = consumer;
 
+            bool writeContinue = false;
             bool begin = false;
 
-            state.OnConnect(out begin);
+            state.OnConnect(out begin, out writeContinue);
+
+            if (writeContinue)
+                RenderContinue();
 
             if (begin)
-                Begin();
+                BeginResponse();
 
             return new Disposable(Abort);
         }
@@ -69,7 +83,7 @@ namespace Kayak.Http
                 abortBody.Dispose();
         }
 
-        void Begin()
+        void BeginResponse()
         {
             RenderHeaders();
 
@@ -77,6 +91,14 @@ namespace Kayak.Http
                 consumer.OnEnd();
             else
                 abortBody = body.Connect(consumer);
+        }
+
+        static ArraySegment<byte> oneHunderedContinue =
+            new ArraySegment<byte>(Encoding.ASCII.GetBytes("100 Continue\r\n\r\n"));
+
+        void RenderContinue()
+        {
+            consumer.OnData(oneHunderedContinue, null);
         }
 
         void RenderHeaders()

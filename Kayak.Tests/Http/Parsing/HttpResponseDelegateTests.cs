@@ -40,10 +40,13 @@ namespace Kayak.Tests.Http
         }
 
         [Test]
-        public void transport_connected_after_on_response()
+        public void transport_connected_after_on_response([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
+
+            if (expectContinue)
+                del.WriteContinue();
 
             del.OnResponse(Head(), null);
 
@@ -51,32 +54,32 @@ namespace Kayak.Tests.Http
 
             var abort = del.Connect(mockConsumer);
 
-            Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo("[headers]"));
-            Assert.That(mockConsumer.GotEnd, Is.True);
-            Assert.That(connectionClosed, Is.True);
+            AssertConsumer(expectContinue: expectContinue, expectBody: false);
         }
 
         [Test]
-        public void transport_connected_before_on_response()
+        public void transport_connected_before_on_response([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
             var abort = del.Connect(mockConsumer);
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), null);
 
-            Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo("[headers]"));
-            Assert.That(mockConsumer.GotEnd, Is.True);
-            Assert.That(connectionClosed, Is.True);
+            AssertConsumer(expectContinue: expectContinue, expectBody: false);
         }
 
         [Test]
-        public void transport_connected_after_on_response__async_producer__begin_producing_after_on_connect()
+        public void transport_connected_after_on_response__async_producer__begin_producing_after_on_connect([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
             Action startProducing = null;
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), MockDataProducer.Create(new string[] {
                 "Chunk1",
                 "Chunk2",
@@ -91,16 +94,18 @@ namespace Kayak.Tests.Http
             mockConsumer.Continuation();
             mockConsumer.Continuation();
 
-            AssertConsumer();
+            AssertConsumer(expectContinue, true);
         }
 
         [Test]
-        public void transport_connected_after_on_response__sync_producer__begin_producing_after_on_connect()
+        public void transport_connected_after_on_response__sync_producer__begin_producing_after_on_connect([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
             Action startProducing = null;
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), MockDataProducer.Create(new string[] {
                 "Chunk1",
                 "Chunk2",
@@ -112,18 +117,20 @@ namespace Kayak.Tests.Http
             var abort = del.Connect(mockConsumer);
             startProducing();
 
-            AssertConsumer();
+            AssertConsumer(expectContinue, true);
         }
 
         [Test]
-        public void transport_connected_before_on_response__async_producer__begin_producing_after_on_request()
+        public void transport_connected_before_on_response__async_producer__begin_producing_after_on_request([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
             var abort = del.Connect(mockConsumer);
 
             Action startProducing = null;
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), MockDataProducer.Create(new string[] {
                 "Chunk1",
                 "Chunk2",
@@ -134,18 +141,20 @@ namespace Kayak.Tests.Http
             mockConsumer.Continuation();
             mockConsumer.Continuation();
 
-            AssertConsumer();
+            AssertConsumer(expectContinue, true);
         }
 
         [Test]
-        public void transport_connected_before_on_response__sync_producer__begin_producing_after_on_request()
+        public void transport_connected_before_on_response__sync_producer__begin_producing_after_on_request([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
             var abort = del.Connect(mockConsumer);
 
             Action startProducing = null;
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), MockDataProducer.Create(new string[] {
                 "Chunk1",
                 "Chunk2",
@@ -153,15 +162,17 @@ namespace Kayak.Tests.Http
             }, true, () => { }, s => startProducing = s));
             startProducing();
 
-            AssertConsumer();
+            AssertConsumer(expectContinue, true);
         }
 
         [Test]
-        public void transport_connected_after_on_response__async_producer__begin_producing_on_connect()
+        public void transport_connected_after_on_response__async_producer__begin_producing_on_connect([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), MockDataProducer.Create(new string[] {
                 "Chunk1",
                 "Chunk2",
@@ -175,15 +186,17 @@ namespace Kayak.Tests.Http
             mockConsumer.Continuation();
             mockConsumer.Continuation();
 
-            AssertConsumer();
+            AssertConsumer(expectContinue, true);
         }
 
         [Test]
-        public void transport_connected_after_on_response__sync_producer__begin_producing_on_connect()
+        public void transport_connected_after_on_response__sync_producer__begin_producing_on_connect([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), MockDataProducer.Create(new string[] {
                 "Chunk1",
                 "Chunk2",
@@ -194,17 +207,19 @@ namespace Kayak.Tests.Http
 
             var abort = del.Connect(mockConsumer);
 
-            AssertConsumer();
+            AssertConsumer(expectContinue, true);
         }
 
         [Test]
-        public void transport_connected_before_on_response__async_producer__begin_producing_on_connect()
+        public void transport_connected_before_on_response__async_producer__begin_producing_on_connect([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
             var abort = del.Connect(mockConsumer);
 
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), MockDataProducer.Create(new string[] {
                 "Chunk1",
                 "Chunk2",
@@ -214,29 +229,39 @@ namespace Kayak.Tests.Http
             mockConsumer.Continuation();
             mockConsumer.Continuation();
 
-            AssertConsumer();
+            AssertConsumer(expectContinue, true);
         }
 
         [Test]
-        public void transport_connected_before_on_response__sync_producer__begin_producing_on_connect()
+        public void transport_connected_before_on_response__sync_producer__begin_producing_on_connect([Values(true, false)] bool expectContinue)
         {
-            del = new HttpResponseDelegate(false, false, false, connectionClosedAction);
+            del = new HttpResponseDelegate(false, false, connectionClosedAction);
             del.renderer = new MockHeaderRender();
 
             var abort = del.Connect(mockConsumer);
 
+            if (expectContinue)
+                del.WriteContinue();
             del.OnResponse(Head(), MockDataProducer.Create(new string[] {
                 "Chunk1",
                 "Chunk2",
                 "Chunk3"
             }, true, () => { }, s => s()));
 
-            AssertConsumer();
+            AssertConsumer(expectContinue, true);
         }
 
-        void AssertConsumer()
+        void AssertConsumer(bool expectContinue, bool expectBody)
         {
-            Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo("[headers]Chunk1Chunk2Chunk3"));
+            var expectedString = "[headers]";
+
+            if (expectBody)
+                expectedString += "Chunk1Chunk2Chunk3";
+
+            if (expectContinue)
+                expectedString = "100 Continue\r\n\r\n" + expectedString;
+
+            Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo(expectedString));
             Assert.That(mockConsumer.GotEnd, Is.True);
             Assert.That(connectionClosed, Is.True);
         }

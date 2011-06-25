@@ -6,9 +6,14 @@ using System.Text;
 
 namespace Kayak.Http
 {
+    interface IResponse : IDataProducer
+    {
+        void WriteContinue();
+    }
+
     interface IResponseFactory
     {
-        IDataProducer Create(HttpRequestHead head, IDataProducer body, bool shouldKeepAlive, Action end);
+        IResponse Create(HttpRequestHead head, IDataProducer body, bool shouldKeepAlive, Action end);
     }
 
     class ResponseFactory : IResponseFactory
@@ -20,12 +25,11 @@ namespace Kayak.Http
             this.requestDelegate = requestDelegate;
         }
 
-        public IDataProducer Create(HttpRequestHead request, IDataProducer body, bool shouldKeepAlive, Action end)
+        public IResponse Create(HttpRequestHead request, IDataProducer body, bool shouldKeepAlive, Action end)
         {
             var del = new HttpResponseDelegate(
                 prohibitBody: request.Method.ToUpperInvariant() == "HEAD",
                 shouldKeepAlive: shouldKeepAlive,
-                expectContinue: request.IsContinueExpected(),
                 closeConnection: end);
 
             requestDelegate.OnRequest(request, body, del);
@@ -71,12 +75,17 @@ namespace Kayak.Http
 
         public void OnRequest(HttpRequestHead request, bool shouldKeepAlive)
         {
-            subject = new DataSubject(() => new Disposable(RequestBodyCancelled));
+            IResponse response = null;
+
+            subject = new DataSubject(() => {
+                response.WriteContinue();
+                return new Disposable(RequestBodyCancelled);
+            });
 
             // the subject could be subscribed to and immediately cancelled from within this call!
-            var producer = responseFactory.Create(request, subject, shouldKeepAlive, CloseConnection);
+            response = responseFactory.Create(request, subject, shouldKeepAlive, CloseConnection);
 
-            observer.OnNext(producer);
+            observer.OnNext(response);
         }
 
         public bool OnRequestData(ArraySegment<byte> data, Action continuation)
