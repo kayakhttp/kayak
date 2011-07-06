@@ -34,6 +34,13 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Gate, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\lib\Gate.dll</HintPath>
+    </Reference>
+    <Reference Include="Gate.Kayak">
+      <HintPath>..\lib\Gate.Kayak.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
   </ItemGroup>
@@ -47,14 +54,6 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\gate.unf\src\Gate\Gate.csproj">
-      <Project>{BE3CCA19-0795-4477-A4D4-ABF45474ACBF}</Project>
-      <Name>Gate</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\Kayak.Gate\Kayak.Gate.csproj">
-      <Project>{11370A3D-2A2B-47D0-B3DE-14940A6E5B02}</Project>
-      <Name>Kayak.Gate</Name>
-    </ProjectReference>
     <ProjectReference Include="..\Kayak\Kayak.csproj">
       <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
       <Name>Kayak</Name>
