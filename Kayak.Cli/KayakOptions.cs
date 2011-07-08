@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using Mono.Options;
 using System.Net;
+using Mono.Options;
 
 namespace Kayak.Cli
 {
@@ -65,46 +64,60 @@ namespace Kayak.Cli
         public GateOptions GateOptions;
         public bool ShowHelp;
 
-        OptionSet optionSet;
+        internal OptionSet optionSet;
 
-        public KayakOptions(string[] args) : this(args, new EPParser().ParseEP) { }
-        public KayakOptions(string[] args, Func<string, IPEndPoint> parseEP)
+        public void PrintHelp()
+        {
+            optionSet.WriteOptionDescriptions(Console.Out);
+        }
+    }
+
+    class KayakOptionParser
+    {
+        Func<string, IPEndPoint> parseEP;
+
+        public KayakOptionParser() : this(new EPParser().ParseEP) { }
+        public KayakOptionParser(Func<string, IPEndPoint> parseEP)
+        {
+            this.parseEP = parseEP;
+        }
+
+        public KayakOptions Parse(string[] args)
         {
             bool useGate = false;
             string gateConfiguration = null;
             string listenEndPoint = null;
             List<string> remaining = null;
 
-            optionSet = new OptionSet()
+            KayakOptions options = new KayakOptions();
+
+            options.optionSet = new OptionSet()
             {
                 { "g|gate:", "A Gate configuration string", 
                     v => { useGate = true; gateConfiguration = v; } },
                 { "b|bind=", "The endpoint the server should bind to (use in combination with -g/--gate",
                     v => listenEndPoint = v },
-                { "h|?|help", "Print help and exit", v => ShowHelp = true },
+                { "h|?|help", "Print help and exit", v => options.ShowHelp = true },
             };
 
-            remaining = optionSet.Parse(args);
+            remaining = options.optionSet.Parse(args);
 
             if (remaining.Count > 0)
             {
-                KayakConfiguration = remaining[0];
+                options.KayakConfiguration = remaining[0];
                 remaining.RemoveAt(0);
             }
 
-            RemainingArguments = remaining.ToArray();
+            options.RemainingArguments = remaining.ToArray();
 
             if (useGate)
             {
-                GateOptions = new GateOptions();
-                GateOptions.GateConfiguration = gateConfiguration;
-                GateOptions.ListenEndPoint = parseEP(listenEndPoint);
+                options.GateOptions = new GateOptions();
+                options.GateOptions.GateConfiguration = gateConfiguration;
+                options.GateOptions.ListenEndPoint = parseEP(listenEndPoint);
             }
-        }
 
-        public void PrintHelp()
-        {
-            optionSet.WriteOptionDescriptions(Console.Out);
+            return options;
         }
     }
 }

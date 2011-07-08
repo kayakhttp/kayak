@@ -31,6 +31,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Gate, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\lib\Gate.dll</HintPath>
+    </Reference>
     <Reference Include="nunit.framework, Version=2.5.10.11092, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\NUnit.2.5.10.11092\lib\nunit.framework.dll</HintPath>
@@ -57,6 +61,10 @@
     <ProjectReference Include="..\Kayak.Cli\Kayak.Cli.csproj">
       <Project>{E0365461-37C4-4BB5-AC95-B30241EA29F2}</Project>
       <Name>Kayak.Cli</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Kayak\Kayak.csproj">
+      <Project>{79DDD0CE-6F79-4212-A972-8618AD6E405F}</Project>
+      <Name>Kayak</Name>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

@@ -17,7 +17,7 @@ namespace Kayak.Cli
 
             try
             {
-                options = new KayakOptions(args);
+                options = new KayakOptionParser().Parse(args);
             }
             catch (OptionException e)
             {
@@ -43,14 +43,28 @@ namespace Kayak.Cli
                 else
                     Console.WriteLine();
 
+                var searchPath = Directory.GetCurrentDirectory();
+
                 AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler((object sender, ResolveEventArgs a) =>
                 {
                     return Assembly.LoadFrom(Path.Combine(
-                        Directory.GetCurrentDirectory(),
+                        searchPath,
                         a.Name.Substring(0, a.Name.IndexOf(',')) + ".dll"));
                 });
 
-                new Launcher().LaunchScheduler(options);
+                //var domain = AppDomain.CreateDomain("KayakScheduler domain", null, new AppDomainSetup()
+                //{
+                //    ApplicationBase = Directory.GetCurrentDirectory(),
+                //    ApplicationTrust = new ApplicationTrust(new PermissionSet(PermissionState.Unrestricted), Enumerable.Empty<StrongName>())
+                //});
+                    
+                //var launcher = (Launcher)domain.CreateInstanceFromAndUnwrap(
+                //    Assembly.GetExecutingAssembly().CodeBase, 
+                //    typeof(Launcher).FullName);
+
+                new Launcher().LaunchScheduler(options, searchPath);
+
+                //AppDomain.Unload(domain);
             }
             catch (Exception e)
             {

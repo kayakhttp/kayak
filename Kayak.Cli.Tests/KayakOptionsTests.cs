@@ -63,7 +63,7 @@ namespace Kayak.Cli.Tests
     {
         KayakOptions Parse(params string[] args)
         {
-            return new KayakOptions(args);
+            return new KayakOptionParser().Parse(args);
         }
 
         [Test]

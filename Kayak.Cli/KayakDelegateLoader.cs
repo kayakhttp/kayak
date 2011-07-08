@@ -1,5 +1,8 @@
 ﻿using System;
 using Gate;
+using System.IO;
+using System.Reflection;
+using System.Linq;
 
 namespace Kayak.Cli
 {
@@ -15,44 +18,50 @@ namespace Kayak.Cli
 
     class KayakDelegateLoader : IKayakDelegateLoader
     {
-        readonly Func<string, Tuple<Type, string>> configurationLoader;
+        string assembliesPath;
 
-        public KayakDelegateLoader() 
-            : this(s => DefaultConfigurationLoader.GetTypeAndMethodNameForConfigurationString(s)) { }
-        public KayakDelegateLoader(Func<string, Tuple<Type, string>> configurationLoader)
+        public KayakDelegateLoader(string assembliesPath) 
         {
-            this.configurationLoader = configurationLoader;
+            this.assembliesPath = assembliesPath;
         }
 
         public IKayakDelegate Load(string configurationString)
         {
-            // okay, i see why the gate configuration loader
-            // creates a default string and loads that. because you're going to need it anyway.
-            // so, looks like really we just want to customize the MakeDelegate behavoir.
+            var assemblies = Directory.GetFiles(assembliesPath, "*.dll")
+                .Concat(Directory.GetFiles(assembliesPath, "*.exe"))
+                .Select(s => Assembly.LoadFrom(s));
 
-            // so for now it requires you give it a type, in an assembly (which can be inferred from the type)
-            //
-            // ack. k.
-
-            if (string.IsNullOrEmpty(configurationString))
-                return null;
-
-            var typeAndMethodName = configurationLoader(configurationString);
+            var locator = new DefaultConfigurationLocator();
+            var typeAndMethodName = locator.Locate(
+                configurationString, 
+                assemblies, a => new[] { a.GetName().Name + ".KayakDelegate" }, 
+                null);
 
             if (typeAndMethodName == null)
                 return null;
 
             var type = typeAndMethodName.Item1;
-            var methodName = typeAndMethodName.Item2;
+            var method = typeAndMethodName.Item2;
 
             // we're always looking for a type.
-            if (!string.IsNullOrEmpty(methodName))
+            if (method != null)
                 return null;
 
             if (!typeof(IKayakDelegate).IsAssignableFrom(type))
                 return null;
 
-            return (IKayakDelegate)Activator.CreateInstance(type);
+            IKayakDelegate del = null;
+
+            try
+            {
+                del = (IKayakDelegate)Activator.CreateInstance(type);
+            }
+            catch (Exception e)
+            {
+                return null;
+            }
+
+            return del;
         }
     }
 }
