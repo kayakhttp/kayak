@@ -18,23 +18,12 @@ namespace Kayak.Cli
 
     class KayakDelegateLoader : IKayakDelegateLoader
     {
-        string assembliesPath;
-
-        public KayakDelegateLoader(string assembliesPath) 
-        {
-            this.assembliesPath = assembliesPath;
-        }
-
         public IKayakDelegate Load(string configurationString)
         {
-            var assemblies = Directory.GetFiles(assembliesPath, "*.dll")
-                .Concat(Directory.GetFiles(assembliesPath, "*.exe"))
-                .Select(s => Assembly.LoadFrom(s));
-
             var locator = new DefaultConfigurationLocator();
             var typeAndMethodName = locator.Locate(
                 configurationString, 
-                assemblies, a => new[] { a.GetName().Name + ".KayakDelegate" }, 
+                a => new[] { a.GetName().Name + ".KayakDelegate" }, 
                 null);
 
             if (typeAndMethodName == null)

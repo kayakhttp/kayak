@@ -37,20 +37,10 @@ namespace Kayak.Cli
 
             try
             {
-                Console.Write("kayak: launching scheduler");
-                if (!string.IsNullOrEmpty(options.KayakConfiguration))
-                    Console.WriteLine(" with delegate '" + options.KayakConfiguration + "'");
-                else
-                    Console.WriteLine();
-
-                var searchPath = Directory.GetCurrentDirectory();
-
-                AppDomain.CurrentDomain.AssemblyResolve += new ResolveEventHandler((object sender, ResolveEventArgs a) =>
-                {
-                    return Assembly.LoadFrom(Path.Combine(
-                        searchPath,
-                        a.Name.Substring(0, a.Name.IndexOf(',')) + ".dll"));
-                });
+                // all configuration strings search 
+                // AppDomain.CurrentDomain.SetupInformation.ApplicationBase for DLLs.
+                // to change that path, we'd need to create a new app domain with a different
+                // application base.
 
                 //var domain = AppDomain.CreateDomain("KayakScheduler domain", null, new AppDomainSetup()
                 //{
@@ -62,7 +52,7 @@ namespace Kayak.Cli
                 //    Assembly.GetExecutingAssembly().CodeBase, 
                 //    typeof(Launcher).FullName);
 
-                new Launcher().LaunchScheduler(options, searchPath);
+                new Launcher().LaunchScheduler(options);
 
                 //AppDomain.Unload(domain);
             }

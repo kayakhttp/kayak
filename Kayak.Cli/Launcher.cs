@@ -2,12 +2,13 @@
 using System.Net;
 using Gate.Kayak;
 using System.Collections.Generic;
+using Gate;
 
 namespace Kayak.Cli
 {
     class Launcher
     {
-        public void LaunchScheduler(KayakOptions options, string searchPath)
+        public void LaunchScheduler(KayakOptions options)
         {
             // okay the default delegate kinds sucks because if the user's program doesn't
             // explicitly call stop the thread essentially hangs, becaues the event loop
@@ -20,7 +21,7 @@ namespace Kayak.Cli
             // are passed in via env. call stop eventually, or be okay with your program never terminating
 
             var kayakDelegate =
-                new KayakDelegateLoader(searchPath).Load(options.KayakConfiguration)
+                new KayakDelegateLoader().Load(options.KayakConfiguration)
                 ?? new DefaultKayakDelegate();
 
             var scheduler = new KayakScheduler(kayakDelegate);
@@ -32,19 +33,25 @@ namespace Kayak.Cli
             if (gateOptions != null)
             {
                 var gateConfiguration = gateOptions.GateConfiguration;
-                var listenEndPoint = gateOptions.ListenEndPoint;
+                var listenEndPoint = gateOptions.ListenEndPoint ?? new IPEndPoint(IPAddress.Any, 8000);
 
-                scheduler.Post(() =>
-                {
-                    Console.WriteLine("kayak: running gate configuration '" + gateConfiguration + "'");
-
-                    var context = new Dictionary<string, object>()
+                var context = new Dictionary<string, object>()
                         {
                             { "kayak.ListenEndPoint", listenEndPoint },
                             { "kayak.Arguments", options.RemainingArguments }
                         };
-                    var server = KayakServer.Factory.CreateGate(gateConfiguration, scheduler, context);
 
+                var config = DefaultConfigurationLoader.LoadConfiguration(gateConfiguration);
+
+                if (config == null)
+                    throw new Exception("Could not load Gate configuration from configuration string '" + gateConfiguration + "'");
+
+                var app = AppBuilder.BuildConfiguration(config);
+
+                var server = KayakServer.Factory.CreateGate(app, scheduler, context);
+
+                scheduler.Post(() =>
+                {
                     Console.WriteLine("kayak: binding gate app to '" + listenEndPoint + "'");
                     server.Listen(listenEndPoint);
                 });

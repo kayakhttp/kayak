@@ -108,7 +108,6 @@ namespace Kayak.Cli.Tests
             StopOnStart = false;
             OnStartCalls = 0;
             OnStartArgs = null;
-
         }
 
         public static bool StopOnStart;
