@@ -20,7 +20,7 @@ namespace Kayak.Cli.Tests
             //    WorkingDirectory = AppDomain.CurrentDomain.SetupInformation.ApplicationBase,
             //    Arguments = ...
             //});
-            new Launcher().LaunchScheduler(options, AppDomain.CurrentDomain.SetupInformation.ApplicationBase);
+            new Launcher().LaunchScheduler(options);
         }
 
         [SetUp]
@@ -33,7 +33,7 @@ namespace Kayak.Cli.Tests
         [Test]
         public void Locates_and_calls_KayakDelegate_and_Gate_configuration_defaults()
         {
-            Startup.StopOnConfigure = true;
+            KayakDelegate.StopOnStart = true;
             string[] args = new[] { "asdf" };
             Launch(new KayakOptions()
             {
@@ -65,7 +65,7 @@ namespace Kayak.Cli.Tests
         [Test]
         public void Locates_and_calls_KayakDelegate_and_Gate_configuration()
         {
-            Startup.StopOnConfigure = true;
+            KayakDelegate.StopOnStart = true;
             string[] args = new[] { "asdf" };
             Launch(new KayakOptions()
             {
@@ -120,6 +120,9 @@ namespace Kayak.Cli.Tests
             OnStartArgs = args;
             Startup.Scheduler = scheduler;
             if (StopOnStart)
+                // anything already queued will continue to run.
+                // XXX kind of hate the semantics of this
+                // fuck the state.
                 scheduler.Stop();
         }
 
