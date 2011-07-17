@@ -21,7 +21,7 @@ namespace Kayak.Tests
         public bool Write(ArraySegment<byte> data, Action continuation)
         {
             // XXX do copy? 
-            Buffer.AddToBuffer(data);
+            Buffer.Add(data);
 
             if (continuation != null)
             {
@@ -138,7 +138,7 @@ namespace Kayak.Tests
         public bool OnData(ArraySegment<byte> data, Action continuation)
         {
             // XXX do copy? 
-            Buffer.AddToBuffer(data);
+            Buffer.Add(data);
 
             if (OnDataAction != null)
                 OnDataAction(data);
@@ -197,7 +197,7 @@ namespace Kayak.Tests
 
         public bool OnRequestData(ArraySegment<byte> data, Action continuation)
         {
-            current.Data.AddToBuffer(data);
+            current.Data.Add(data);
 
             if (OnDataAction != null)
                 return OnDataAction(data, continuation);
@@ -229,6 +229,85 @@ namespace Kayak.Tests
                 throw new Exception("OnEnd was called more than once.");
 
             GotDispose = true;
+        }
+
+        public IDisposable Subscribe(IObserver<IDataProducer> observer)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    class MockResponseFactory : IHttpResponseDelegateFactory
+    {
+        public Func<HttpRequestHead, bool, Action, IHttpResponseDelegateInternal> OnCreate;
+
+        public IHttpResponseDelegateInternal Create(HttpRequestHead head, bool shouldKeepAlive, Action end)
+        {
+            return OnCreate(head, shouldKeepAlive, end);
+        }
+    }
+
+    class MockObserver<T> : IObserver<T>
+    {
+        public bool GotCompleted;
+        public Exception Error;
+        public List<T> Values = new List<T>();
+
+        public void OnCompleted()
+        {
+            if (GotCompleted)
+                throw new InvalidOperationException("Got completed already.");
+
+            GotCompleted = true;
+        }
+
+        public void OnError(Exception error)
+        {
+            if (error == null)
+                throw new ArgumentNullException("error");
+
+            if (Error != null)
+                throw new Exception("Already got error");
+
+            Error = error;
+        }
+
+        public void OnNext(T value)
+        {
+            Values.Add(value);
+        }
+    }
+
+    class MockRequestDelegate : IHttpRequestDelegate
+    {
+        public Action<HttpRequestHead, IDataProducer, IHttpResponseDelegate> OnRequestAction;
+
+        public void OnRequest(HttpRequestHead head, IDataProducer body, IHttpResponseDelegate response)
+        {
+            if (OnRequestAction != null)
+                OnRequestAction(head, body, response);
+        }
+    }
+
+    class MockResponseDelegate : IHttpResponseDelegateInternal
+    {
+        public bool GotWriteContinue;
+
+        public void WriteContinue()
+        {
+            if (GotWriteContinue)
+                throw new Exception("Already got WriteContinue()");
+
+            GotWriteContinue = true;
+        }
+
+        public IDisposable Connect(IDataConsumer channel)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void OnResponse(HttpResponseHead head, IDataProducer body)
+        {
         }
     }
 }

@@ -5,20 +5,30 @@ using System.Text;
 
 namespace Kayak.Tests.Net
 {
-    class DataBuffer
+    public class DataBuffer
     {
-        public List<byte[]> Buffer = new List<byte[]>();
+        List<byte[]> buffer = new List<byte[]>();
 
-        public new string ToString()
+        public string GetString()
         {
-            return Buffer.Aggregate("", (acc, next) => acc + Encoding.UTF8.GetString(next));
+            return buffer.Aggregate("", (acc, next) => acc + Encoding.UTF8.GetString(next));
         }
 
-        public void AddToBuffer(ArraySegment<byte> d)
+        public int GetCount()
+        {
+            return buffer.Aggregate(0, (c, d) => c + d.Length);
+        }
+
+        public void Add(ArraySegment<byte> d)
         {
             byte[] b = new byte[d.Count];
             System.Buffer.BlockCopy(d.Array, d.Offset, b, 0, d.Count);
-            Buffer.Add(b);
+            buffer.Add(b);
+        }
+
+        public void Each(Action<byte[]> each)
+        {
+            buffer.ForEach(each);
         }
     }
 }

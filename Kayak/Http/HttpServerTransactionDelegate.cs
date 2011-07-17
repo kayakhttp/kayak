@@ -6,65 +6,33 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    interface IResponse : IDataProducer
+    class HttpServerTransactionDelegate : IHttpServerTransactionDelegate
     {
-        void WriteContinue();
-    }
-
-    interface IResponseFactory
-    {
-        IResponse Create(HttpRequestHead head, IDataProducer body, bool shouldKeepAlive, Action end);
-    }
-
-    class ResponseFactory : IResponseFactory
-    {
+        IHttpResponseDelegateFactory responseDelegateFactory;
         IHttpRequestDelegate requestDelegate;
 
-        public ResponseFactory(IHttpRequestDelegate requestDelegate)
-        {
-            this.requestDelegate = requestDelegate;
-        }
-
-        public IResponse Create(HttpRequestHead request, IDataProducer body, bool shouldKeepAlive, Action end)
-        {
-            var responseDelegate = new HttpResponseDelegate(
-                prohibitBody: request.Method.ToUpperInvariant() == "HEAD",
-                shouldKeepAlive: shouldKeepAlive,
-                closeConnection: end);
-
-            requestDelegate.OnRequest(request, body, responseDelegate);
-
-            return responseDelegate;
-        }
-    }
-
-    class HttpServerTransactionDelegate : IHttpServerTransactionDelegate, IObservable<IDataProducer>
-    {
-        IResponseFactory responseFactory;
         IObserver<IDataProducer> observer;
-        DataSubject subject;
+        IDataConsumer requestBody;
+        bool closeConnection;
 
-        public HttpServerTransactionDelegate(IResponseFactory responseFactory)
+        public HttpServerTransactionDelegate(
+            IHttpResponseDelegateFactory responseDelegateFactory, 
+            IHttpRequestDelegate requestDelegate)
         {
-            this.responseFactory = responseFactory;
+            this.responseDelegateFactory = responseDelegateFactory;
+            this.requestDelegate = requestDelegate;
         }
 
         public IDisposable Subscribe(IObserver<IDataProducer> observer)
         {
             this.observer = observer;
 
-            return new Disposable(() => OnError(new Exception("Output stream cancelled")));
+            return new Disposable(() =>
+            {
+                // i.e., output queue wants no more
+                // this won't happen with the current implementation
+            });
         }
-
-        void RequestBodyCancelled()
-        {
-            // XXX really need to think about this behavior more.
-            // ideally we stop reading from the socket.
-
-            //observer.OnError(new Exception("Connection was aborted by user."));
-        }
-
-        bool closeConnection;
 
         void CloseConnection()
         {
@@ -75,51 +43,56 @@ namespace Kayak.Http
 
         public void OnRequest(HttpRequestHead request, bool shouldKeepAlive)
         {
-            IResponse responseConsumer = null;
-            bool shouldWriteContinue = false;
+            var responseDelegate = responseDelegateFactory.Create(request, shouldKeepAlive, CloseConnection);
+
+            DataSubject subject = null;
             bool requestBodyConnected = false;
 
-            // not very happy with this inside-out state manipulating logic.
-            subject = new DataSubject(() => {
-                if (requestBodyConnected) throw new InvalidOperationException("Request body was already connected.");
-                requestBodyConnected = true;
+            Debug.WriteLine("[{0}] {1} {2} shouldKeepAlive = {3}",
+                DateTime.Now, request.Method, request.Uri, shouldKeepAlive);
 
-                if (request.IsContinueExpected())
+            if (request.HasBody())
+            {
+                subject = new DataSubject(() =>
                 {
-                    if (responseConsumer == null)
-                        shouldWriteContinue = true;
-                    else
-                        responseConsumer.WriteContinue();
-                }
-                return new Disposable(RequestBodyCancelled);
-            });
+                    if (requestBodyConnected) 
+                        throw new InvalidOperationException("Request body was already connected.");
 
-            // the subject could be subscribed to and immediately cancelled from within this call!
-            responseConsumer = responseFactory.Create(request, subject, shouldKeepAlive, CloseConnection);
+                    requestBodyConnected = true;
 
-            // hate this flag in particular
-            if (shouldWriteContinue)
-                responseConsumer.WriteContinue();
+                    if (request.IsContinueExpected())
+                        responseDelegate.WriteContinue();
 
-            observer.OnNext(responseConsumer);
+                    return new Disposable(() =>
+                    {
+                        // XXX what to do?
+                        // ideally we stop reading from the socket. 
+                        // equivalent to a parse error
+                    });
+                });
+            }
+
+            requestBody = subject;
+
+            requestDelegate.OnRequest(request, subject, responseDelegate);
+            observer.OnNext(responseDelegate);
         }
 
         public bool OnRequestData(ArraySegment<byte> data, Action continuation)
         {
-            return subject.OnData(data, continuation);
+            return requestBody.OnData(data, continuation);
         }
 
         public void OnRequestEnd()
         {
-            subject.OnEnd();
+            if (requestBody != null)
+                requestBody.OnEnd();
         }
 
         public void OnError(Exception e)
         {
-            if (subject != null)
-                subject.OnError(e);
-
-            observer.OnError(e);
+            if (requestBody != null)
+                requestBody.OnError(e);
         }
 
         public void OnEnd()

@@ -52,7 +52,7 @@ namespace Kayak.Tests.Http
             Commit(false);
 
             Assert.That(requestDelegates.Count, Is.EqualTo(1));
-            Assert.That(requestDelegates[0].Data.ToString(), Is.EqualTo("and so it begins."));
+            Assert.That(requestDelegates[0].Data.GetString(), Is.EqualTo("and so it begins."));
         }
 
         [Test]
@@ -73,8 +73,8 @@ namespace Kayak.Tests.Http
             Commit(false);
 
             Assert.That(requestDelegates.Count, Is.EqualTo(2));
-            Assert.That(requestDelegates[0].Data.ToString(), Is.EqualTo("another late, bleary night of procrastination"));
-            Assert.That(requestDelegates[1].Data.ToString(), Is.Empty);
+            Assert.That(requestDelegates[0].Data.GetString(), Is.EqualTo("another late, bleary night of procrastination"));
+            Assert.That(requestDelegates[1].Data.GetString(), Is.Empty);
         }
 
         [Test]
@@ -99,7 +99,7 @@ namespace Kayak.Tests.Http
             Commit(false);
 
             Assert.That(requestDelegates.Count, Is.EqualTo(2));
-            Assert.That(requestDelegates[1].Data.ToString(), Is.EqualTo("under the guise of creativity, some lofty goal"));
+            Assert.That(requestDelegates[1].Data.GetString(), Is.EqualTo("under the guise of creativity, some lofty goal"));
         }
 
         [Test]
@@ -116,13 +116,13 @@ namespace Kayak.Tests.Http
             Commit(true);
 
             Assert.That(httpDel.current, Is.Not.Null);
-            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("hello world hello"));
+            Assert.That(httpDel.current.Data.GetString(), Is.EqualTo("hello world hello"));
 
             WriteBody("whatever gets you off, you bastard");
 
             Commit(true);
 
-            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
+            Assert.That(httpDel.current.Data.GetString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
         }
 
         [Test]
@@ -139,7 +139,7 @@ namespace Kayak.Tests.Http
             Commit(false);
 
             Assert.That(httpDel.current, Is.Not.Null);
-            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("hello world hello"));
+            Assert.That(httpDel.current.Data.GetString(), Is.EqualTo("hello world hello"));
 
             WriteBody("whatever gets you off, you bastard");
             del.OnRequestEnded();
@@ -148,7 +148,7 @@ namespace Kayak.Tests.Http
 
             Commit(false);
 
-            Assert.That(requestDelegates[0].Data.ToString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
+            Assert.That(requestDelegates[0].Data.GetString(), Is.EqualTo("hello world hellowhatever gets you off, you bastard"));
         }
 
         [Test]
@@ -165,15 +165,15 @@ namespace Kayak.Tests.Http
             Commit(true);
 
             Assert.That(httpDel.current, Is.Not.Null);
-            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("i am so incapable of stopping"));
+            Assert.That(httpDel.current.Data.GetString(), Is.EqualTo("i am so incapable of stopping"));
 
             WriteBody("tired of this mandate");
 
-            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("i am so incapable of stopping"));
+            Assert.That(httpDel.current.Data.GetString(), Is.EqualTo("i am so incapable of stopping"));
 
             Commit(true);
 
-            Assert.That(httpDel.current.Data.ToString(), Is.EqualTo("i am so incapable of stoppingtired of this mandate"));
+            Assert.That(httpDel.current.Data.GetString(), Is.EqualTo("i am so incapable of stoppingtired of this mandate"));
 
             del.OnRequestEnded();
 

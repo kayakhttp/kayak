@@ -5,7 +5,29 @@ using System.Text;
 
 namespace Kayak.Http
 {
-    class HttpResponseDelegate : IHttpResponseDelegate, IResponse
+    interface IHttpResponseDelegateInternal : IHttpResponseDelegate, IDataProducer
+    {
+        void WriteContinue();
+    }
+
+    interface IHttpResponseDelegateFactory
+    {
+        IHttpResponseDelegateInternal Create(HttpRequestHead requestHead, bool shouldKeepAlive, Action end);
+    }
+
+    class HttpResponseDelegateFactory : IHttpResponseDelegateFactory
+    {
+        public IHttpResponseDelegateInternal Create(HttpRequestHead requestHead, bool shouldKeepAlive, Action end)
+        {
+            // XXX freelist
+            return new HttpResponseDelegate(
+                   prohibitBody: requestHead.Method.ToUpperInvariant() == "HEAD",
+                   shouldKeepAlive: shouldKeepAlive,
+                   closeConnection: end);
+        }
+    }
+
+    class HttpResponseDelegate : IHttpResponseDelegateInternal, IDataProducer
     {
         HttpResponseDelegateState state;
         Action closeConnection;

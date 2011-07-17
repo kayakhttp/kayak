@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace Kayak.Http
 {
-    interface IHttpServerTransactionDelegate : IDisposable
+    interface IHttpServerTransactionDelegate : IObservable<IDataProducer>
     {
         void OnRequest(HttpRequestHead request, bool shouldKeepAlive);
         bool OnRequestData(ArraySegment<byte> data, Action continuation);

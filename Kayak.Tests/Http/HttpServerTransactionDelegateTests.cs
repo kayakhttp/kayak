@@ -3,276 +3,345 @@ using System.Collections.Generic;
 using System.Text;
 using Kayak.Http;
 using NUnit.Framework;
+using Kayak.Tests.Net;
 
 namespace Kayak.Tests.Http
 {
     [TestFixture]
     public class HttpServerTransactionDelegateTests
     {
-        HttpServerTransactionDelegate txDel;
-        MockResponseFactory responseFactory;
-        MockResponseDelegate responseDelegate;
-        MockObserver<IDataProducer> outgoingMessageObserver;
+        TxLoop loop;
+        TxContext context;
 
-        HttpRequestHead CreateHead(bool expectContinue)
+        static DataBuffer CreateBody(string[] body)
+        {
+            var bodyBuffer = new DataBuffer();
+            
+            foreach (var b in body)
+                bodyBuffer.Add(new ArraySegment<byte>(Encoding.ASCII.GetBytes(b)));
+
+            return bodyBuffer;
+        }
+
+        IEnumerable<TxCallbacks> Permute(Req req)
+        {
+            // XXX would be nice to increase this to 6. would need to buffer data in the transaction.
+            // currently user must connect immediately, or before client writes req body data,
+            // else data is lost :(
+            var connectUpperBound = req.Body == null ? 0 : 2; 
+            var disconnectUpperBound = connectUpperBound == 0 ? -1 : 2;
+
+            for (int i = 0; i < connectUpperBound; i++)
+            {
+                for (int j = i - 1; j < disconnectUpperBound; j++)
+                {
+                    for (int k = -1; k < 6; k++)
+                    {
+                        var callbacks = CreateCallbacks();
+                        var hooks = callbacks.Item2;
+
+                        if (i != -1)
+                            hooks[i].Add(() => context.ConnectToRequestBody());
+
+                        if (j != i - 1 && j > -1)
+                            hooks[j].Add(() => context.CancelRequestBody());
+
+                        if (k != -1)
+                            hooks[k].Add(() => context.CloseConnection());
+
+                        Console.WriteLine("i = {0}, j = {1}, k = {2}", i, j, k);
+
+                        yield return callbacks.Item1;
+                    }
+                }
+            }
+        }
+
+        Tuple<TxCallbacks, List<List<Action>>> CreateCallbacks()
+        {
+            var callins = new List<List<Action>>();
+
+            for (int i = 0; i < 6; i++)
+                callins.Add(new List<Action>());
+
+            var callbacks = new TxCallbacks()
+            {
+                OnRequest = () => callins[0].ForEach(a => a()),
+                PostOnRequest = () => callins[1].ForEach(a => a()),
+                OnRequestData = () => callins[2].ForEach(a => a()),
+                PostOnRequestData = () => callins[3].ForEach(a => a()),
+                OnRequestDataEnd = () => callins[4].ForEach(a => a()),
+                PostOnRequestEnd = () => callins[5].ForEach(a => a())
+            };
+
+            return Tuple.Create(callbacks, callins);
+        }
+
+
+        static Req CreateReq(bool expectContinue, string[] data, BodyOptions options)
         {
             var head = default(HttpRequestHead);
+            head.Version = new Version(1, 0);
+            head.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
 
             if (expectContinue)
             {
                 head.Version = new Version(1, 1);
-                head.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) { { "Expect", "100-continue" } };
+                head.Headers["Expect"] = "100-continue";
+            }
+            
+            DataBuffer bodyBuffer = null;
+            if (data != null)
+            {
+                switch (options)
+                {
+                    case BodyOptions.NoHeaderIndications:
+                        bodyBuffer = CreateBody(data);
+                        break;
+                    case BodyOptions.ContentLength:
+                        bodyBuffer = CreateBody(data);
+                        head.Headers["Content-Length"] = bodyBuffer.GetCount().ToString();
+                        break;
+                    case BodyOptions.TransferEncodingChunked:
+                        bodyBuffer = CreateBody(data);
+                        head.Headers["Transfer-Encoding"] = "chunked";
+                        break;
+                    case BodyOptions.TransferEncodingNotChunked:
+                        bodyBuffer = CreateBody(data);
+                        head.Headers["Transfer-Encoding"] = "asddfashjkfdsa";
+                        break;
+                }
             }
 
-            return head;
+            return new Req()
+            {
+                Head = head,
+                Body = bodyBuffer
+            };
         }
 
-        void AssertResponseDelegate(bool expectContinue)
+        [Test]
+        public void No_body()
         {
-            if (expectContinue)
-                Assert.That(responseDelegate.GotWriteContinue, Is.True);
-            else
-                Assert.That(responseDelegate.GotWriteContinue, Is.Not.True);
+            var req = CreateReq(false, null, BodyOptions.None);
+
+            foreach (var cbs in Permute(req))
+            {
+                context = new TxContext(cbs);
+                loop = new TxLoop(context, req);
+                loop.Drive(cbs, false);
+
+                Assert.That(context.HasRequestBody(), Is.False);
+                context.AssertMessageObserver();
+                context.AssertRequestBody(req);
+                context.AssertResponseDelegate(false);
+            }
         }
 
-        [SetUp]
-        public void SetUp()
+        [Test]
+        public void Some_body(
+            [Values(true, false)]
+            bool expectContinue,
+            [Values(
+                BodyOptions.ContentLength,
+                BodyOptions.TransferEncodingChunked)] 
+            BodyOptions options)
         {
-            responseFactory = new MockResponseFactory();
+            var req = CreateReq(expectContinue, new[] { "some", "body" }, options);
+
+            foreach (var cbs in Permute(req))
+            {
+                context = new TxContext(cbs);
+                loop = new TxLoop(context, req);
+                loop.Drive(cbs, false);
+
+                Assert.That(context.HasRequestBody(), Is.True);
+                context.AssertMessageObserver();
+                context.AssertRequestBody(req);
+                context.AssertResponseDelegate(expectContinue);
+            }
+        }
+    }
+    class TxContext
+    {
+        MockResponseDelegate responseDelegate;
+
+        // want to be able to assert on contents of request body, also that continue is called
+        // if needed
+        IDataProducer requestBody;
+
+
+        // just a pass-though
+        public bool ShouldKeepAlive;
+
+        Action closeConnectionAction;
+
+        IDisposable requestBodyDisposable;
+        MockDataConsumer requestBodyConsumer;
+
+        IDisposable messageObserverDisposable;
+        MockObserver<IDataProducer> messageObserver;
+
+        TxCallbacks callbacks;
+
+        bool gotCloseConnection;
+
+        public TxContext(TxCallbacks callbacks)
+        {
+            this.callbacks = callbacks;
+
+            requestBodyConsumer = new MockDataConsumer();
+
+            if (callbacks.OnRequestData != null)
+                requestBodyConsumer.OnDataAction = _ => callbacks.OnRequestData();
+
+            if (callbacks.OnRequestDataEnd != null)
+                requestBodyConsumer.OnEndAction = () => callbacks.OnRequestDataEnd();
+        }
+
+        public HttpServerTransactionDelegate CreateTransaction()
+        {
             responseDelegate = new MockResponseDelegate();
-            txDel = new HttpServerTransactionDelegate(responseFactory);
-            outgoingMessageObserver = new MockObserver<IDataProducer>();
-            txDel.Subscribe(outgoingMessageObserver);
+            var tx = new HttpServerTransactionDelegate(
+                new MockResponseFactory()
+                {
+                    OnCreate = (head, shouldKeepAlive, end) =>
+                    {
+                        closeConnectionAction = end;
+                        ShouldKeepAlive = shouldKeepAlive;
+                        return responseDelegate;
+                    }
+                },
+                new MockRequestDelegate()
+                {
+                    OnRequestAction = (head, body, response) =>
+                    {
+                        Assert.That(response, Is.SameAs(responseDelegate));
+
+                        requestBody = body;
+
+                        if (callbacks.OnRequest != null)
+                            callbacks.OnRequest();
+                    }
+                });
+
+            messageObserver = new MockObserver<IDataProducer>();
+            messageObserverDisposable = tx.Subscribe(messageObserver);
+
+            return tx;
         }
 
-        [Test]
-        public void connect_on_request__end_on_request([Values(true, false)] bool expectContinue)
+        public bool HasRequestBody()
         {
-            MockDataConsumer requestConsumer = new MockDataConsumer();
-            IDisposable requestAbort = null;
-            responseFactory.OnRequest = (head, body, keepAlive, end) =>
-            {
-                requestAbort = body.Connect(requestConsumer);
-                end();
-                return responseDelegate;
-            };
-
-            txDel.OnRequest(CreateHead(expectContinue), false);
-            txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
-            txDel.OnRequestEnd();
-
-            Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
-            Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
-            Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
-            Assert.That(requestConsumer.GotEnd, Is.True);
-            Assert.That(outgoingMessageObserver.Error, Is.Null);
-            AssertResponseDelegate(expectContinue);
+            return requestBody != null;
         }
 
-        [Test]
-        public void connect_on_request__end_on_data([Values(true, false)] bool expectContinue)
+        // want to make sure that this causes OnComplete on the observer
+        public void CloseConnection()
         {
-            MockDataConsumer requestConsumer = new MockDataConsumer();
-            IDisposable requestAbort = null;
-            Action endAction = null;
-            requestConsumer.OnDataAction = data => endAction();
-            responseFactory.OnRequest = (head, body, keepAlive, end) =>
-            {
-                requestAbort = body.Connect(requestConsumer);
-                endAction = end;
-                return responseDelegate;
-            };
-
-            txDel.OnRequest(CreateHead(expectContinue), false);
-            txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
-            txDel.OnRequestEnd();
-
-            Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
-            Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
-            Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
-            Assert.That(requestConsumer.GotEnd, Is.True);
-            Assert.That(outgoingMessageObserver.Error, Is.Null);
-            AssertResponseDelegate(expectContinue);
+            gotCloseConnection = true;
+            closeConnectionAction();
         }
 
-        [Test]
-        public void connect_on_request__end_on_end([Values(true, false)] bool expectContinue)
+        public void CancelRequestBody()
         {
-            MockDataConsumer requestConsumer = new MockDataConsumer();
-            IDisposable requestAbort = null;
-            Action endAction = null;
-            requestConsumer.OnEndAction = () => endAction();
-            responseFactory.OnRequest = (head, body, keepAlive, end) =>
-            {
-                requestAbort = body.Connect(requestConsumer);
-                endAction = end;
-                return responseDelegate;
-            };
-
-            txDel.OnRequest(CreateHead(expectContinue), false);
-            txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
-            txDel.OnRequestEnd();
-
-            Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
-            Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
-            Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
-            Assert.That(requestConsumer.GotEnd, Is.True);
-            Assert.That(outgoingMessageObserver.Error, Is.Null);
-            AssertResponseDelegate(expectContinue);
+            requestBodyDisposable.Dispose();
         }
 
-        [Test]
-        public void connect_after_on_request__end_on_request([Values(true, false)] bool expectContinue)
+        public void ConnectToRequestBody()
         {
-            MockDataConsumer requestConsumer = new MockDataConsumer();
-            IDisposable requestAbort = null;
-            IDataProducer bodyProducer = null;
-            responseFactory.OnRequest = (head, body, keepAlive, end) =>
-            {
-                end();
-                bodyProducer = body;
-                return responseDelegate;
-            };
-
-            txDel.OnRequest(CreateHead(expectContinue), false);
-
-            requestAbort = bodyProducer.Connect(requestConsumer);
-
-            txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
-            txDel.OnRequestEnd();
-
-            Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
-            Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
-            Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
-            Assert.That(requestConsumer.GotEnd, Is.True);
-            Assert.That(outgoingMessageObserver.Error, Is.Null);
-            AssertResponseDelegate(expectContinue);
+            requestBodyDisposable = requestBody.Connect(requestBodyConsumer);
         }
 
-        [Test]
-        public void connect_after_on_request__end_on_data([Values(true, false)] bool expectContinue)
+        public void AssertMessageObserver()
         {
-            MockDataConsumer requestConsumer = new MockDataConsumer();
-            IDisposable requestAbort = null;
-            IDataProducer bodyProducer = null;
-            Action endAction = null;
-            requestConsumer.OnDataAction = data => endAction();
-            responseFactory.OnRequest = (head, body, keepAlive, end) =>
-            {
-                endAction = end;
-                bodyProducer = body;
-                return responseDelegate;
-            };
-
-            txDel.OnRequest(CreateHead(expectContinue), false);
-
-            requestAbort = bodyProducer.Connect(requestConsumer);
-
-            txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
-            txDel.OnRequestEnd();
-
-            Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
-            Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
-            Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
-            Assert.That(requestConsumer.GotEnd, Is.True);
-            Assert.That(outgoingMessageObserver.Error, Is.Null);
-            AssertResponseDelegate(expectContinue);
+            Assert.That(messageObserver.Values.Count, Is.EqualTo(1));
+            Assert.That(messageObserver.Values[0], Is.SameAs(responseDelegate));
+            Assert.That(messageObserver.Error, Is.Null);
+            Assert.That(messageObserver.GotCompleted, Is.EqualTo(gotCloseConnection));
         }
 
-        [Test]
-        public void connect_after_on_request__end_on_end([Values(true, false)] bool expectContinue)
+        public void AssertRequestBody(Req req)
         {
-            MockDataConsumer requestConsumer = new MockDataConsumer();
-            IDisposable requestAbort = null;
-            IDataProducer bodyProducer = null;
-            Action endAction = null;
-            requestConsumer.OnEndAction = () => endAction();
-            responseFactory.OnRequest = (head, body, keepAlive, end) =>
+            if (req.Body == null)
+                Assert.That(requestBody, Is.Null);
+            else
             {
-                endAction = end;
-                bodyProducer = body;
-                return responseDelegate;
-            };
+                Assert.That(requestBodyConsumer.Buffer.GetString(), Is.EqualTo(req.Body.GetString()));
+                Assert.That(requestBodyConsumer.GotEnd, Is.True);
+            }
+        }
 
-            txDel.OnRequest(CreateHead(expectContinue), false);
-
-            requestAbort = bodyProducer.Connect(requestConsumer);
-
-            txDel.OnRequestData(new ArraySegment<byte>(Encoding.ASCII.GetBytes("some body")), null);
-            txDel.OnRequestEnd();
-
-            Assert.That(outgoingMessageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(outgoingMessageObserver.Values[0], Is.SameAs(responseDelegate));
-            Assert.That(outgoingMessageObserver.GotCompleted, Is.True);
-            Assert.That(requestConsumer.Buffer.ToString(), Is.EqualTo("some body"));
-            Assert.That(requestConsumer.GotEnd, Is.True);
-            Assert.That(outgoingMessageObserver.Error, Is.Null);
-            AssertResponseDelegate(expectContinue);
+        public void AssertResponseDelegate(bool expectContinue)
+        {
+            Assert.That(responseDelegate.GotWriteContinue, Is.EqualTo(expectContinue));
         }
     }
 
-    class MockObserver<T> : IObserver<T>
+    class TxLoop
     {
-        public bool GotCompleted;
-        public Exception Error;
-        public List<T> Values = new List<T>();
+        Req req;
+        TxContext context;
 
-        public void OnCompleted()
+        public TxLoop(TxContext context, Req req)
         {
-            if (GotCompleted)
-                throw new InvalidOperationException("Got completed already.");
-
-            GotCompleted = true;
+            this.context = context;
+            this.req = req;
         }
 
-        public void OnError(Exception error)
+        public void Drive(TxCallbacks callbacks, bool keepAlive)
         {
-            if (error == null)
-                throw new ArgumentNullException("error");
+            var tx = context.CreateTransaction();
 
-            if (Error != null)
-                throw new Exception("Already got error");
+            tx.OnRequest(req.Head, keepAlive);
 
-            Error = error;
-        }
+            if (callbacks.PostOnRequest != null)
+                callbacks.PostOnRequest();
 
-        public void OnNext(T value)
-        {
-            Values.Add(value);
+            if (req.Body != null)
+                req.Body.Each(data =>
+                {
+                    tx.OnRequestData(new ArraySegment<byte>(data), null);
+
+                    if (callbacks.PostOnRequestData != null)
+                        callbacks.PostOnRequestData();
+                });
+
+            tx.OnRequestEnd();
+
+            if (callbacks.PostOnRequestEnd != null)
+                callbacks.PostOnRequestEnd();
         }
     }
 
-
-    class MockResponseFactory : IResponseFactory
+    public class Req
     {
-        public Func<HttpRequestHead, IDataProducer, bool, Action, IResponse> OnRequest;
-
-        public IResponse Create(HttpRequestHead head, IDataProducer body, bool shouldKeepAlive, Action end)
-        {
-            return OnRequest(head, body, shouldKeepAlive, end);
-        }
+        public HttpRequestHead Head;
+        public DataBuffer Body;
     }
 
-    class MockResponseDelegate : IResponse
+    class TxCallbacks
     {
-        public bool GotWriteContinue;
+        public Action OnRequest;
+        public Action PostOnRequest;
+        public Action OnRequestData;
+        public Action PostOnRequestData;
+        public Action OnRequestDataEnd;
+        public Action PostOnRequestEnd;
+    }
 
-        public void WriteContinue()
-        {
-            if (GotWriteContinue)
-                throw new Exception("Already got WriteContinue()");
+    class ReqBody
+    {
+        BodyOptions Options;
+        public DataBuffer Data;
+    }
 
-            GotWriteContinue = true;
-        }
-
-        public IDisposable Connect(IDataConsumer channel)
-        {
-            throw new NotImplementedException();
-        }
+    public enum BodyOptions
+    {
+        None,
+        NoHeaderIndications,
+        TransferEncodingChunked,
+        TransferEncodingNotChunked,
+        ContentLength
     }
 }

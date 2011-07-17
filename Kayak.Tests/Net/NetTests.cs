@@ -164,7 +164,7 @@ namespace Kayak.Tests.Net
 
             AssertConnectionAndCleanShutdown();
             Assert.That(
-                serverSocketDelegate.Buffer.ToString(),
+                serverSocketDelegate.Buffer.GetString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
 
@@ -213,7 +213,7 @@ namespace Kayak.Tests.Net
             RunScheduler();
 
             AssertConnectionAndCleanShutdown();
-            Assert.That(serverSocketDelegate.Buffer.ToString(),
+            Assert.That(serverSocketDelegate.Buffer.GetString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
 
@@ -248,7 +248,7 @@ namespace Kayak.Tests.Net
             RunScheduler();
 
             AssertConnectionAndCleanShutdown();
-            Assert.That(clientSocketDelegate.Buffer.ToString(),
+            Assert.That(clientSocketDelegate.Buffer.GetString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
 
@@ -285,7 +285,7 @@ namespace Kayak.Tests.Net
             RunScheduler();
 
             AssertConnectionAndCleanShutdown();
-            Assert.That(clientSocketDelegate.Buffer.ToString(),
+            Assert.That(clientSocketDelegate.Buffer.GetString(),
                 Is.EqualTo("hailey is a stinky punky butt nugget dot com"));
         }
 

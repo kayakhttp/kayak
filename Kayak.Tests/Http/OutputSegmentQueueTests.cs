@@ -74,7 +74,7 @@ namespace Kayak.Tests.Http
         {
             queue.OnCompleted();
 
-            Assert.That(mockSocket.Buffer.ToString(), Is.Empty);
+            Assert.That(mockSocket.Buffer.GetString(), Is.Empty);
             Assert.That(mockSocket.GotEnd, Is.True);
         }
 
@@ -83,7 +83,7 @@ namespace Kayak.Tests.Http
         {
             queue.OnError(new Exception("err..."));
 
-            Assert.That(mockSocket.Buffer.ToString(), Is.Empty);
+            Assert.That(mockSocket.Buffer.GetString(), Is.Empty);
             Assert.That(mockSocket.GotEnd, Is.True);
         }
 
@@ -91,9 +91,9 @@ namespace Kayak.Tests.Http
         public void sync_data__completed()
         {
             queue.OnNext(SyncProducer("[1]", "[2]"));
-            queue.OnCompleted();
+            Assert.That(mockSocket.Buffer.GetString(), Is.EqualTo("[1][2]"));
 
-            Assert.That(mockSocket.Buffer.ToString(), Is.EqualTo("[1][2]"));
+            queue.OnCompleted();
             Assert.That(mockSocket.GotEnd, Is.True);
         }
 
@@ -101,10 +101,12 @@ namespace Kayak.Tests.Http
         public void sync_data2x__completed()
         {
             queue.OnNext(SyncProducer("[1]", "[2]"));
-            queue.OnNext(SyncProducer("[3]", "[4]"));
-            queue.OnCompleted();
+            Assert.That(mockSocket.Buffer.GetString(), Is.EqualTo("[1][2]"));
 
-            Assert.That(mockSocket.Buffer.ToString(), Is.EqualTo("[1][2][3][4]"));
+            queue.OnNext(SyncProducer("[3]", "[4]"));
+            Assert.That(mockSocket.Buffer.GetString(), Is.EqualTo("[1][2][3][4]"));
+
+            queue.OnCompleted();
             Assert.That(mockSocket.GotEnd, Is.True);
         }
 
@@ -112,9 +114,9 @@ namespace Kayak.Tests.Http
         public void async_data__completed()
         {
             queue.OnNext(AsyncProducer("[1]", "[2]"));
-            queue.OnCompleted();
+            Assert.That(mockSocket.Buffer.GetString(), Is.EqualTo("[1][2]"));
 
-            Assert.That(mockSocket.Buffer.ToString(), Is.EqualTo("[1][2]"));
+            queue.OnCompleted();
             Assert.That(mockSocket.GotEnd, Is.True);
         }
 
@@ -122,10 +124,12 @@ namespace Kayak.Tests.Http
         public void async_data2x__completed()
         {
             queue.OnNext(AsyncProducer("[1]", "[2]"));
-            queue.OnNext(AsyncProducer("[3]", "[4]"));
-            queue.OnCompleted();
+            Assert.That(mockSocket.Buffer.GetString(), Is.EqualTo("[1][2]"));
 
-            Assert.That(mockSocket.Buffer.ToString(), Is.EqualTo("[1][2][3][4]"));
+            queue.OnNext(AsyncProducer("[3]", "[4]"));
+            Assert.That(mockSocket.Buffer.GetString(), Is.EqualTo("[1][2][3][4]"));
+
+            queue.OnCompleted();
             Assert.That(mockSocket.GotEnd, Is.True);
         }
 
@@ -133,9 +137,9 @@ namespace Kayak.Tests.Http
         public void sync_data__error()
         {
             queue.OnNext(SyncProducer("[1]", "[2]"));
-            queue.OnError(new Exception("oops"));
+            Assert.That(mockSocket.Buffer.GetString(), Is.EqualTo("[1][2]"));
 
-            Assert.That(mockSocket.Buffer.ToString(), Is.EqualTo("[1][2]"));
+            queue.OnError(new Exception("oops"));
             Assert.That(mockSocket.GotEnd, Is.True);
         }
 
@@ -143,9 +147,9 @@ namespace Kayak.Tests.Http
         public void async_data__error()
         {
             queue.OnNext(AsyncProducer("[1]", "[2]"));
-            queue.OnError(new Exception("oops"));
+            Assert.That(mockSocket.Buffer.GetString(), Is.EqualTo("[1][2]"));
 
-            Assert.That(mockSocket.Buffer.ToString(), Is.EqualTo("[1][2]"));
+            queue.OnError(new Exception("oops"));
             Assert.That(mockSocket.GotEnd, Is.True);
         }
     }

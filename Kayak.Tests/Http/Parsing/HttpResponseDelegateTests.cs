@@ -261,7 +261,7 @@ namespace Kayak.Tests.Http
             if (expectContinue)
                 expectedString = "100 Continue\r\n\r\n" + expectedString;
 
-            Assert.That(mockConsumer.Buffer.ToString(), Is.EqualTo(expectedString));
+            Assert.That(mockConsumer.Buffer.GetString(), Is.EqualTo(expectedString));
             Assert.That(mockConsumer.GotEnd, Is.True);
             Assert.That(connectionClosed, Is.True);
         }

@@ -13,12 +13,18 @@ namespace Kayak.Http
         HttpParser parser;
         ParserToTransactionTransform transactionTransform;
         IHttpServerTransactionDelegate transactionDelegate;
+        IDisposable transactionDelegateSubscription;
 
         public HttpServerSocketDelegate(IHttpServerTransactionDelegate transactionDelegate)
         {
             this.transactionDelegate = transactionDelegate;
             transactionTransform = new ParserToTransactionTransform(transactionDelegate);
             parser = new HttpParser(new ParserDelegate(transactionTransform));
+        }
+
+        public void Start(ISocket socket)
+        {
+            transactionDelegateSubscription = transactionDelegate.Subscribe(new OutputSegmentQueue(socket));
         }
 
         public bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation)
@@ -64,9 +70,14 @@ namespace Kayak.Http
         public void OnClose(ISocket socket)
         {
             Debug.WriteLine("Socket OnClose.");
-            transactionDelegate.Dispose();
-            // XXX return self to freelist
+
             socket.Dispose();
+
+            // release (indirect) reference to socket
+            transactionDelegateSubscription.Dispose();
+            transactionDelegateSubscription = null;
+
+            // XXX return self to freelist
         }
 
         public void OnConnected(ISocket socket)

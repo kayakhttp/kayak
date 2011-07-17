@@ -53,7 +53,7 @@ namespace Kayak.Tests.Net
 
         public bool OnData(ISocket server, ArraySegment<byte> data, Action continuation)
         {
-            Buffer.AddToBuffer(data);
+            Buffer.Add(data);
 
             if (OnDataAction != null)
                 return OnDataAction(data, continuation);

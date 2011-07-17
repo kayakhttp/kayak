@@ -16,9 +16,7 @@ namespace Kayak
 
         public static void WriteStacktrace(this TextWriter writer, Exception exception)
         {
-#if DEBUG
             writer.WriteLine(GetStackTrace(exception));
-#endif
         }
 
         public static string GetStackTrace(Exception exception)
