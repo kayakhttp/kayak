@@ -5,7 +5,7 @@ using System.Net.Sockets;
 
 namespace Kayak
 {
-    class KayakSocket : ISocket
+    class DefaultKayakSocket : ISocket
     {
         internal ISocketDelegate del;
 
@@ -24,14 +24,14 @@ namespace Kayak
         Action continuation;
         IScheduler scheduler;
 
-        public KayakSocket(ISocketDelegate del, IScheduler scheduler)
+        internal DefaultKayakSocket(ISocketDelegate del, IScheduler scheduler)
         {
             this.scheduler = scheduler;
             this.del = del;
             state = new KayakSocketState(true);
         }
 
-        internal KayakSocket(Socket socket, IScheduler scheduler)
+        internal DefaultKayakSocket(Socket socket, IScheduler scheduler)
         {
             this.id = nextId++;
             this.socket = new SocketWrapper(socket);

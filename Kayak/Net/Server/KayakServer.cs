@@ -6,7 +6,7 @@ using System.Threading;
 
 namespace Kayak
 {
-    public class KayakServer : IServer
+    class DefaultKayakServer : IServer
     {
         IServerDelegate del;
 
@@ -16,19 +16,8 @@ namespace Kayak
         KayakServerState state;
         Socket listener;
 
-        class KayakServerFactory : IServerFactory
-        {
-            public IServer Create(IServerDelegate del, IScheduler scheduler)
-            {
-                return new KayakServer(del, scheduler);
-            }
-        }
 
-        readonly static KayakServerFactory factory = new KayakServerFactory();
-
-        public static IServerFactory Factory { get { return factory; } }
-
-        internal KayakServer(IServerDelegate del, IScheduler scheduler)
+        internal DefaultKayakServer(IServerDelegate del, IScheduler scheduler)
         {
             if (del == null)
                 throw new ArgumentNullException("del");
@@ -78,7 +67,7 @@ namespace Kayak
                 RaiseOnClose();
         }
 
-        internal void SocketClosed(KayakSocket socket)
+        internal void SocketClosed(DefaultKayakSocket socket)
         {
             //Debug.WriteLine("Connection " + socket.id + ": closed (" + connections + " active connections)");
             if (state.DecrementConnections())
@@ -118,7 +107,7 @@ namespace Kayak
                         if (error != null)
                             HandleAcceptError(error);
 
-                        var s = new KayakSocket(socket, this.scheduler);
+                        var s = new DefaultKayakSocket(socket, this.scheduler);
                         state.IncrementConnections();
 
                         var socketDelegate = del.OnConnection(this, s);
@@ -149,7 +138,7 @@ namespace Kayak
             catch { }
 
             Debug.WriteLine("Error attempting to accept connection.");
-            Console.Error.WriteStacktrace(e);
+            Console.Error.WriteStackTrace(e);
 
             RaiseOnClose();
         }

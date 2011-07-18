@@ -60,7 +60,7 @@ namespace Kayak.Cli
             {
                 Console.Error.WriteLine("kayak: failed to launch scheduler");
                 Console.Error.WriteLine(e.Message);
-                Console.Error.WriteStacktrace(e);
+                Console.Error.WriteStackTrace(e);
                 return -1;
             }
 

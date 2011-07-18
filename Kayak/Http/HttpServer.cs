@@ -7,11 +7,6 @@ namespace Kayak.Http
 {
     public static class HttpServerExtensions
     {
-        public static IServer CreateHttp(this IServerFactory factory, IHttpRequestDelegate channel)
-        {
-            return CreateHttp(factory, channel, KayakScheduler.Current);
-        }
-
         public static IServer CreateHttp(this IServerFactory factory, IHttpRequestDelegate channel, IScheduler scheduler)
         {
             var f = new HttpServerFactory(factory);

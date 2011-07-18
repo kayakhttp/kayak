@@ -24,7 +24,7 @@ namespace Kayak.Cli
                 new KayakDelegateLoader().Load(options.KayakConfiguration)
                 ?? new DefaultKayakDelegate();
 
-            var scheduler = new KayakScheduler(kayakDelegate);
+            var scheduler = KayakScheduler.Factory.Create(kayakDelegate);
 
             scheduler.Post(() => kayakDelegate.OnStart(scheduler, options.RemainingArguments));
 

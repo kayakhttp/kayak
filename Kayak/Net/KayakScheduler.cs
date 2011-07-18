@@ -1,15 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Kayak
 {
-    public class KayakScheduler : TaskScheduler, IScheduler
+    class DefaultKayakScheduler : TaskScheduler, IScheduler
     {
         ISchedulerDelegate del;
 
@@ -17,10 +15,6 @@ namespace Kayak
         ManualResetEventSlim wh;
         ConcurrentQueue<Task> queue;
         bool stopped;
-
-        [ThreadStatic]
-        static KayakScheduler current;
-        public new static KayakScheduler Current { get { return current; } }
 
         public void Post(Action action)
         {
@@ -34,7 +28,7 @@ namespace Kayak
             task.Start(this);
         }
 
-        public KayakScheduler(ISchedulerDelegate del)
+        internal DefaultKayakScheduler(ISchedulerDelegate del)
         {
             if (del == null)
                 throw new ArgumentNullException("del");
@@ -59,7 +53,6 @@ namespace Kayak
 
         void Dispatch()
         {
-            current = this;
             wh = new ManualResetEventSlim();
 
             while (true)
@@ -95,7 +88,6 @@ namespace Kayak
             dispatch = null;
             wh.Dispose();
             wh = null;
-            current = null;
         }
 
         protected override IEnumerable<Task> GetScheduledTasks()

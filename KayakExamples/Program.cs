@@ -43,11 +43,11 @@ namespace KayakExamples
             Debug.AutoFlush = true;
 #endif
 
-            var scheduler = new KayakScheduler(new SchedulerDelegate());
+            var scheduler = KayakScheduler.Factory.Create(new SchedulerDelegate());
             scheduler.Post(() =>
             {
                 KayakServer.Factory
-                    .CreateHttp(new RequestDelegate())
+                    .CreateHttp(new RequestDelegate(), scheduler)
                     .Listen(new IPEndPoint(IPAddress.Any, 8080));
             });
 
@@ -61,7 +61,7 @@ namespace KayakExamples
             public void OnException(IScheduler scheduler, Exception e)
             {
                 Debug.WriteLine("Error on scheduler.");
-                e.DebugStacktrace();
+                e.DebugStackTrace();
             }
 
             public void OnStop(IScheduler scheduler)

@@ -30,10 +30,10 @@ namespace Kayak.Tests.Net
             wh = new ManualResetEventSlim();
             var schedulerDelegate = new SchedulerDelegate();
             schedulerDelegate.OnStoppedAction = () => wh.Set();
-            var scheduler = new KayakScheduler(schedulerDelegate);
+            var scheduler = new DefaultKayakScheduler(schedulerDelegate);
 
             var serverDelegate = new ServerDelegate();
-            server = KayakServer.Factory.Create(serverDelegate, scheduler);
+            server = new DefaultKayakServer(serverDelegate, scheduler);
         }
 
         [TearDown]

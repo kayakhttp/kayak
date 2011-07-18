@@ -196,7 +196,7 @@ namespace Kayak.Http
         public void OnError(Exception e)
         {
             Debug.WriteLine("Error during response.");
-            e.DebugStacktrace();
+            e.DebugStackTrace();
             // XXX what to do? for now it's an error to have an error :S
             // probably the right thing to do is end the socket
             // and discard any pending responses.

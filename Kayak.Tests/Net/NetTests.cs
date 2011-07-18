@@ -40,7 +40,7 @@ namespace Kayak.Tests.Net
                 wh.Set();
             };
 
-            scheduler = new KayakScheduler(schedulerDelegate);
+            scheduler = new DefaultKayakScheduler(schedulerDelegate);
             scheduler.Post(() =>
             {
                 d = server.Listen(ep);
@@ -48,10 +48,10 @@ namespace Kayak.Tests.Net
             });
 
             serverDelegate = new ServerDelegate();
-            server = new KayakServer(serverDelegate, scheduler);
+            server = new DefaultKayakServer(serverDelegate, scheduler);
             
             clientSocketDelegate = new SocketDelegate();
-            client = new KayakSocket(clientSocketDelegate, scheduler);
+            client = new DefaultKayakSocket(clientSocketDelegate, scheduler);
         }
 
         [TearDown]
@@ -146,7 +146,7 @@ namespace Kayak.Tests.Net
                     }
                     catch (Exception e)
                     {
-                        Console.Error.WriteStacktrace(e);
+                        Console.Error.WriteStackTrace(e);
                     }
                 };
 
@@ -198,7 +198,7 @@ namespace Kayak.Tests.Net
                     }
                     catch (Exception e)
                     {
-                        Console.Error.WriteStacktrace(e);
+                        Console.Error.WriteStackTrace(e);
                     }
                 };
 

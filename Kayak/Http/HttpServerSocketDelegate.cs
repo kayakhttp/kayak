@@ -63,7 +63,7 @@ namespace Kayak.Http
         public void OnError(ISocket socket, Exception e)
         {
             Debug.WriteLine("Socket OnError.");
-            e.DebugStacktrace();
+            e.DebugStackTrace();
             transactionDelegate.OnError(e);
         }
 

@@ -7,14 +7,14 @@ namespace Kayak
 {
     public static partial class Extensions
     {
-        public static void DebugStacktrace(this Exception exception)
+        public static void DebugStackTrace(this Exception exception)
         {
 #if DEBUG
             Debug.WriteLine(GetStackTrace(exception));
 #endif
         }
 
-        public static void WriteStacktrace(this TextWriter writer, Exception exception)
+        public static void WriteStackTrace(this TextWriter writer, Exception exception)
         {
             writer.WriteLine(GetStackTrace(exception));
         }

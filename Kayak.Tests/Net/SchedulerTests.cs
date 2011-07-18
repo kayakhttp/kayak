@@ -20,7 +20,7 @@ namespace Kayak.Tests.Net
 
             schedulerDelegate = new SchedulerDelegate();
             schedulerDelegate.OnStoppedAction = () => wh.Set();
-            scheduler = new KayakScheduler(schedulerDelegate);
+            scheduler = new DefaultKayakScheduler(schedulerDelegate);
         }
 
         [TearDown]

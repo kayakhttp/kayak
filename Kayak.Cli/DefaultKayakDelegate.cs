@@ -15,7 +15,7 @@ namespace Kayak.Cli
         public void OnException(IScheduler scheduler, Exception e)
         {
             Console.Error.WriteLine("kayak: error on scheduler");
-            Console.Error.WriteStacktrace(e);
+            Console.Error.WriteStackTrace(e);
         }
 
         public void OnStop(IScheduler scheduler)

@@ -21,6 +21,20 @@ namespace Kayak
         void OnStop(IScheduler scheduler);
     }
 
+    public static class KayakScheduler
+    {
+        readonly static ISchedulerFactory factory = new DefaultKayakSchedulerFactory();
+        public static ISchedulerFactory Factory { get { return factory; } }
+    }
+
+    class DefaultKayakSchedulerFactory : ISchedulerFactory
+    {
+        public IScheduler Create(ISchedulerDelegate del)
+        {
+            return new DefaultKayakScheduler(del);
+        }
+    }
+
     public interface IServerFactory
     {
         IServer Create(IServerDelegate del, IScheduler scheduler);
@@ -35,6 +49,20 @@ namespace Kayak
     {
         ISocketDelegate OnConnection(IServer server, ISocket socket);
         void OnClose(IServer server);
+    }
+
+    public static class KayakServer
+    {
+        readonly static DefaultKayakServerFactory factory = new DefaultKayakServerFactory();
+        public static IServerFactory Factory { get { return factory; } }
+    }
+
+    class DefaultKayakServerFactory : IServerFactory
+    {
+        public IServer Create(IServerDelegate del, IScheduler scheduler)
+        {
+            return new DefaultKayakServer(del, scheduler);
+        }
     }
 
     public interface ISocketFactory
@@ -57,6 +85,20 @@ namespace Kayak
         void Connect(IPEndPoint ep);
         bool Write(ArraySegment<byte> data, Action continuation);
         void End();
+    }
+
+    public static class KayakSocket
+    {
+        readonly static ISocketFactory factory = new DefaultKayakSocketFactory();
+        public static ISocketFactory Factory { get { return factory; } }
+    }
+
+    class DefaultKayakSocketFactory : ISocketFactory
+    {
+        public ISocket Create(ISocketDelegate del, IScheduler scheduler)
+        {
+            return new DefaultKayakSocket(del, scheduler);
+        }
     }
 
     public interface IDataProducer
