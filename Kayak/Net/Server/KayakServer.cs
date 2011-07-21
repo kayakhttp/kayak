@@ -10,8 +10,6 @@ namespace Kayak
     {
         IServerDelegate del;
 
-        public IPEndPoint ListenEndPoint { get { return (IPEndPoint)listener.LocalEndPoint; } }
-
         IScheduler scheduler;
         KayakServerState state;
         Socket listener;
@@ -43,9 +41,12 @@ namespace Kayak
 
         public IDisposable Listen(IPEndPoint ep)
         {
+			if (ep == null)
+				throw new ArgumentNullException("ep");
+			
             state.SetListening();
 
-            Debug.WriteLine("KayakServer binding to " + ListenEndPoint);
+            Debug.WriteLine("KayakServer binding to " + ep.ToString());
 
             listener.Bind(ep);
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 10000);
