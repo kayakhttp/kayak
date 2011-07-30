@@ -116,7 +116,7 @@ namespace Kayak.Http
         }
 
         static ArraySegment<byte> oneHunderedContinue =
-            new ArraySegment<byte>(Encoding.ASCII.GetBytes("100 Continue\r\n\r\n"));
+            new ArraySegment<byte>(Encoding.ASCII.GetBytes("HTTP/1.1 100 Continue\r\n\r\n"));
 
         void RenderContinue()
         {
