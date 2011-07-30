@@ -7,3 +7,4 @@ obj
 *.suo
 .DS_Store
 build
+*.pidb
