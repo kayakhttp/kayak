@@ -259,7 +259,7 @@ namespace Kayak.Tests.Http
                 expectedString += "Chunk1Chunk2Chunk3";
 
             if (expectContinue)
-                expectedString = "100 Continue\r\n\r\n" + expectedString;
+                expectedString = "HTTP/1.1 100 Continue\r\n\r\n" + expectedString;
 
             Assert.That(mockConsumer.Buffer.GetString(), Is.EqualTo(expectedString));
             Assert.That(mockConsumer.GotEnd, Is.True);
