@@ -83,10 +83,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <Target Name="BeforeBuild">
-    <Exec Command="&quot;$(MSBuildProjectDirectory)\..\tools\nuget&quot; install &quot;$(ProjectDir)packages.config&quot; -o &quot;$(MSBuildProjectDirectory)\..\packages&quot;" />
-  </Target>
   <!--
+  <Target Name="BeforeBuild">
+  </Target>
   <Target Name="AfterBuild">
   </Target>
   -->

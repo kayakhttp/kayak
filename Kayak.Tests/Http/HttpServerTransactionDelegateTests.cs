@@ -49,7 +49,7 @@ namespace Kayak.Tests.Http
                         if (k != -1)
                             hooks[k].Add(() => context.CloseConnection());
 
-                        Console.WriteLine("i = {0}, j = {1}, k = {2}", i, j, k);
+                        //Console.WriteLine("i = {0}, j = {1}, k = {2}", i, j, k);
 
                         yield return callbacks.Item1;
                     }

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <package>
   <metadata>
-    <id>Kayak</id>
-    <version>blank</version>
-    <authors>Benjamin van der Veen</authors>
-    <owners>Benjamin van der Veen</owners>
-    <description>Kayak is an event-driven networking library for .NET. It allows you to easily create TCP clients and servers. Kayak contains an HTTP/1.1 server implementation.</description>
+    <id></id>
+    <version></version>
+    <authors></authors>
+    <owners></owners>
+    <description></description>
     <language>en-US</language>
-    <projectUrl>https://github.com/kayak/kayak</projectUrl>
-    <licenseUrl>https://github.com/kayak/kayak/raw/HEAD/LICENSE</licenseUrl>
+    <projectUrl></projectUrl>
+    <licenseUrl></licenseUrl>
     <dependencies>
         <dependency id="HttpMachine" version="0.9.0.0"/>
     </dependencies>
