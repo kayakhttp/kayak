@@ -101,11 +101,12 @@ task :dist_nuget => [:binaries, :build] do
       x.root.elements["metadata/description"].text = DESCRIPTION
       x.root.elements["metadata/licenseUrl"].text = LICENSE_URL
       x.root.elements["metadata/projectUrl"].text = PROJECT_URL
+      x.root.elements["metadata/tags"].text = "http io socket network async"
     end
     
     nuget_lib_dir = "#{NUGET_DIR}/lib"
     FileUtils.mkdir nuget_lib_dir
-    FileUtils.cp_r FileList["#{BIN_DIR}/*"], nuget_lib_dir
+    FileUtils.cp_r FileList["#{BIN_DIR}/*"].exclude(/HttpMachine/), nuget_lib_dir
     
     nuget = NuGetPack.new
     nuget.command = "tools/NuGet.exe"

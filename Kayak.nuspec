@@ -9,6 +9,7 @@
     <language>en-US</language>
     <projectUrl></projectUrl>
     <licenseUrl></licenseUrl>
+    <tags></tags>
     <dependencies>
         <dependency id="HttpMachine" version="0.9.0.0"/>
     </dependencies>
