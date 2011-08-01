@@ -14,7 +14,6 @@ namespace Kayak
         KayakServerState state;
         Socket listener;
 
-
         internal DefaultKayakServer(IServerDelegate del, IScheduler scheduler)
         {
             if (del == null)
@@ -45,14 +44,16 @@ namespace Kayak
 				throw new ArgumentNullException("ep");
 			
             state.SetListening();
-
-            Debug.WriteLine("KayakServer binding to " + ep.ToString());
-
+            
+            Debug.WriteLine("KayakServer will bind to " + ep.ToString());
+            
             listener.Bind(ep);
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReceiveTimeout, 10000);
             listener.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.SendTimeout, 10000);
-            listener.Listen(1000);
-
+            listener.Listen((int)SocketOptionName.MaxConnections);
+			
+            Debug.WriteLine("KayakServer bound to " + ep.ToString());
+			
             AcceptNext();
             return new Disposable(() => Close());
         }
@@ -61,7 +62,7 @@ namespace Kayak
         {
             var closed = state.SetClosing();
             
-            Console.WriteLine("Closing listening socket.");
+            Debug.WriteLine("Closing listening socket.");
             listener.Close();
 
             if (closed)
@@ -87,6 +88,7 @@ namespace Kayak
                 Debug.WriteLine("KayakServer: accepting connection");
                 listener.BeginAccept(iasr =>
                 {
+                    Debug.WriteLine("KayakServer: accepted connection callback");
                     Socket socket = null;
                     Exception error = null;
                     try

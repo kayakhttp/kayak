@@ -33,14 +33,33 @@ namespace Kayak
         {
             this.socket = socket;
         }
+
+
+        // perhaps a bit heavy-handed but no mono that can compile 4.0 .net works right anyway
+        static bool syncConnect = Environment.OSVersion.Platform == PlatformID.Unix;
+
+        Action<IPEndPoint> pendingConnect;
         public IAsyncResult BeginConnect(IPEndPoint ep, AsyncCallback callback)
         {
-            return socket.BeginConnect(ep, callback, null);
+            if (syncConnect)
+            {
+                // voila, BeginConnect est borken avec mono 2.8-2.10. rad.
+                // whatever it's probably implemented on a native threadpool anyway.
+                pendingConnect = socket.Connect;
+                return pendingConnect.BeginInvoke(ep, callback, null);
+            }
+            else
+                return socket.BeginConnect(ep, callback, null);
         }
 
         public void EndConnect(IAsyncResult iasr)
         {
-            socket.EndConnect(iasr);
+            if (syncConnect)
+            {
+                pendingConnect.EndInvoke(iasr);
+            }
+            else
+                socket.EndConnect(iasr);
         }
 
         public IAsyncResult BeginReceive(byte[] buffer, int offset, int count, AsyncCallback callback)

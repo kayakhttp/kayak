@@ -40,16 +40,15 @@ namespace Kayak
         }
 
         public void Connect(IPEndPoint ep)
-        {
-            Debug.WriteLine("KayakSocket: connect called with " + ep);
-
+		{
             state.SetConnecting();
 
             Debug.WriteLine("KayakSocket: connecting to " + ep);
             this.socket = new SocketWrapper(ep.Address.AddressFamily);
-
+			
             socket.BeginConnect(ep, iasr => 
             {
+            	Debug.WriteLine("KayakSocket: connected to " + ep);
                 Exception error = null;
 
                 try
