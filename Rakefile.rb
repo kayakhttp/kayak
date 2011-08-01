@@ -36,7 +36,7 @@ end
 
 task :default => [:build, :test]
   
-CONFIGURATION = "Debug"
+CONFIGURATION = "Release"
 BUILD_DIR = File.expand_path("build")
 OUTPUT_DIR = "#{BUILD_DIR}/out"
 BIN_DIR = "#{BUILD_DIR}/bin"
@@ -124,7 +124,7 @@ zip :dist_zip => [:build, :binaries] do |z|
   z.output_path = BUILD_DIR
 end
 
-task :dist => [:dist_nuget, :dist_zip] do
+task :dist => [:test, :dist_nuget, :dist_zip] do
 end
 
 task :clean do
