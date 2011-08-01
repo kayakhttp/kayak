@@ -8,6 +8,7 @@ using Kayak;
 using System.Threading;
 using Kayak.Tests.Net;
 using Kayak.Tests;
+using System.Diagnostics;
 
 namespace Kayak.Tests.Net
 {
@@ -18,6 +19,7 @@ namespace Kayak.Tests.Net
     {
         ManualResetEventSlim wh;
         IServer server;
+        IDisposable stopListening;
 
         public IPEndPoint LocalEP(int port)
         {
@@ -31,6 +33,12 @@ namespace Kayak.Tests.Net
             var schedulerDelegate = new SchedulerDelegate();
             schedulerDelegate.OnStoppedAction = () => wh.Set();
             var scheduler = new DefaultKayakScheduler(schedulerDelegate);
+            schedulerDelegate.OnExceptionAction = e =>
+            {
+                Debug.WriteLine("Error on scheduler");
+                e.DebugStackTrace();
+                scheduler.Stop();
+            };
 
             var serverDelegate = new ServerDelegate();
             server = new DefaultKayakServer(serverDelegate, scheduler);
@@ -39,6 +47,9 @@ namespace Kayak.Tests.Net
         [TearDown]
         public void TearDown()
         {
+			if (stopListening != null)
+				stopListening.Dispose();
+			
             wh.Dispose();
             server.Dispose();
         }
@@ -53,7 +64,7 @@ namespace Kayak.Tests.Net
 
             try
             {
-                server.Listen(LocalEP(Config.Port));
+                stopListening = server.Listen(LocalEP(Config.Port));
             }
             catch (Exception ex)
             {

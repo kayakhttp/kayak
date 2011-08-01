@@ -1,11 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Net;
 using System.Text;
-using Kayak;
-using Kayak.Tests;
-using Kayak.Tests.Net;
-using NUnit.Framework;
 using System.Threading;
+using NUnit.Framework;
 
 namespace Kayak.Tests.Net
 {
@@ -23,6 +21,7 @@ namespace Kayak.Tests.Net
         IScheduler scheduler;
         IServer server;
         IPEndPoint ep;
+		IDisposable stopListening;
 
         ManualResetEventSlim wh;
         Action schedulerStartedAction;
@@ -34,19 +33,25 @@ namespace Kayak.Tests.Net
 
             wh = new ManualResetEventSlim();
 
-            IDisposable d = null;
-
             var schedulerDelegate = new SchedulerDelegate();
+            scheduler = new DefaultKayakScheduler(schedulerDelegate);
+
             schedulerDelegate.OnStoppedAction = () =>
             {
-                d.Dispose();
+                stopListening.Dispose();
+                stopListening = null;
                 wh.Set();
             };
-
-            scheduler = new DefaultKayakScheduler(schedulerDelegate);
-            scheduler.Post(() => 
+            schedulerDelegate.OnExceptionAction = e =>
             {
-                d = server.Listen(ep);
+                Debug.WriteLine("Error on scheduler");
+                e.DebugStackTrace();
+                scheduler.Stop();
+            };
+
+            scheduler.Post(() =>
+            {
+                stopListening = server.Listen(ep);
                 schedulerStartedAction();
             });
 
@@ -60,6 +65,9 @@ namespace Kayak.Tests.Net
         [TearDown]
         public void TearDown()
         {
+			if (stopListening != null)
+				stopListening.Dispose();
+			
             wh.Dispose();
             client.Dispose();
         }

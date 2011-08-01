@@ -20,10 +20,11 @@ namespace Kayak.Tests.Net
         SocketDelegate serverSocketDelegate;
         //EventContext context;
         IPEndPoint ep;
+        IDisposable stopListening;
 
         ManualResetEventSlim wh;
         Action schedulerStartedAction;
-
+        
         [SetUp]
         public void SetUp()
         {
@@ -31,20 +32,26 @@ namespace Kayak.Tests.Net
 
             wh = new ManualResetEventSlim();
 
-            IDisposable d = null;
-
             schedulerDelegate = new SchedulerDelegate();
+            scheduler = new DefaultKayakScheduler(schedulerDelegate);
+
             schedulerDelegate.OnStoppedAction = () =>
             {
-                d.Dispose();
+                stopListening.Dispose();
+                stopListening = null;
                 wh.Set();
             };
+            schedulerDelegate.OnExceptionAction = e =>
+            {
+                Debug.WriteLine("Error on scheduler");
+                e.DebugStackTrace();
+                scheduler.Stop();
+            };
 
-            scheduler = new DefaultKayakScheduler(schedulerDelegate);
             scheduler.Post(() =>
             {
-                d = server.Listen(ep);
-                schedulerStartedAction();
+                stopListening = server.Listen(ep);
+				schedulerStartedAction();
             });
 
             serverDelegate = new ServerDelegate();
@@ -57,6 +64,8 @@ namespace Kayak.Tests.Net
         [TearDown]
         public void TearDown()
         {
+			if (stopListening != null)
+				stopListening.Dispose();
             wh.Dispose();
             server.Dispose();
             client.Dispose();
