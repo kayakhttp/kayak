@@ -7,6 +7,8 @@ LICENSE_URL = "https://github.com/kayak/kayak/raw/HEAD/LICENSE"
 PROJECT_URL = "https://github.com/kayak/kayak"
 
 require 'albacore'
+require 'uri'
+require 'net/http'
 
 def is_nix
   !RUBY_PLATFORM.match("linux|darwin").nil?
@@ -64,7 +66,48 @@ xbuild :build_xbuild do |b|
   b.solution = "Kayak.sln"
 end
 
+def ensure_submodules()
+  sh "git submodule init"
+  sh "git submodule update"
+end
+
+def ensure_nuget(name, version)
+  # NuGet doesn't work on Mono. So we're going to manually download our dependencies from NuGet.org.
+  uri = URI.parse("http://packages.nuget.org/v1/Package/Download/#{name}/#{version}")
+  
+  zip_file = "packages/#{name}.#{version}.nupkg"
+  
+  if File.exists? zip_file then
+    puts "#{zip_file} already exists, skipping"
+    return
+  end
+    
+  puts "fetching #{zip_file}"
+  f = open(zip_file, "w");
+  begin
+      Net::HTTP.start(uri.host, uri.port) do |http|
+        http.request_get(uri.path) do |resp|
+          resp.read_body do |segment|
+            f.write(segment)
+          end
+        end
+      end
+  ensure
+      f.close()
+  end
+  
+  unzip = Unzip.new
+  unzip.destination = "packages/#{name}.#{version}"
+  unzip.file = zip_file
+  unzip.execute
+end
+
 task :build => :assemblyinfo do
+  ensure_submodules()
+  
+  Dir.mkdir "packages" unless Dir.exists? "packages"
+  
+  ensure_nuget("NUnit", "2.5.10.11092")
   build_task = is_nix() ? "build_xbuild" : "build_msbuild"
   Rake::Task[build_task].invoke
 end
