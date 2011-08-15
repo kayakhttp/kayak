@@ -23,9 +23,11 @@ To build:
 **Note**: You can build Kayak from within your IDE, but you should run the build script first to bootstrap the source tree. The bootstrap process inits and updates some git submodules and downloads some binary dependencies from NuGet.org.
 
 Submodules: 
+
  - [HttpMachine](http://github.com/bvanderveen/httpmachine)
 
 Binary Dependencies:
+
  - [NUnit](http://nuget.org/List/Packages/NUnit)
 
 # Bugs
