@@ -1,6 +1,6 @@
 PRODUCT = "Kayak"
 DESCRIPTION = "Kayak is an event-base IO libary for .NET. Kayak allows you to easily create TCP clients and servers, and contains an HTTP/1.1 server implementation."
-VERSION = "0.7.1"
+VERSION = "0.7.2"
 AUTHORS = "Benjamin van der Veen"
 COPYRIGHT = "Copyright (c) 2007-2011 Benjamin van der Veen"
 LICENSE_URL = "https://github.com/kayak/kayak/raw/HEAD/LICENSE"
@@ -104,7 +104,12 @@ def ensure_nuget_packages_nix(name, version)
 end
 
 def ensure_nuget_packages()
-  Dir.mkdir "packages" unless Dir.exists? "packages"
+  Dir.mkdir PACKAGES_DIR unless Dir.exists? PACKAGES_DIR
+  
+  if (Dir.exists? "#{PACKAGES_DIR}/NUnit.2.5.10.11092") then
+    return
+  end
+  
   if (is_nix()) then
     ensure_nuget_packages_nix("NUnit", "2.5.10.11092")
   else
