@@ -44,16 +44,14 @@ namespace KayakExamples
 #endif
 
             var scheduler = KayakScheduler.Factory.Create(new SchedulerDelegate());
-            scheduler.Post(() =>
-            {
-                KayakServer.Factory
-                    .CreateHttp(new RequestDelegate(), scheduler)
-                    .Listen(new IPEndPoint(IPAddress.Any, 8080));
-            });
+            var server = KayakServer.Factory.CreateHttp(new RequestDelegate(), scheduler);
 
-            // runs scheduler on calling thread. this method will block until
-            // someone calls Stop() on the scheduler.
-            scheduler.Start();
+            using (server.Listen(new IPEndPoint(IPAddress.Any, 8080)))
+            {
+                // runs scheduler on calling thread. this method will block until
+                // someone calls Stop() on the scheduler.
+                scheduler.Start();
+            }
         }
 
         class SchedulerDelegate : ISchedulerDelegate
