@@ -78,7 +78,12 @@ namespace KayakExamples
 
                 if (request.Uri.StartsWith("/"))
                 {
-                    var body = "Hello world.\r\nHello. Query was: " + request.QueryString;
+                    var body = string.Format(
+                        "Hello world.\r\nHello.\r\n\r\nUri: {0}\r\nPath: {1}\r\nQuery:{2}\r\nFragment: {3}\r\n",
+                        request.Uri,
+                        request.Path,
+                        request.QueryString,
+                        request.Fragment);
 
                     var headers = new HttpResponseHead()
                     {

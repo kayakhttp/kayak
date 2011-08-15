@@ -10,6 +10,7 @@ namespace Kayak.Http
     {
         public string Method;
         public string Uri;
+        public string Path;
         public string QueryString;
         public string Fragment;
         public Version Version;
@@ -23,9 +24,9 @@ namespace Kayak.Http
         void OnRequestEnded();
     }
 
-    class ParserDelegate : IHttpParserHandler
+    class ParserDelegate : IHttpParserDelegate
     {
-        string method, requestUri, fragment, queryString, headerName, headerValue;
+        string method, requestUri, path, fragment, queryString, headerName, headerValue;
         IDictionary<string, string> headers;
         IHighLevelParserDelegate del;
 
@@ -36,7 +37,7 @@ namespace Kayak.Http
 
         public void OnMessageBegin(HttpParser parser)
         {
-            method = requestUri = fragment = queryString = headerName = headerValue = null;
+            method = requestUri = path = fragment = queryString = headerName = headerValue = null;
             headers = null;
         }
 
@@ -48,6 +49,11 @@ namespace Kayak.Http
         public void OnRequestUri(HttpParser parser, string requestUri)
         {
             this.requestUri = requestUri;
+        }
+
+        public void OnPath(HttpParser parser, string path)
+        {
+            this.path = path;
         }
 
         public void OnFragment(HttpParser parser, string fragment)
@@ -88,8 +94,8 @@ namespace Kayak.Http
 
             var request = new HttpRequestHeaders()
                 {
-                    // TODO path, query, fragment?
                     Method = method,
+                    Path = path,
                     Fragment = fragment,
                     QueryString = queryString,
                     Uri = requestUri,

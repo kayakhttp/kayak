@@ -77,12 +77,8 @@
     <Compile Include="Net\Socket\OutputBuffer.cs" />
     <Compile Include="Net\Socket\SocketWrapper.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="..\lib\httpmachine\HttpMachine\HttpParser.cs" />
-    <Compile Include="..\lib\httpmachine\HttpMachine\HttpParserPublic.cs" />
-    <Compile Include="..\lib\httpmachine\HttpMachine\IHttpParserHandler.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="packages.config" />
+    <Compile Include="..\lib\httpmachine\src\HttpMachine\HttpParser.cs" />
+    <Compile Include="..\lib\httpmachine\src\HttpMachine\IHttpParserDelegate.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!--

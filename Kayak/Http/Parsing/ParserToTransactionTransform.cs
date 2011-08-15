@@ -69,6 +69,7 @@ namespace Kayak.Http
                         transactionDelegate.OnRequest(new HttpRequestHead() { 
                             Method = e.Request.Method,
                             Uri = e.Request.Uri,
+                            Path = e.Request.Path,
                             Fragment = e.Request.Fragment,
                             QueryString = e.Request.QueryString,
                             Version = e.Request.Version,

@@ -7,6 +7,7 @@ namespace Kayak.Http
     {
         public string Method;
         public string Uri;
+        public string Path;
         public string QueryString;
         public string Fragment;
         public Version Version;
