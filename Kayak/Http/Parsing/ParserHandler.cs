@@ -10,6 +10,8 @@ namespace Kayak.Http
     {
         public string Method;
         public string Uri;
+        public string QueryString;
+        public string Fragment;
         public Version Version;
         public IDictionary<string, string> Headers;
     }
@@ -88,6 +90,8 @@ namespace Kayak.Http
                 {
                     // TODO path, query, fragment?
                     Method = method,
+                    Fragment = fragment,
+                    QueryString = queryString,
                     Uri = requestUri,
                     Headers = headers,
                     Version = new Version(parser.MajorVersion, parser.MinorVersion)

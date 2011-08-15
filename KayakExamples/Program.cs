@@ -76,22 +76,22 @@ namespace KayakExamples
                 IHttpResponseDelegate response)
             {
 
-                if (request.Uri == "/")
+                if (request.Uri.StartsWith("/"))
                 {
+                    var body = "Hello world.\r\nHello. Query was: " + request.QueryString;
+
                     var headers = new HttpResponseHead()
                     {
                         Status = "200 OK",
                         Headers = new Dictionary<string, string>() 
                     {
                         { "Content-Type", "text/plain" },
-                        { "Content-Length", "20" },
+                        { "Content-Length", body.Length.ToString() },
                     }
                     };
-                    var body = new BufferedProducer("Hello world.\r\nHello.");
-
-                    response.OnResponse(headers, body);
+                    response.OnResponse(headers, new BufferedProducer(body));
                 }
-                else if (request.Uri == "/bufferedecho")
+                else if (request.Uri.StartsWith("/bufferedecho"))
                 {
                     // when you subecribe to the request body before calling OnResponse,
                     // the server will automatically send 100-continue if the client is 
@@ -115,7 +115,7 @@ namespace KayakExamples
                         // uh oh, what happens?
                     }));
                 }
-                else if (request.Uri == "/echo")
+                else if (request.Uri.StartsWith("/echo"))
                 {
                     var headers = new HttpResponseHead()
                     {
