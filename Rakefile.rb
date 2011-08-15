@@ -43,6 +43,7 @@ BUILD_DIR = File.expand_path("build")
 OUTPUT_DIR = "#{BUILD_DIR}/out"
 BIN_DIR = "#{BUILD_DIR}/bin"
 NUGET_DIR = "#{BUILD_DIR}/nug"
+PACKAGES_DIR = "packages"
 
 assemblyinfo :assemblyinfo => :clean do |a|
   a.product_name = a.title = PRODUCT
@@ -67,21 +68,21 @@ xbuild :build_xbuild do |b|
 end
 
 def ensure_submodules()
-  sh "git submodule init"
-  sh "git submodule update"
+  system("git submodule init")
+  system("git submodule update")
 end
 
-def ensure_nuget(name, version)
+def ensure_nuget_packages_nix(name, version) 
   # NuGet doesn't work on Mono. So we're going to manually download our dependencies from NuGet.org.
   uri = URI.parse("http://packages.nuget.org/v1/Package/Download/#{name}/#{version}")
-  
-  zip_file = "packages/#{name}.#{version}.nupkg"
-  
+
+  zip_file = "#{PACKAGES_DIR}/#{name}.#{version}.nupkg"
+
   if File.exists? zip_file then
     puts "#{zip_file} already exists, skipping"
     return
   end
-    
+  
   puts "fetching #{zip_file}"
   f = open(zip_file, "w");
   begin
@@ -95,19 +96,27 @@ def ensure_nuget(name, version)
   ensure
       f.close()
   end
-  
+
   unzip = Unzip.new
-  unzip.destination = "packages/#{name}.#{version}"
+  unzip.destination = "#{PACKAGES_DIR}/#{name}.#{version}"
   unzip.file = zip_file
   unzip.execute
 end
 
+def ensure_nuget_packages()
+  Dir.mkdir "packages" unless Dir.exists? "packages"
+  if (is_nix()) then
+    ensure_nuget_packages_nix("NUnit", "2.5.10.11092")
+  else
+      puts "updating packages with nuget"
+      sh invoke_runtime("tools\\nuget.exe install Kayak.Tests\\packages.config -o #{PACKAGES_DIR}")
+      puts "done"
+  end
+end
+
 task :build => :assemblyinfo do
   ensure_submodules()
-  
-  Dir.mkdir "packages" unless Dir.exists? "packages"
-  
-  ensure_nuget("NUnit", "2.5.10.11092")
+  ensure_nuget_packages()
   build_task = is_nix() ? "build_xbuild" : "build_msbuild"
   Rake::Task[build_task].invoke
 end
@@ -172,6 +181,7 @@ end
 
 task :clean do
   FileUtils.rm_rf BUILD_DIR
+  FileUtils.rm_rf PACKAGES_DIR
   FileUtils.rm_rf "Kayak/bin"
   FileUtils.rm_rf "Kayak/obj"
   FileUtils.rm_rf "Kayak.Tests/bin"
