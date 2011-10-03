@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Net;
 
 namespace Kayak.Http
 {
     class HttpServerTransactionDelegate : IHttpServerTransactionDelegate
     {
+        IPAddress remoteAddress;
         IHttpResponseDelegateFactory responseDelegateFactory;
         IHttpRequestDelegate requestDelegate;
 
@@ -16,9 +18,11 @@ namespace Kayak.Http
         bool closeConnection;
 
         public HttpServerTransactionDelegate(
+            IPAddress remoteAddress,
             IHttpResponseDelegateFactory responseDelegateFactory, 
             IHttpRequestDelegate requestDelegate)
         {
+            this.remoteAddress = remoteAddress;
             this.responseDelegateFactory = responseDelegateFactory;
             this.requestDelegate = requestDelegate;
         }
@@ -73,6 +77,18 @@ namespace Kayak.Http
             }
 
             requestBody = subject;
+
+            if (remoteAddress != null)
+            {
+                if (request.Headers.ContainsKey("X-Forwarded-For"))
+                {
+                    request.Headers["X-Forwarded-For"] += "," + remoteAddress.ToString();
+                }
+                else
+                {
+                    request.Headers["X-Forwarded-For"] = remoteAddress.ToString();
+                }
+            }
 
             requestDelegate.OnRequest(request, subject, responseDelegate);
             observer.OnNext(responseDelegate);

@@ -4,6 +4,7 @@ using System.Text;
 using Kayak.Http;
 using NUnit.Framework;
 using Kayak.Tests.Net;
+using System.Net;
 
 namespace Kayak.Tests.Http
 {
@@ -91,23 +92,23 @@ namespace Kayak.Tests.Http
             }
             
             DataBuffer bodyBuffer = null;
+			
             if (data != null)
             {
+				if (options != BodyOptions.None)
+                	bodyBuffer = CreateBody(data);
+				
                 switch (options)
                 {
-                    case BodyOptions.NoHeaderIndications:
-                        bodyBuffer = CreateBody(data);
+                    case BodyOptions.NoHeaderIndications:            
                         break;
                     case BodyOptions.ContentLength:
-                        bodyBuffer = CreateBody(data);
                         head.Headers["Content-Length"] = bodyBuffer.GetCount().ToString();
                         break;
                     case BodyOptions.TransferEncodingChunked:
-                        bodyBuffer = CreateBody(data);
                         head.Headers["Transfer-Encoding"] = "chunked";
                         break;
                     case BodyOptions.TransferEncodingNotChunked:
-                        bodyBuffer = CreateBody(data);
                         head.Headers["Transfer-Encoding"] = "asddfashjkfdsa";
                         break;
                 }
@@ -161,7 +162,55 @@ namespace Kayak.Tests.Http
                 context.AssertResponseDelegate(expectContinue);
             }
         }
+
+        [Test]
+        public void Adds_x_forwarded_for_if_none()
+        {
+            var requestHead = default(HttpRequestHead);
+
+            var txDel = new HttpServerTransactionDelegate(IPAddress.Parse("8.8.8.8"), 
+                new MockResponseFactory(), new MockRequestDelegate()
+                {
+                    OnRequestAction = (head, body, response) => {
+                        requestHead = head;
+                    }
+                });
+
+            txDel.Subscribe(new MockObserver<IDataProducer>());
+            txDel.OnRequest(new HttpRequestHead()
+            {
+                Headers = new Dictionary<string, string>()
+            }, false);
+
+            Assert.That(requestHead.Headers["X-Forwarded-For"], Is.EqualTo("8.8.8.8"));
+        }
+
+        [Test]
+        public void Append_x_forwarded_for_if_any()
+        {
+            var requestHead = default(HttpRequestHead);
+
+            var txDel = new HttpServerTransactionDelegate(IPAddress.Parse("8.8.8.8"),
+                new MockResponseFactory(), new MockRequestDelegate()
+                {
+                    OnRequestAction = (head, body, response) =>
+                    {
+                        requestHead = head;
+                    }
+                });
+
+            txDel.Subscribe(new MockObserver<IDataProducer>());
+            txDel.OnRequest(new HttpRequestHead()
+            {
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                    { { "x-ForWarDED-FOr", "4.4.4.4" } }
+            }, false);
+
+            Assert.That(requestHead.Headers["x-Forwarded-For"], Is.EqualTo("4.4.4.4,8.8.8.8"));
+        }
+
     }
+	
     class TxContext
     {
         MockResponseDelegate responseDelegate;
@@ -203,6 +252,7 @@ namespace Kayak.Tests.Http
         {
             responseDelegate = new MockResponseDelegate();
             var tx = new HttpServerTransactionDelegate(
+                null,
                 new MockResponseFactory()
                 {
                     OnCreate = (head, shouldKeepAlive, end) =>

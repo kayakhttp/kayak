@@ -43,7 +43,7 @@ namespace Kayak.Http
         public ISocketDelegate OnConnection(IServer server, ISocket socket)
         {
             // XXX freelist
-            var txDel = new HttpServerTransactionDelegate(responseFactory, requestDelegate);
+            var txDel = new HttpServerTransactionDelegate(socket.RemoteEndPoint.Address, responseFactory, requestDelegate);
             var socketDelegate = new HttpServerSocketDelegate(txDel);
             socketDelegate.Start(socket);
             return socketDelegate;

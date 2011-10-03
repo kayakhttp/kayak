@@ -243,7 +243,12 @@ namespace Kayak.Tests
 
         public IHttpResponseDelegateInternal Create(HttpRequestHead head, bool shouldKeepAlive, Action end)
         {
-            return OnCreate(head, shouldKeepAlive, end);
+            IHttpResponseDelegateInternal result = null;
+
+            if (OnCreate != null)
+                result = OnCreate(head, shouldKeepAlive, end);
+
+            return result;
         }
     }
 
