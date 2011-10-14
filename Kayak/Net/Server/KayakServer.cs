@@ -110,7 +110,7 @@ namespace Kayak
                         if (error != null)
                             HandleAcceptError(error);
 
-                        var s = new DefaultKayakSocket(socket, this.scheduler);
+                        var s = new DefaultKayakSocket(new SocketWrapper(socket), this.scheduler);
                         state.IncrementConnections();
 
                         var socketDelegate = del.OnConnection(this, s);

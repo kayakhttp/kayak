@@ -12,7 +12,7 @@ namespace Kayak
         public int id;
         static int nextId;
 
-        public IPEndPoint RemoteEndPoint { get; private set; }
+        public IPEndPoint RemoteEndPoint { get { return (IPEndPoint)socket.RemoteEndPoint; } }
 
         OutputBuffer buffer;
 
@@ -20,7 +20,7 @@ namespace Kayak
 
         KayakSocketState state;
 
-        SocketWrapper socket;
+        ISocketWrapper socket;
         Action continuation;
         IScheduler scheduler;
 
@@ -31,10 +31,10 @@ namespace Kayak
             state = new KayakSocketState(true);
         }
 
-        internal DefaultKayakSocket(Socket socket, IScheduler scheduler)
+        internal DefaultKayakSocket(ISocketWrapper socket, IScheduler scheduler)
         {
             this.id = nextId++;
-            this.socket = new SocketWrapper(socket);
+            this.socket = socket;
             this.scheduler = scheduler;
             state = new KayakSocketState(false);
         }

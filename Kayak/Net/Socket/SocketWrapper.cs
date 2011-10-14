@@ -10,6 +10,8 @@ namespace Kayak
     // using preprocessor macros...
     interface ISocketWrapper : IDisposable
     {
+        IPEndPoint RemoteEndPoint { get; }
+
         IAsyncResult BeginConnect(IPEndPoint ep, AsyncCallback callback);
         void EndConnect(IAsyncResult iasr);
 
@@ -26,6 +28,7 @@ namespace Kayak
     {
         Socket socket;
 
+        public IPEndPoint RemoteEndPoint { get { return (IPEndPoint)socket.RemoteEndPoint; } }
         public SocketWrapper(AddressFamily af)
             : this(new Socket(af, SocketType.Stream, ProtocolType.Tcp)) { }
 

@@ -26,6 +26,8 @@ namespace Kayak.Tests.Net
         ManualResetEventSlim wh;
         Action schedulerStartedAction;
 
+        Exception schedulerError;
+
         [SetUp]
         public void SetUp()
         {
@@ -44,6 +46,7 @@ namespace Kayak.Tests.Net
             };
             schedulerDelegate.OnExceptionAction = e =>
             {
+                schedulerError = e;
                 Debug.WriteLine("Error on scheduler");
                 e.DebugStackTrace();
                 scheduler.Stop();
@@ -75,7 +78,8 @@ namespace Kayak.Tests.Net
         void RunScheduler()
         {
             new Thread(() => scheduler.Start()).Start();
-            wh.Wait();
+            wh.Wait(1000);
+            Assert.That(schedulerError, Is.Null);
         }
 
         [Test]
@@ -347,6 +351,93 @@ namespace Kayak.Tests.Net
 
             Assert.That(connected, Is.True);
             Assert.That(writeResult, Is.False);
+        }
+
+        [Test]
+        public void Constructor_sets_RemoteEndPoint()
+        {
+            var socketWrapper = new MockSocketWrapper();
+            var ip = new IPEndPoint(IPAddress.Parse("9.9.9.9"), 40);
+
+            socketWrapper.RemoteEndPoint = ip;
+            var socket = new DefaultKayakSocket(socketWrapper, null);
+
+            Assert.That(socket.RemoteEndPoint, Is.SameAs(ip));
+        }
+
+        [Test]
+        public void RemoteEndPoint_is_set_after_connected()
+        {
+            IPEndPoint afterConnect = null;
+            IPEndPoint afterConnected = null;
+            bool connected = false;
+
+            schedulerStartedAction = () =>
+            {
+                client.Connect(ep);
+                afterConnect = client.RemoteEndPoint;
+                clientSocketDelegate.OnConnectedAction = () =>
+                {
+                    connected = true;
+                    afterConnected = client.RemoteEndPoint;
+                    scheduler.Stop();
+                };
+            };
+
+            RunScheduler();
+
+            Assert.That(connected, Is.True);
+            Assert.That(afterConnect, Is.EqualTo(ep));
+            Assert.That(afterConnected, Is.EqualTo(ep));
+        }
+    }
+
+    class MockSocketWrapper : ISocketWrapper
+    {
+        public IPEndPoint RemoteEndPoint
+        {
+            get;
+            set;
+        }
+
+        public IAsyncResult BeginConnect(IPEndPoint ep, AsyncCallback callback)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void EndConnect(IAsyncResult iasr)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IAsyncResult BeginReceive(byte[] buffer, int offset, int count, AsyncCallback callback)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndReceive(IAsyncResult iasr)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IAsyncResult BeginSend(System.Collections.Generic.List<ArraySegment<byte>> data, AsyncCallback callback)
+        {
+            throw new NotImplementedException();
+        }
+
+        public int EndSend(IAsyncResult iasr)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Shutdown()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
         }
     }
 }

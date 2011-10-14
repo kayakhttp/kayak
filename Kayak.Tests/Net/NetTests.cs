@@ -24,6 +24,8 @@ namespace Kayak.Tests.Net
 
         ManualResetEventSlim wh;
         Action schedulerStartedAction;
+
+        Exception schedulerError;
         
         [SetUp]
         public void SetUp()
@@ -43,6 +45,7 @@ namespace Kayak.Tests.Net
             };
             schedulerDelegate.OnExceptionAction = e =>
             {
+                schedulerError = e;
                 Debug.WriteLine("Error on scheduler");
                 e.DebugStackTrace();
                 scheduler.Stop();
@@ -74,7 +77,8 @@ namespace Kayak.Tests.Net
         void RunScheduler()
         {
             new Thread(() => scheduler.Start()).Start();
-            wh.Wait();
+            wh.Wait(1000);
+            Assert.That(schedulerError, Is.Null);
         }
 
         [Test]
