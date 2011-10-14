@@ -35,6 +35,7 @@ namespace Kayak
         {
             this.id = nextId++;
             this.socket = new SocketWrapper(socket);
+            this.RemoteEndPoint = (IPEndPoint)socket.RemoteEndPoint;
             this.scheduler = scheduler;
             state = new KayakSocketState(false);
         }
