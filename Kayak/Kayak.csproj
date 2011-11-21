@@ -11,14 +11,12 @@
     <RootNamespace>Kayak</RootNamespace>
     <AssemblyName>Kayak</AssemblyName>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <RunPostBuildEvent>OnOutputUpdated</RunPostBuildEvent>
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -36,8 +34,6 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath Condition=" '$(OutputPath)' == '' ">bin\Release\</OutputPath>
-    <DefineConstants>
-    </DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>bin\Release\Kayak.xml</DocumentationFile>
@@ -53,13 +49,12 @@
   <ItemGroup>
     <Compile Include="Disposable.cs" />
     <Compile Include="Extensions\Trace.cs" />
+    <Compile Include="Http\HttpServerTransaction.cs" />
     <Compile Include="Http\DataSubject.cs" />
     <Compile Include="Http\Extensions\Request.cs" />
     <Compile Include="Http\Extensions\Server.cs" />
     <Compile Include="Http\Http.cs" />
-    <Compile Include="Http\HttpResponseDelegate.cs" />
-    <Compile Include="Http\OutputSegment.cs" />
-    <Compile Include="Http\OutputSegmentQueue.cs" />
+    <Compile Include="Http\OutputQueue.cs" />
     <Compile Include="Http\Parsing\ParserToTransactionTransform.cs" />
     <Compile Include="Http\HttpServer.cs" />
     <Compile Include="Http\HttpServerSocketDelegate.cs" />
@@ -67,7 +62,6 @@
     <Compile Include="Http\Parsing\ParserEventQueue.cs" />
     <Compile Include="Http\Parsing\ParserHandler.cs" />
     <Compile Include="Http\HttpResponseHeaderRenderer.cs" />
-    <Compile Include="Http\HttpResponseDelegateState.cs" />
     <Compile Include="Net\KayakScheduler.cs" />
     <Compile Include="Net\Net.cs" />
     <Compile Include="Net\Server\KayakServer.cs" />

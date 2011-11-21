@@ -15,12 +15,11 @@ namespace Kayak.Tests.Http
         ParserToTransactionTransform del;
         MockHttpServerTransactionDelegate httpDel;
 
-
         [SetUp]
         public void SetUp()
         {
             httpDel = new MockHttpServerTransactionDelegate();
-            del = new ParserToTransactionTransform(httpDel);
+            del = new ParserToTransactionTransform(null, httpDel);
         }
 
         void WriteBody(string data)

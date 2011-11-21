@@ -9,116 +9,129 @@ namespace Kayak.Http
 {
     class HttpServerTransactionDelegate : IHttpServerTransactionDelegate
     {
-        IPAddress remoteAddress;
-        IHttpResponseDelegateFactory responseDelegateFactory;
         IHttpRequestDelegate requestDelegate;
+        TransactionContext currentContext;
+        ITransactionSegment lastSegment;
 
-        IObserver<IDataProducer> observer;
-        IDataConsumer requestBody;
-        bool closeConnection;
-
-        public HttpServerTransactionDelegate(
-            IPAddress remoteAddress,
-            IHttpResponseDelegateFactory responseDelegateFactory, 
-            IHttpRequestDelegate requestDelegate)
+        public HttpServerTransactionDelegate(IHttpRequestDelegate requestDelegate)
         {
-            this.remoteAddress = remoteAddress;
-            this.responseDelegateFactory = responseDelegateFactory;
             this.requestDelegate = requestDelegate;
         }
 
-        public IDisposable Subscribe(IObserver<IDataProducer> observer)
+        void QueueSegment(ITransactionSegment segment)
         {
-            this.observer = observer;
+            if (lastSegment != null)
+                lastSegment.AttachNext(segment);
 
-            return new Disposable(() =>
-            {
-                // i.e., output queue wants no more
-                // this won't happen with the current implementation
-            });
+            lastSegment = segment;
         }
 
-        void CloseConnection()
+        public void OnRequest(IHttpServerTransaction transaction, HttpRequestHead request, bool shouldKeepAlive)
         {
-            if (closeConnection) return;
-            closeConnection = true;
-            observer.OnCompleted();
+            AddXFF(request, transaction.RemoteEndPoint);
+
+            var expectContinue = request.IsContinueExpected();
+            var prohibitResponseBody = request.Method != null && request.Method.ToUpperInvariant() == "HEAD";
+
+            currentContext = new TransactionContext(expectContinue, prohibitResponseBody, shouldKeepAlive);
+
+            if (lastSegment == null)
+                currentContext.Segment.AttachTransaction(transaction);
+
+            QueueSegment(currentContext.Segment);
+            requestDelegate.OnRequest(request, currentContext.RequestBody, currentContext);
         }
 
-        public void OnRequest(HttpRequestHead request, bool shouldKeepAlive)
+        public bool OnRequestData(IHttpServerTransaction transaction, ArraySegment<byte> data, Action continuation)
         {
-            var responseDelegate = responseDelegateFactory.Create(request, shouldKeepAlive, CloseConnection);
+            return currentContext.RequestBody.OnData(data, continuation);
+        }
 
-            DataSubject subject = null;
-            bool requestBodyConnected = false;
+        public void OnRequestEnd(IHttpServerTransaction transaction)
+        {
+            currentContext.RequestBody.OnEnd();
+        }
 
-            Debug.WriteLine("[{0}] {1} {2} shouldKeepAlive = {3}",
-                DateTime.Now, request.Method, request.Uri, shouldKeepAlive);
+        public void OnError(IHttpServerTransaction transaction, Exception e)
+        {
+            currentContext.RequestBody.OnError(e);
+        }
 
-            if (request.HasBody())
+        public void OnEnd(IHttpServerTransaction transaction)
+        {
+            QueueSegment(new EndSegment());
+        }
+
+        public void OnClose(IHttpServerTransaction transaction)
+        {
+            transaction.Dispose();
+            // XXX return self to freelist
+        }
+
+        class TransactionContext : IHttpResponseDelegate
+        {
+            public DataSubject RequestBody;
+            public ResponseSegment Segment;
+            
+            bool expectContinue, prohibitResponseBody, shouldKeepAlive;
+            bool gotConnectRequestBody, gotOnResponse;
+
+            public TransactionContext(bool expectContinue, bool prohibitResponseBody, bool shouldKeepAlive)
             {
-                subject = new DataSubject(() =>
+                RequestBody = new DataSubject(ConnectRequestBody);
+                Segment = new ResponseSegment();
+            }
+
+            IDisposable ConnectRequestBody()
+            {
+                if (gotConnectRequestBody) 
+                    throw new InvalidOperationException("Request body was already connected.");
+
+                gotConnectRequestBody = true;
+
+                if (expectContinue)
+                    Segment.WriteContinue();
+
+                return new Disposable(() =>
                 {
-                    if (requestBodyConnected) 
-                        throw new InvalidOperationException("Request body was already connected.");
-
-                    requestBodyConnected = true;
-
-                    if (request.IsContinueExpected())
-                        responseDelegate.WriteContinue();
-
-                    return new Disposable(() =>
-                    {
-                        // XXX what to do?
-                        // ideally we stop reading from the socket. 
-                        // equivalent to a parse error
-                    });
+                    // XXX what to do?
+                    // ideally we stop reading from the socket. 
+                    // equivalent to a parse error
+                    // dispose transaction
                 });
             }
 
-            requestBody = subject;
+            public void OnResponse(HttpResponseHead head, IDataProducer body)
+            {
+                // XXX still need to better account for Connection: close.
+                // this should cause the queue to drop pending responses
+                // perhaps segment.Abort which disposes transation
 
-            if (remoteAddress != null)
+                if (!shouldKeepAlive)
+                {
+                    if (head.Headers == null)
+                        head.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+
+                    head.Headers["Connection"] = "close";
+                }
+
+                Segment.WriteResponse(head, body);
+            }
+        }
+
+        void AddXFF(HttpRequestHead request, IPEndPoint remoteEndPoint)
+        {
+            if (remoteEndPoint != null)
             {
                 if (request.Headers.ContainsKey("X-Forwarded-For"))
                 {
-                    request.Headers["X-Forwarded-For"] += "," + remoteAddress.ToString();
+                    request.Headers["X-Forwarded-For"] += "," + remoteEndPoint.ToString();
                 }
                 else
                 {
-                    request.Headers["X-Forwarded-For"] = remoteAddress.ToString();
+                    request.Headers["X-Forwarded-For"] = remoteEndPoint.ToString();
                 }
             }
-
-            requestDelegate.OnRequest(request, subject, responseDelegate);
-            observer.OnNext(responseDelegate);
-        }
-
-        public bool OnRequestData(ArraySegment<byte> data, Action continuation)
-        {
-            return requestBody.OnData(data, continuation);
-        }
-
-        public void OnRequestEnd()
-        {
-            if (requestBody != null)
-                requestBody.OnEnd();
-        }
-
-        public void OnError(Exception e)
-        {
-            if (requestBody != null)
-                requestBody.OnError(e);
-        }
-
-        public void OnEnd()
-        {
-            CloseConnection();
-        }
-
-        public void Dispose()
-        {
-            // XXX perhaps return self to freelist
         }
     }
 }

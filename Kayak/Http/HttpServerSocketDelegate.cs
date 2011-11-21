@@ -13,18 +13,14 @@ namespace Kayak.Http
         HttpParser parser;
         ParserToTransactionTransform transactionTransform;
         IHttpServerTransactionDelegate transactionDelegate;
-        IDisposable transactionDelegateSubscription;
+        IHttpServerTransaction transaction;
 
-        public HttpServerSocketDelegate(IHttpServerTransactionDelegate transactionDelegate)
+        public HttpServerSocketDelegate(IHttpServerTransaction transaction, IHttpServerTransactionDelegate transactionDelegate)
         {
+            this.transaction = transaction;
             this.transactionDelegate = transactionDelegate;
-            transactionTransform = new ParserToTransactionTransform(transactionDelegate);
+            transactionTransform = new ParserToTransactionTransform(transaction, transactionDelegate);
             parser = new HttpParser(new ParserDelegate(transactionTransform));
-        }
-
-        public void Start(ISocket socket)
-        {
-            transactionDelegateSubscription = transactionDelegate.Subscribe(new OutputSegmentQueue(socket));
         }
 
         public bool OnData(ISocket socket, ArraySegment<byte> data, Action continuation)
@@ -44,6 +40,7 @@ namespace Kayak.Http
             }
             catch (Exception e)
             {
+                // XXX test this behavior
                 OnError(socket, e);
                 OnClose(socket);
                 throw;
@@ -57,27 +54,19 @@ namespace Kayak.Http
             // parse EOF
             OnData(socket, default(ArraySegment<byte>), null);
 
-            transactionDelegate.OnEnd();
+            transactionDelegate.OnEnd(transaction);
         }
 
         public void OnError(ISocket socket, Exception e)
         {
             Debug.WriteLine("Socket OnError.");
             e.DebugStackTrace();
-            transactionDelegate.OnError(e);
+            transactionDelegate.OnError(transaction, e);
         }
 
         public void OnClose(ISocket socket)
         {
-            Debug.WriteLine("Socket OnClose.");
-
-            socket.Dispose();
-
-            // release (indirect) reference to socket
-            transactionDelegateSubscription.Dispose();
-            transactionDelegateSubscription = null;
-
-            // XXX return self to freelist
+            transactionDelegate.OnClose(transaction);
         }
 
         public void OnConnected(ISocket socket)

@@ -190,12 +190,12 @@ namespace Kayak.Tests
             Requests = new List<HttpRequest>();
         }
 
-        public void OnRequest(HttpRequestHead request, bool shouldKeepAlive)
+        public void OnRequest(IHttpServerTransaction tx, HttpRequestHead request, bool shouldKeepAlive)
         {
             current = new HttpRequest() { Head = request, ShouldKeepAlive = shouldKeepAlive, Data = new DataBuffer() };
         }
 
-        public bool OnRequestData(ArraySegment<byte> data, Action continuation)
+        public bool OnRequestData(IHttpServerTransaction tx, ArraySegment<byte> data, Action continuation)
         {
             current.Data.Add(data);
 
@@ -205,17 +205,17 @@ namespace Kayak.Tests
             return false;
         }
 
-        public void OnRequestEnd()
+        public void OnRequestEnd(IHttpServerTransaction tx)
         {
             Requests.Add(current);
         }
 
-        public void OnError(Exception e)
+        public void OnError(IHttpServerTransaction tx, Exception e)
         {
             Exception = e;
         }
 
-        public void OnEnd()
+        public void OnEnd(IHttpServerTransaction tx)
         {
             if (GotOnEnd)
                 throw new Exception("OnEnd was called more than once.");
@@ -223,32 +223,9 @@ namespace Kayak.Tests
             GotOnEnd = true;
         }
 
-        public void Dispose()
+        public void OnClose(IHttpServerTransaction tx)
         {
-            if (GotDispose)
-                throw new Exception("OnEnd was called more than once.");
 
-            GotDispose = true;
-        }
-
-        public IDisposable Subscribe(IObserver<IDataProducer> observer)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    class MockResponseFactory : IHttpResponseDelegateFactory
-    {
-        public Func<HttpRequestHead, bool, Action, IHttpResponseDelegateInternal> OnCreate;
-
-        public IHttpResponseDelegateInternal Create(HttpRequestHead head, bool shouldKeepAlive, Action end)
-        {
-            IHttpResponseDelegateInternal result = null;
-
-            if (OnCreate != null)
-                result = OnCreate(head, shouldKeepAlive, end);
-
-            return result;
         }
     }
 
@@ -291,28 +268,6 @@ namespace Kayak.Tests
         {
             if (OnRequestAction != null)
                 OnRequestAction(head, body, response);
-        }
-    }
-
-    class MockResponseDelegate : IHttpResponseDelegateInternal
-    {
-        public bool GotWriteContinue;
-
-        public void WriteContinue()
-        {
-            if (GotWriteContinue)
-                throw new Exception("Already got WriteContinue()");
-
-            GotWriteContinue = true;
-        }
-
-        public IDisposable Connect(IDataConsumer channel)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void OnResponse(HttpResponseHead head, IDataProducer body)
-        {
         }
     }
 }

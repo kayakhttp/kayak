@@ -1,397 +1,330 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Kayak.Http;
 using NUnit.Framework;
-using Kayak.Tests.Net;
-using System.Net;
 
 namespace Kayak.Tests.Http
 {
-    [TestFixture]
-    public class HttpServerTransactionDelegateTests
+    class UserCode
     {
-        TxLoop loop;
-        TxContext context;
+        List<RequestInfo> receivedRequests = new List<RequestInfo>();
+        RequestInfo current;
 
-        static DataBuffer CreateBody(string[] body)
+        public void OnRequest(HttpRequestHead head)
         {
-            var bodyBuffer = new DataBuffer();
-            
-            foreach (var b in body)
-                bodyBuffer.Add(new ArraySegment<byte>(Encoding.ASCII.GetBytes(b)));
-
-            return bodyBuffer;
+            current = new RequestInfo() { Head = head, Data = Enumerable.Empty<string>() };
         }
 
-        IEnumerable<TxCallbacks> Permute(Req req)
+        public void OnData(string data)
         {
-            // XXX would be nice to increase this to 6. would need to buffer data in the transaction.
-            // currently user must connect immediately, or before client writes req body data,
-            // else data is lost :(
-            var connectUpperBound = req.Body == null ? 0 : 2; 
-            var disconnectUpperBound = connectUpperBound == 0 ? -1 : 2;
-
-            for (int i = 0; i < connectUpperBound; i++)
-            {
-                for (int j = i - 1; j < disconnectUpperBound; j++)
-                {
-                    for (int k = -1; k < 6; k++)
-                    {
-                        var callbacks = CreateCallbacks();
-                        var hooks = callbacks.Item2;
-
-                        if (i != -1)
-                            hooks[i].Add(() => context.ConnectToRequestBody());
-
-                        if (j != i - 1 && j > -1)
-                            hooks[j].Add(() => context.CancelRequestBody());
-
-                        if (k != -1)
-                            hooks[k].Add(() => context.CloseConnection());
-
-                        //Console.WriteLine("i = {0}, j = {1}, k = {2}", i, j, k);
-
-                        yield return callbacks.Item1;
-                    }
-                }
-            }
+            current.Data = current.Data.Concat(new[] { data });
         }
 
-        Tuple<TxCallbacks, List<List<Action>>> CreateCallbacks()
+        public void OnError(Exception error)
         {
-            var callins = new List<List<Action>>();
-
-            for (int i = 0; i < 6; i++)
-                callins.Add(new List<Action>());
-
-            var callbacks = new TxCallbacks()
-            {
-                OnRequest = () => callins[0].ForEach(a => a()),
-                PostOnRequest = () => callins[1].ForEach(a => a()),
-                OnRequestData = () => callins[2].ForEach(a => a()),
-                PostOnRequestData = () => callins[3].ForEach(a => a()),
-                OnRequestDataEnd = () => callins[4].ForEach(a => a()),
-                PostOnRequestEnd = () => callins[5].ForEach(a => a())
-            };
-
-            return Tuple.Create(callbacks, callins);
+            current.Exception = error;
         }
 
-
-        static Req CreateReq(bool expectContinue, string[] data, BodyOptions options)
+        public void OnEnd()
         {
-            var head = default(HttpRequestHead);
-            head.Version = new Version(1, 0);
-            head.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+            if (current.Exception != null) throw new Exception("got end after exception");
 
-            if (expectContinue)
-            {
-                head.Version = new Version(1, 1);
-                head.Headers["Expect"] = "100-continue";
-            }
-            
-            DataBuffer bodyBuffer = null;
-			
-            if (data != null)
-            {
-				if (options != BodyOptions.None)
-                	bodyBuffer = CreateBody(data);
-				
-                switch (options)
-                {
-                    case BodyOptions.NoHeaderIndications:            
-                        break;
-                    case BodyOptions.ContentLength:
-                        head.Headers["Content-Length"] = bodyBuffer.GetCount().ToString();
-                        break;
-                    case BodyOptions.TransferEncodingChunked:
-                        head.Headers["Transfer-Encoding"] = "chunked";
-                        break;
-                    case BodyOptions.TransferEncodingNotChunked:
-                        head.Headers["Transfer-Encoding"] = "asddfashjkfdsa";
-                        break;
-                }
-            }
+            receivedRequests.Add(current);
+            current = null;
+        }
 
-            return new Req()
+        public void AssertRequests(List<RequestInfo> expectedRequests)
+        {
+            for (int i = 0; i < expectedRequests.Count; i++)
             {
-                Head = head,
-                Body = bodyBuffer
+                if (receivedRequests.Count == i)
+                    Assert.Fail("received fewer requests than expected");
+
+                var received = receivedRequests[i];
+                var expected = expectedRequests[i];
+                Assert.That(received.Head.ToString(), Is.EqualTo(expected.Head.ToString()));
+                Assert.That(received.Exception, Is.EqualTo(expected.Exception));
+                Assert.That(received.Data, Is.EqualTo(expected.Data));
+            }
+        }
+    }
+
+    class MockTransaction : IHttpServerTransaction
+    {
+        List<ResponseInfo> receivedResponses = new List<ResponseInfo>();
+        ResponseInfo current;
+
+        public bool GotEnd;
+        public bool GotDispose;
+
+        public System.Net.IPEndPoint RemoteEndPoint
+        {
+            get { return null; }
+        }
+
+        public void OnResponse(HttpResponseHead response)
+        {
+            current = new ResponseInfo()
+            {
+                Head = response
             };
         }
 
-        [Test]
-        public void No_body()
+        public bool OnResponseData(ArraySegment<byte> data, Action continuation)
         {
-            var req = CreateReq(false, null, BodyOptions.None);
+            current.Data = current.Data.Concat(new[] { Encoding.ASCII.GetString(data.Array, data.Offset, data.Count) });
+            return false;
+        }
 
-            foreach (var cbs in Permute(req))
+        public void OnResponseEnd()
+        {
+            receivedResponses.Add(current);
+        }
+
+        public void OnEnd()
+        {
+            if (GotEnd) throw new Exception("Got end already");
+            GotEnd = true;
+        }
+
+        public void Dispose()
+        {
+            if (GotDispose) throw new Exception("Got dispose already");
+            GotDispose = true;
+        }
+
+        public void AssertResponses(List<ResponseInfo> expectedResponses)
+        {
+            for (int i = 0; i < expectedResponses.Count; i++)
             {
-                context = new TxContext(cbs);
-                loop = new TxLoop(context, req);
-                loop.Drive(cbs, false);
+                if (receivedResponses.Count == i)
+                    Assert.Fail("Received fewer responses than expected.");
 
-                Assert.That(context.HasRequestBody(), Is.False);
-                context.AssertMessageObserver();
-                context.AssertRequestBody(req);
-                context.AssertResponseDelegate(false);
+                var received = receivedResponses[i];
+                var expected = expectedResponses[i];
+
+                Assert.That(received.Head.ToString(), Is.EqualTo(expected.Head.ToString()));
+                Assert.That(received.Exception, Is.EqualTo(expected.Exception));
+                Assert.That(received.Data, Is.EqualTo(expected.Data));
             }
         }
-
-        [Test]
-        public void Some_body(
-            [Values(true, false)]
-            bool expectContinue,
-            [Values(
-                BodyOptions.ContentLength,
-                BodyOptions.TransferEncodingChunked)] 
-            BodyOptions options)
-        {
-            var req = CreateReq(expectContinue, new[] { "some", "body" }, options);
-
-            foreach (var cbs in Permute(req))
-            {
-                context = new TxContext(cbs);
-                loop = new TxLoop(context, req);
-                loop.Drive(cbs, false);
-
-                Assert.That(context.HasRequestBody(), Is.True);
-                context.AssertMessageObserver();
-                context.AssertRequestBody(req);
-                context.AssertResponseDelegate(expectContinue);
-            }
-        }
-
-        [Test]
-        public void Adds_x_forwarded_for_if_none()
-        {
-            var requestHead = default(HttpRequestHead);
-
-            var txDel = new HttpServerTransactionDelegate(IPAddress.Parse("8.8.8.8"), 
-                new MockResponseFactory(), new MockRequestDelegate()
-                {
-                    OnRequestAction = (head, body, response) => {
-                        requestHead = head;
-                    }
-                });
-
-            txDel.Subscribe(new MockObserver<IDataProducer>());
-            txDel.OnRequest(new HttpRequestHead()
-            {
-                Headers = new Dictionary<string, string>()
-            }, false);
-
-            Assert.That(requestHead.Headers["X-Forwarded-For"], Is.EqualTo("8.8.8.8"));
-        }
-
-        [Test]
-        public void Append_x_forwarded_for_if_any()
-        {
-            var requestHead = default(HttpRequestHead);
-
-            var txDel = new HttpServerTransactionDelegate(IPAddress.Parse("8.8.8.8"),
-                new MockResponseFactory(), new MockRequestDelegate()
-                {
-                    OnRequestAction = (head, body, response) =>
-                    {
-                        requestHead = head;
-                    }
-                });
-
-            txDel.Subscribe(new MockObserver<IDataProducer>());
-            txDel.OnRequest(new HttpRequestHead()
-            {
-                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                    { { "x-ForWarDED-FOr", "4.4.4.4" } }
-            }, false);
-
-            Assert.That(requestHead.Headers["x-Forwarded-For"], Is.EqualTo("4.4.4.4,8.8.8.8"));
-        }
-
     }
-	
-    class TxContext
+
+    class UserCodeTransactionInterface
     {
-        MockResponseDelegate responseDelegate;
+        UserCode userCode;
+        IDisposable disconnect;
+        IDataProducer requestBody; // XXX obtain
+        IDataConsumer consumer; // XXX obtain
 
-        // want to be able to assert on contents of request body, also that continue is called
-        // if needed
-        IDataProducer requestBody;
+        IHttpResponseDelegate responseDelegate;
 
-
-        // just a pass-though
-        public bool ShouldKeepAlive;
-
-        Action closeConnectionAction;
-
-        IDisposable requestBodyDisposable;
-        MockDataConsumer requestBodyConsumer;
-
-        IDisposable messageObserverDisposable;
-        MockObserver<IDataProducer> messageObserver;
-
-        TxCallbacks callbacks;
-
-        bool gotCloseConnection;
-
-        public TxContext(TxCallbacks callbacks)
+        public UserCodeTransactionInterface(UserCode userCode)
         {
-            this.callbacks = callbacks;
-
-            requestBodyConsumer = new MockDataConsumer();
-
-            if (callbacks.OnRequestData != null)
-                requestBodyConsumer.OnDataAction = _ => callbacks.OnRequestData();
-
-            if (callbacks.OnRequestDataEnd != null)
-                requestBodyConsumer.OnEndAction = () => callbacks.OnRequestDataEnd();
+            this.userCode = userCode;
         }
 
-        public HttpServerTransactionDelegate CreateTransaction()
+        public void SetRequestBodyAndResponseDelegate(IDataProducer requestBody, IHttpResponseDelegate responseDelegate)
         {
-            responseDelegate = new MockResponseDelegate();
-            var tx = new HttpServerTransactionDelegate(
-                null,
-                new MockResponseFactory()
-                {
-                    OnCreate = (head, shouldKeepAlive, end) =>
-                    {
-                        closeConnectionAction = end;
-                        ShouldKeepAlive = shouldKeepAlive;
-                        return responseDelegate;
-                    }
-                },
-                new MockRequestDelegate()
-                {
-                    OnRequestAction = (head, body, response) =>
-                    {
-                        Assert.That(response, Is.SameAs(responseDelegate));
-
-                        requestBody = body;
-
-                        if (callbacks.OnRequest != null)
-                            callbacks.OnRequest();
-                    }
-                });
-
-            messageObserver = new MockObserver<IDataProducer>();
-            messageObserverDisposable = tx.Subscribe(messageObserver);
-
-            return tx;
+            this.requestBody = requestBody;
+            this.responseDelegate = responseDelegate;
+            this.disconnect = null;
         }
 
-        public bool HasRequestBody()
+        public void ConnectRequestBody()
         {
-            return requestBody != null;
-        }
-
-        // want to make sure that this causes OnComplete on the observer
-        public void CloseConnection()
-        {
-            gotCloseConnection = true;
-            closeConnectionAction();
-        }
-
-        public void CancelRequestBody()
-        {
-            requestBodyDisposable.Dispose();
-        }
-
-        public void ConnectToRequestBody()
-        {
-            requestBodyDisposable = requestBody.Connect(requestBodyConsumer);
-        }
-
-        public void AssertMessageObserver()
-        {
-            Assert.That(messageObserver.Values.Count, Is.EqualTo(1));
-            Assert.That(messageObserver.Values[0], Is.SameAs(responseDelegate));
-            Assert.That(messageObserver.Error, Is.Null);
-            Assert.That(messageObserver.GotCompleted, Is.EqualTo(gotCloseConnection));
-        }
-
-        public void AssertRequestBody(Req req)
-        {
-            if (req.Body == null)
-                Assert.That(requestBody, Is.Null);
-            else
+            var consumer = new MockDataConsumer()
             {
-                Assert.That(requestBodyConsumer.Buffer.GetString(), Is.EqualTo(req.Body.GetString()));
-                Assert.That(requestBodyConsumer.GotEnd, Is.True);
-            }
+                OnDataAction = data => userCode.OnData(Encoding.ASCII.GetString(data.Array, data.Offset, data.Count)),
+                OnEndAction = () => userCode.OnEnd()
+            };
+
+            if (disconnect != null) throw new Exception("got connect and disconnect was not null");
+            disconnect = requestBody.Connect(consumer);
         }
 
-        public void AssertResponseDelegate(bool expectContinue)
+        public void DisconnectRequestBody()
         {
-            Assert.That(responseDelegate.GotWriteContinue, Is.EqualTo(expectContinue));
+            disconnect.Dispose();
+        }
+
+        public void Respond(ResponseInfo response)
+        {
+            responseDelegate.OnResponse(response.Head, response.Data == null ? null : new MockDataProducer(c =>
+            {
+                foreach (var d in response.Data)
+                    c.OnData(new ArraySegment<byte>(Encoding.ASCII.GetBytes(d)), null);
+                c.OnEnd();
+                return new Disposable(() => { });
+            }));
         }
     }
 
-    class TxLoop
+    class KayakCodeTransactionInterface
     {
-        Req req;
-        TxContext context;
+        IHttpServerTransactionDelegate del; // XXX obtain
+        IHttpServerTransaction tx;
 
-        public TxLoop(TxContext context, Req req)
+        public KayakCodeTransactionInterface(IHttpServerTransaction transaction, IHttpServerTransactionDelegate del)
         {
-            this.context = context;
-            this.req = req;
+            tx = transaction;
+            this.del = del;
         }
 
-        public void Drive(TxCallbacks callbacks, bool keepAlive)
+        public void OnRequest(RequestInfo request)
         {
-            var tx = context.CreateTransaction();
+            // XXX determine based on request info
+            var shouldKeepAlive = false;
 
-            tx.OnRequest(req.Head, keepAlive);
+            del.OnRequest(tx, request.Head, shouldKeepAlive);
+        }
 
-            if (callbacks.PostOnRequest != null)
-                callbacks.PostOnRequest();
+        public void OnRequestData(string data)
+        {
+            del.OnRequestData(tx, new ArraySegment<byte>(Encoding.ASCII.GetBytes(data)), null);
+        }
 
-            if (req.Body != null)
-                req.Body.Each(data =>
-                {
-                    tx.OnRequestData(new ArraySegment<byte>(data), null);
+        public void OnRequestEnd()
+        {
+            del.OnRequestEnd(tx);
+        }
 
-                    if (callbacks.PostOnRequestData != null)
-                        callbacks.PostOnRequestData();
-                });
+        public void OnError(Exception e)
+        {
+            del.OnError(tx, e);
+        }
 
-            tx.OnRequestEnd();
-
-            if (callbacks.PostOnRequestEnd != null)
-                callbacks.PostOnRequestEnd();
+        public void OnEnd()
+        {
+            del.OnEnd(tx);
         }
     }
 
-    public class Req
+    class RequestDelegate : IHttpRequestDelegate
+    {
+        UserCode userCode;
+        UserCodeTransactionInterface userTransactionInterface;
+
+        public RequestDelegate(UserCode userCode, UserCodeTransactionInterface userTransactionInterface)
+        {
+            this.userCode = userCode;
+            this.userTransactionInterface = userTransactionInterface;
+        }
+
+        public void OnRequest(HttpRequestHead head, IDataProducer body, IHttpResponseDelegate response)
+        {
+            userCode.OnRequest(head);
+            userTransactionInterface.SetRequestBodyAndResponseDelegate(body, response);
+        }
+    }
+
+    class Consumer : IDataConsumer
+    {
+        UserCode userCode;
+
+        public Consumer(UserCode userCode)
+        {
+            this.userCode = userCode;
+        }
+
+        public void OnError(Exception e)
+        {
+            userCode.OnError(e);
+        }
+
+        public bool OnData(ArraySegment<byte> data, Action continuation)
+        {
+            userCode.OnData(Encoding.ASCII.GetString(data.Array, data.Offset, data.Count));
+            return false;
+        }
+
+        public void OnEnd()
+        {
+            userCode.OnEnd();
+        }
+    }
+
+    class RequestInfo
     {
         public HttpRequestHead Head;
-        public DataBuffer Body;
+        public IEnumerable<string> Data;
+        public Exception Exception;
     }
 
-    class TxCallbacks
+    class ResponseInfo
     {
-        public Action OnRequest;
-        public Action PostOnRequest;
-        public Action OnRequestData;
-        public Action PostOnRequestData;
-        public Action OnRequestDataEnd;
-        public Action PostOnRequestEnd;
+        public HttpResponseHead Head;
+        public IEnumerable<string> Data;
+        public Exception Exception;
     }
 
-    class ReqBody
+    [TestFixture]
+    class HttpServerTransactionDelegateTests
     {
-        BodyOptions Options;
-        public DataBuffer Data;
-    }
+        IHttpServerTransaction transaction;
+        KayakCodeTransactionInterface kayakTransactionInterface;
+        UserCode userCode;
+        UserCodeTransactionInterface userTransactionInterface;
 
-    public enum BodyOptions
-    {
-        None,
-        NoHeaderIndications,
-        TransferEncodingChunked,
-        TransferEncodingNotChunked,
-        ContentLength
+        [Test]
+        public void Single_request_no_body()
+        {
+        }
+
+        [Test]
+        public void Multiple_requests_no_body()
+        {
+        }
+
+        [Test]
+        public void Single_request_with_body()
+        {
+            userCode = new UserCode();
+            var transaction = new MockTransaction();
+            userTransactionInterface = new UserCodeTransactionInterface(userCode);
+            var requestDelegate = new RequestDelegate(userCode, userTransactionInterface);
+            var transactionDelegate = new HttpServerTransactionDelegate(requestDelegate);
+            kayakTransactionInterface = new KayakCodeTransactionInterface(transaction, transactionDelegate);
+
+            var request = new RequestInfo()
+            {
+                Head = new HttpRequestHead()
+                {
+                    Version = new Version(1, 0)
+                },
+                Data = new[] { "hello ", "world." }
+            };
+
+            kayakTransactionInterface.OnRequest(request);
+
+            foreach (var chunk in request.Data)
+                kayakTransactionInterface.OnRequestData(chunk);
+
+            kayakTransactionInterface.OnRequestEnd();
+
+            kayakTransactionInterface.OnEnd();
+
+            userTransactionInterface.ConnectRequestBody();
+
+            var response = new ResponseInfo()
+            {
+                Head = new HttpResponseHead()
+            };
+
+            userTransactionInterface.Respond(response);
+
+            response.Head.Headers = new Dictionary<string, string>();
+            response.Head.Headers["Connection"] = "close";
+
+            userCode.AssertRequests(new List<RequestInfo>(new[] { request }));
+            transaction.AssertResponses(new List<ResponseInfo>(new[] { response }));
+        }
+
+        [Test]
+        public void Multiple_requests_with_body()
+        {
+        }
     }
 }

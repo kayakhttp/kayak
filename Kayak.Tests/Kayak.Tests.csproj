@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -11,7 +11,6 @@
     <RootNamespace>Kayak.Tests</RootNamespace>
     <AssemblyName>Kayak.Tests</AssemblyName>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <MapFileExtensions>true</MapFileExtensions>
     <ApplicationRevision>0</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
@@ -39,23 +38,17 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Core">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="nunit.framework, Version=2.5.10.11092, Culture=neutral, PublicKeyToken=96d09a1eb7f44a77">
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="System.Core" />
+    <Reference Include="nunit.framework">
       <HintPath>..\packages\NUnit.2.5.10.11092\lib\nunit.framework.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Config.cs" />
-    <Compile Include="Http\Parsing\HttpResponseDelegateTests.cs" />
     <Compile Include="Http\HttpServerTransactionDelegateTests.cs" />
     <Compile Include="Http\Mocks.cs" />
-    <Compile Include="Http\OutputSegmentQueueTests.cs" />
     <Compile Include="Http\Parsing\ParserToTransactionTransformTests.cs" />
     <Compile Include="Http\TestRequest.cs" />
-    <Compile Include="Net\DataBuffer.cs" />
     <Compile Include="Net\Delegates\SchedulerDelegate.cs" />
     <Compile Include="Net\Delegates\ServerDelegate.cs" />
     <Compile Include="Net\ManualResetEventSlip.cs" />

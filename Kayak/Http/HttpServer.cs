@@ -32,20 +32,18 @@ namespace Kayak.Http
     class HttpServerDelegate : IServerDelegate
     {
         IHttpRequestDelegate requestDelegate;
-        IHttpResponseDelegateFactory responseFactory;
 
         public HttpServerDelegate(IHttpRequestDelegate requestDelegate)
         {
             this.requestDelegate = requestDelegate;
-            this.responseFactory = new HttpResponseDelegateFactory();
         }
 
         public ISocketDelegate OnConnection(IServer server, ISocket socket)
         {
             // XXX freelist
-            var txDel = new HttpServerTransactionDelegate(socket.RemoteEndPoint.Address, responseFactory, requestDelegate);
-            var socketDelegate = new HttpServerSocketDelegate(txDel);
-            socketDelegate.Start(socket);
+            var tx = new HttpServerTransaction(socket);
+            var txDel = new HttpServerTransactionDelegate(requestDelegate);
+            var socketDelegate = new HttpServerSocketDelegate(tx, txDel);
             return socketDelegate;
         }
 

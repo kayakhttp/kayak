@@ -7,15 +7,6 @@ using System.Diagnostics;
 
 namespace Kayak.Http
 {
-    interface IHttpServerTransactionDelegate : IObservable<IDataProducer>
-    {
-        void OnRequest(HttpRequestHead request, bool shouldKeepAlive);
-        bool OnRequestData(ArraySegment<byte> data, Action continuation);
-        void OnRequestEnd();
-        void OnError(Exception e);
-        void OnEnd();
-    }
-
     // adapts synchronous parser events to asynchronous "socket-like" events.
     // 
     // in so doing it introduces the backpressure mechanism to support the 
@@ -34,10 +25,12 @@ namespace Kayak.Http
     class ParserToTransactionTransform : IHighLevelParserDelegate
     {
         ParserEventQueue queue;
+        IHttpServerTransaction transaction;
         IHttpServerTransactionDelegate transactionDelegate;
 
-        public ParserToTransactionTransform(IHttpServerTransactionDelegate transactionDelegate)
+        public ParserToTransactionTransform(IHttpServerTransaction transaction, IHttpServerTransactionDelegate transactionDelegate)
         {
+            this.transaction = transaction;
             this.transactionDelegate = transactionDelegate;
             queue = new ParserEventQueue();
         }
@@ -66,7 +59,7 @@ namespace Kayak.Http
                 switch (e.Type)
                 {
                     case ParserEventType.RequestHeaders:
-                        transactionDelegate.OnRequest(new HttpRequestHead() { 
+                        transactionDelegate.OnRequest(transaction, new HttpRequestHead() { 
                             Method = e.Request.Method,
                             Uri = e.Request.Uri,
                             Path = e.Request.Path,
@@ -78,12 +71,12 @@ namespace Kayak.Http
                         break;
                     case ParserEventType.RequestBody:
                         if (!queue.HasEvents)
-                            return transactionDelegate.OnRequestData(e.Data, continuation);
+                            return transactionDelegate.OnRequestData(transaction, e.Data, continuation);
 
-                        transactionDelegate.OnRequestData(e.Data, null);
+                        transactionDelegate.OnRequestData(transaction, e.Data, null);
                         break;
                     case ParserEventType.RequestEnded:
-                        transactionDelegate.OnRequestEnd();
+                        transactionDelegate.OnRequestEnd(transaction);
                         break;
                 }
             }
