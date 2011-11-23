@@ -31,9 +31,9 @@ namespace Kayak.Http
             AddXFF(request, transaction.RemoteEndPoint);
 
             var expectContinue = request.IsContinueExpected();
-            var prohibitResponseBody = request.Method != null && request.Method.ToUpperInvariant() == "HEAD";
+            var ignoreResponseBody = request.Method != null && request.Method.ToUpperInvariant() == "HEAD";
 
-            currentContext = new TransactionContext(expectContinue, prohibitResponseBody, shouldKeepAlive);
+            currentContext = new TransactionContext(expectContinue, ignoreResponseBody, shouldKeepAlive);
 
             if (lastSegment == null)
                 currentContext.Segment.AttachTransaction(transaction);
@@ -73,13 +73,17 @@ namespace Kayak.Http
             public DataSubject RequestBody;
             public ResponseSegment Segment;
             
-            bool expectContinue, prohibitResponseBody, shouldKeepAlive;
+            bool expectContinue, ignoreResponseBody, shouldKeepAlive;
             bool gotConnectRequestBody, gotOnResponse;
 
-            public TransactionContext(bool expectContinue, bool prohibitResponseBody, bool shouldKeepAlive)
+            public TransactionContext(bool expectContinue, bool ignoreResponseBody, bool shouldKeepAlive)
             {
                 RequestBody = new DataSubject(ConnectRequestBody);
                 Segment = new ResponseSegment();
+
+                this.expectContinue = expectContinue;
+                this.ignoreResponseBody = ignoreResponseBody;
+                this.shouldKeepAlive = shouldKeepAlive;
             }
 
             IDisposable ConnectRequestBody()
@@ -115,7 +119,7 @@ namespace Kayak.Http
                     head.Headers["Connection"] = "close";
                 }
 
-                Segment.WriteResponse(head, body);
+                Segment.WriteResponse(head, ignoreResponseBody ? null : body);
             }
         }
 
