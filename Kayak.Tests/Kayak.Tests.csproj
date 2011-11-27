@@ -49,6 +49,14 @@
     <Compile Include="Http\Mocks.cs" />
     <Compile Include="Http\Parsing\ParserToTransactionTransformTests.cs" />
     <Compile Include="Http\TestRequest.cs" />
+    <Compile Include="Http\Transaction\RequestAccumulator.cs" />
+    <Compile Include="Http\Transaction\RequestBodyConsumer.cs" />
+    <Compile Include="Http\Transaction\RequestCallbacker.cs" />
+    <Compile Include="Http\Transaction\RequestDelegate.cs" />
+    <Compile Include="Http\Transaction\ResponseAccumulator.cs" />
+    <Compile Include="Http\Transaction\SimpleSubject.cs" />
+    <Compile Include="Http\Transaction\TransactionInput.cs" />
+    <Compile Include="Http\Transaction\UserKayakAdapter.cs" />
     <Compile Include="Net\Delegates\SchedulerDelegate.cs" />
     <Compile Include="Net\Delegates\ServerDelegate.cs" />
     <Compile Include="Net\ManualResetEventSlip.cs" />
@@ -65,6 +73,7 @@
       <Name>Kayak</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <!--
   <Target Name="BeforeBuild">

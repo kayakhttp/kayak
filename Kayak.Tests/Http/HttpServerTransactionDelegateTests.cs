@@ -7,17 +7,19 @@ using NUnit.Framework;
 
 namespace Kayak.Tests.Http
 {
-    interface UserCode
+    // represents all the ways kayak can call user code
+    interface User
     {
-        void OnRequest(KayakCode kayak, HttpRequestHead head);
-        void OnRequestBodyData(KayakCode kayak, string data);
-        void OnRequestBodyError(KayakCode kayak, Exception error);
-        void OnRequestBodyEnd(KayakCode kayak);
-        void ConnectResponseBody(KayakCode kayak);
-        void DisconnectResponseBody(KayakCode kayak);
+        void OnRequest(UserKayak kayak, HttpRequestHead head);
+        void OnRequestBodyData(UserKayak kayak, string data);
+        void OnRequestBodyError(UserKayak kayak, Exception error);
+        void OnRequestBodyEnd(UserKayak kayak);
+        void ConnectResponseBody(UserKayak kayak);
+        void DisconnectResponseBody(UserKayak kayak);
     }
 
-    interface KayakCode
+    // represents all the ways user code can call kayak
+    interface UserKayak
     {
         void OnResponse(HttpResponseHead head);
         void OnResponseBodyData(string data);
@@ -25,327 +27,6 @@ namespace Kayak.Tests.Http
         void OnResponseBodyEnd();
         void ConnectRequestBody();
         void DisconnectRequestBody();
-    }
-
-    class UserCodeCallbacks : UserCode
-    {
-        public Action OnRequestAction;
-        public Action ConnectResponseBodyAction;
-
-        public void OnRequest(KayakCode kayak, HttpRequestHead head)
-        {
-            if (OnRequestAction != null)
-                OnRequestAction();
-        }
-
-        public void OnRequestBodyData(KayakCode kayak, string data)
-        {
-        }
-
-        public void OnRequestBodyError(KayakCode kayak, Exception error)
-        {
-        }
-
-        public void OnRequestBodyEnd(KayakCode kayak)
-        {
-        }
-
-        public void ConnectResponseBody(KayakCode kayak)
-        {
-            if (ConnectResponseBodyAction != null)
-                ConnectResponseBodyAction();
-        }
-
-        public void DisconnectResponseBody(KayakCode kayak)
-        {
-        }
-    }
-
-
-    class RequestAccumulator : UserCode
-    {
-        UserCode next;
-        List<RequestInfo> receivedRequests = new List<RequestInfo>();
-        RequestInfo current;
-
-        public RequestAccumulator(UserCode next)
-        {
-            this.next = next;
-        }
-
-        public void OnRequest(KayakCode kayak, HttpRequestHead head)
-        {
-            current = new RequestInfo() { Head = head, Data = Enumerable.Empty<string>() };
-            next.OnRequest(kayak, head);
-        }
-
-        public void OnRequestBodyData(KayakCode kayak, string data)
-        {
-            current.Data = current.Data.Concat(new[] { data });
-            next.OnRequestBodyData(kayak, data);
-        }
-
-        public void OnRequestBodyError(KayakCode kayak, Exception error)
-        {
-            current.Exception = error;
-            next.OnRequestBodyError(kayak, error);
-        }
-
-        public void OnRequestBodyEnd(KayakCode kayak)
-        {
-            if (current.Exception != null) throw new Exception("got end after exception");
-
-            receivedRequests.Add(current);
-            current = null;
-            next.OnRequestBodyEnd(kayak);
-        }
-
-        public void AssertRequests(List<RequestInfo> expectedRequests)
-        {
-            for (int i = 0; i < expectedRequests.Count; i++)
-            {
-                if (receivedRequests.Count == i)
-                    Assert.Fail("received fewer requests than expected");
-
-                var received = receivedRequests[i];
-                var expected = expectedRequests[i];
-                Assert.That(received.Head.ToString(), Is.EqualTo(expected.Head.ToString()));
-                Assert.That(received.Exception, Is.EqualTo(expected.Exception));
-                Assert.That(received.Data, Is.EqualTo(expected.Data));
-            }
-        }
-
-        public void ConnectResponseBody(KayakCode kayak)
-        {
-            next.ConnectResponseBody(kayak);
-        }
-
-        public void DisconnectResponseBody(KayakCode kayak)
-        {
-            next.DisconnectResponseBody(kayak);
-        }
-    }
-
-    class MockTransaction : IHttpServerTransaction
-    {
-        List<ResponseInfo> receivedResponses = new List<ResponseInfo>();
-        ResponseInfo current;
-        IEnumerable<string> currentData;
-
-        public bool GotEnd;
-        public bool GotDispose;
-
-        public System.Net.IPEndPoint RemoteEndPoint
-        {
-            get { return null; }
-        }
-
-        public void OnResponse(HttpResponseHead response)
-        {
-            current = new ResponseInfo()
-            {
-                Head = response
-            };
-        }
-
-        public bool OnResponseData(ArraySegment<byte> data, Action continuation)
-        {
-            if (currentData == null)
-                currentData = Enumerable.Empty<string>();
-
-            currentData = currentData.Concat(new[] { Encoding.ASCII.GetString(data.Array, data.Offset, data.Count) });
-            return false;
-        }
-
-        public void OnResponseEnd()
-        {
-            var theData = currentData;
-            current.Data = theData;
-            receivedResponses.Add(current);
-        }
-
-        public void OnEnd()
-        {
-            if (GotEnd) throw new Exception("Got end already");
-            GotEnd = true;
-        }
-
-        public void Dispose()
-        {
-            if (GotDispose) throw new Exception("Got dispose already");
-            GotDispose = true;
-        }
-
-        public void AssertResponses(List<ResponseInfo> expectedResponses)
-        {
-            for (int i = 0; i < expectedResponses.Count; i++)
-            {
-                if (receivedResponses.Count == i)
-                    Assert.Fail("Received fewer responses than expected.");
-
-                var received = receivedResponses[i];
-                var expected = expectedResponses[i];
-
-                Assert.That(received.Head.ToString(), Is.EqualTo(expected.Head.ToString()));
-                Assert.That(received.Exception, Is.EqualTo(expected.Exception));
-                Assert.That(received.Data, Is.EqualTo(expected.Data));
-            }
-        }
-    }
-
-    class UserCodeTransactionInterface : KayakCode
-    {
-        UserCode userCode;
-        IDisposable disconnect;
-        IDataProducer requestBody;
-
-        IHttpResponseDelegate responseDelegate;
-
-        public UserCodeTransactionInterface(UserCode userCode)
-        {
-            this.userCode = userCode;
-        }
-
-        public void SetRequestBodyAndResponseDelegate(IDataProducer requestBody, IHttpResponseDelegate responseDelegate)
-        {
-            this.requestBody = requestBody;
-            this.responseDelegate = responseDelegate;
-            this.disconnect = null;
-        }
-
-        public void ConnectRequestBody()
-        {
-            var consumer = new MockDataConsumer()
-            {
-                OnDataAction = data => userCode.OnRequestBodyData(this, Encoding.ASCII.GetString(data.Array, data.Offset, data.Count)),
-                OnEndAction = () => userCode.OnRequestBodyEnd(this)
-            };
-
-            if (disconnect != null) throw new Exception("got connect and disconnect was not null");
-            disconnect = requestBody.Connect(consumer);
-        }
-
-        public void DisconnectRequestBody()
-        {
-            disconnect.Dispose();
-        }
-
-        SimpleSubject subject;
-
-        public void OnResponse(HttpResponseHead head)
-        {
-            subject = new SimpleSubject(
-                () => userCode.ConnectResponseBody(this), 
-                () => userCode.DisconnectResponseBody(this));
-
-            responseDelegate.OnResponse(head, subject);
-        }
-
-        public void OnResponseBodyData(string data)
-        {
-            subject.OnData(new ArraySegment<byte>(Encoding.ASCII.GetBytes(data)), null);
-        }
-
-        public void OnResponseBodyError(Exception error)
-        {
-            subject.OnError(error);
-        }
-
-        public void OnResponseBodyEnd()
-        {
-            subject.OnEnd();
-        }
-    }
-
-    class KayakCodeTransactionInterface
-    {
-        IHttpServerTransactionDelegate del; // XXX obtain
-        IHttpServerTransaction tx;
-
-        public KayakCodeTransactionInterface(IHttpServerTransaction transaction, IHttpServerTransactionDelegate del)
-        {
-            tx = transaction;
-            this.del = del;
-        }
-
-        public void OnRequest(RequestInfo request)
-        {
-            // XXX determine based on request info
-            var shouldKeepAlive = false;
-
-            del.OnRequest(tx, request.Head, shouldKeepAlive);
-        }
-
-        public void OnRequestData(string data)
-        {
-            del.OnRequestData(tx, new ArraySegment<byte>(Encoding.ASCII.GetBytes(data)), null);
-        }
-
-        public void OnRequestEnd()
-        {
-            del.OnRequestEnd(tx);
-        }
-
-        public void OnError(Exception e)
-        {
-            del.OnError(tx, e);
-        }
-
-        public void OnEnd()
-        {
-            del.OnEnd(tx);
-        }
-
-        public void OnClose()
-        {
-            del.OnClose(tx);
-        }
-    }
-
-    class RequestDelegate : IHttpRequestDelegate
-    {
-        UserCode userCode;
-        UserCodeTransactionInterface userTransactionInterface;
-
-        public RequestDelegate(UserCode userCode, UserCodeTransactionInterface userTransactionInterface)
-        {
-            this.userCode = userCode;
-            this.userTransactionInterface = userTransactionInterface;
-        }
-
-        public void OnRequest(HttpRequestHead head, IDataProducer body, IHttpResponseDelegate response)
-        {
-            userTransactionInterface.SetRequestBodyAndResponseDelegate(body, response);
-            userCode.OnRequest(userTransactionInterface, head);
-        }
-    }
-
-    class Consumer : IDataConsumer
-    {
-        UserCode userCode;
-        KayakCode kayak;
-
-        public Consumer(UserCode userCode, KayakCode kayak)
-        {
-            this.userCode = userCode;
-            this.kayak = kayak;
-        }
-
-        public void OnError(Exception e)
-        {
-            userCode.OnRequestBodyError(kayak, e);
-        }
-
-        public bool OnData(ArraySegment<byte> data, Action continuation)
-        {
-            userCode.OnRequestBodyData(kayak, Encoding.ASCII.GetString(data.Array, data.Offset, data.Count));
-            return false;
-        }
-
-        public void OnEnd()
-        {
-            userCode.OnRequestBodyEnd(kayak);
-        }
     }
 
     class RequestInfo
@@ -365,125 +46,252 @@ namespace Kayak.Tests.Http
     [TestFixture]
     class HttpServerTransactionDelegateTests
     {
-        UserCodeCallbacks userCodeCallbacks;
-        MockTransaction mockTransaction;
-        KayakCodeTransactionInterface kayakTransactionInterface;
+        RequestCallbacker requestCallbacker;
         RequestAccumulator requestAccumulator;
-        UserCodeTransactionInterface userTransactionInterface;
+
+        ResponseAccumulator responseAccumulator;
+        TransactionInput transactionInput;
+
+        Queue<Action> postedActions;
 
         [SetUp]
         public void SetUp()
         {
-            userCodeCallbacks = new UserCodeCallbacks();
-            requestAccumulator = new RequestAccumulator(userCodeCallbacks);
-            var transaction = new MockTransaction();
-            userTransactionInterface = new UserCodeTransactionInterface(requestAccumulator);
-            var requestDelegate = new RequestDelegate(requestAccumulator, userTransactionInterface);
+            requestCallbacker = new RequestCallbacker();
+            requestAccumulator = new RequestAccumulator(requestCallbacker);
+            var requestDelegate = new RequestDelegate(requestAccumulator);
             var transactionDelegate = new HttpServerTransactionDelegate(requestDelegate);
-            kayakTransactionInterface = new KayakCodeTransactionInterface(transaction, transactionDelegate);
+            responseAccumulator = new ResponseAccumulator();
+            transactionInput = new TransactionInput(responseAccumulator, transactionDelegate);
+
+            postedActions = new Queue<Action>();
         }
 
-
-        [Test]
-        public void Single_request_no_body()
+        public class InputOutput
         {
-        }
+            public string Name;
+            public IEnumerable<RequestInfo> Requests;
+            public IEnumerable<ResponseInfo> UserResponses;
+            public IEnumerable<ResponseInfo> ExpectedResponses;
 
-        [Test]
-        public void Multiple_requests_no_body()
-        {
-        }
-
-        [Test]
-        public void Single_request_with_body()
-        {
-            var request = new RequestInfo()
+            public override string ToString()
             {
-                Head = new HttpRequestHead()
+                return Name;
+            }
+
+            class Request
+            {
+                public static RequestInfo OneOhKeepAliveWithBody = new RequestInfo()
                 {
-                    Version = new Version(1, 0)
-                },
-                Data = new[] { "hello ", "world." }
-            };
+                    Head = new HttpRequestHead()
+                    {
+                        Version = new Version(1, 0),
+                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                    {
+                        { "Connection", "keep-alive" }
+                    }
+                    },
+                    Data = new[] { "hello ", "world." }
+                };
 
-            IEnumerable<string> responseData = new[] { "yo", "dawg." };
-            var response = new ResponseInfo()
+                public static RequestInfo OneOhWithBody = new RequestInfo()
+                {
+                    Head = new HttpRequestHead()
+                    {
+                        Version = new Version(1, 0),
+                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                    {
+                        { "X-Foo", "bar" }
+                    }
+                    },
+                    Data = new[] { "hello ", "world!" }
+                };
+            }
+
+            class Response
             {
-                Head = new HttpResponseHead(),
-                Data = responseData
-            };
+                public static ResponseInfo TwoHundredOKWithBody = new ResponseInfo()
+                {
+                    Head = new HttpResponseHead()
+                    {
+                        Status = "200 OK"
+                    },
+                    Data = new[] { "yo ", "dawg." }
+                };
 
-            userCodeCallbacks.OnRequestAction = () =>
+                public static ResponseInfo TwoHundredOKConnectionCloseWithBody = new ResponseInfo()
+                {
+                    Head = new HttpResponseHead()
+                    {
+                        Status = "200 OK",
+                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
+                        {
+                            { "Connection", "close" }
+                        }
+                    },
+                    Data = new[] { "yo ", "dawg." }
+                };
+            }
+
+            public static IEnumerable<InputOutput> GetValues()
             {
-                userTransactionInterface.OnResponse(response.Head);
-                userTransactionInterface.ConnectRequestBody();
-            };
+                yield return new InputOutput()
+                {
+                    Name = "1.0 single request response",
+                    Requests = new[] { Request.OneOhWithBody },
+                    UserResponses = new[] { Response.TwoHundredOKWithBody },
+                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody }.Select(r =>
+                    {
+                        r.Head.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+                        r.Head.Headers["Connection"] = "close";
+                        return r;
+                    })
+                };
 
-            userCodeCallbacks.ConnectResponseBodyAction = () =>
+                yield return new InputOutput()
+                {
+                    Name = "1.0 two request response",
+                    Requests = new[] { Request.OneOhKeepAliveWithBody, Request.OneOhWithBody },
+                    UserResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKWithBody },
+                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKConnectionCloseWithBody }
+                };
+            }
+        }
+
+        IEnumerable<Action> GetInputActions(IEnumerable<RequestInfo> requests, TransactionInput txInput)
+        {
+            foreach (var request in requests)
             {
-                foreach (var data in responseData)
-                    userTransactionInterface.OnResponseBodyData(data);
+                yield return () => transactionInput.OnRequest(request);
 
-                userTransactionInterface.OnResponseBodyEnd();
-            };
+                foreach (var chunk in request.Data)
+                    yield return () => transactionInput.OnRequestData(chunk);
 
-            kayakTransactionInterface.OnRequest(request);
+                yield return () => transactionInput.OnRequestEnd();
 
-            foreach (var chunk in request.Data)
-                kayakTransactionInterface.OnRequestData(chunk);
+            }
 
-            kayakTransactionInterface.OnRequestEnd();
+            yield return () => transactionInput.OnEnd();
+            yield return () => transactionInput.OnClose();
+        }
 
-            kayakTransactionInterface.OnEnd();
-            kayakTransactionInterface.OnClose();
+        void Post(Action action, bool defer)
+        {
+            if (defer)
+                postedActions.Enqueue(action);
+            else action();
+        }
 
-            response.Head.Headers = new Dictionary<string, string>();
-            response.Head.Headers["Connection"] = "close";
+        IEnumerable<Action> GetPostedActions()
+        {
+            while (true)
+            {
+                if (postedActions.Count == 0)
+                    yield return null;
+                else
+                    yield return postedActions.Dequeue();
+            }
+        }
 
-            requestAccumulator.AssertRequests(new List<RequestInfo>(new[] { request }));
-            mockTransaction.AssertResponses(new List<ResponseInfo>(new[] { response }));
-            Assert.That(mockTransaction.GotEnd, Is.True);
-            Assert.That(mockTransaction.GotDispose, Is.True);
+        IEnumerable<Action> Interleave(params IEnumerator<Action>[] sources)
+        {
+            var done = new List<IEnumerator<Action>>();
+
+            while (true)
+            {
+                bool didSomething = false;
+
+                foreach (var source in sources)
+                {
+                    if (source.MoveNext())
+                    {
+                        var a = source.Current;
+
+                        if (a != null)
+                        {
+                            didSomething = true;
+                            yield return a;
+                        }
+                        else
+                            done.Add(source);
+                    }
+                    else
+                        done.Add(source);
+                }
+
+                if (!didSomething)
+                    yield break;
+            }
+
+        }
+
+        void Drive(IEnumerable<Action> actions)
+        {
+            foreach (var a in actions)
+                a();
         }
 
         [Test]
-        public void Multiple_requests_with_body()
+        public void Transaction_tests(
+            [Values(true, false)] bool respondOnRequestBodyEnd,
+            [Values(true, false)] bool deferConnectRequestBody, 
+            [Values(true, false)] bool deferOnResponse, 
+            [Values(true, false)] bool deferResponseBody,
+            [ValueSource(typeof(InputOutput), "GetValues")] InputOutput inputOutput)
         {
+            var requests = inputOutput.Requests;
+            var responses = inputOutput.UserResponses;
+            var expectedResponses = inputOutput.ExpectedResponses;
+
+            var responseEnumerator = Enumerable.Empty<ResponseInfo>().Concat(responses).GetEnumerator();
+            ResponseInfo currentResponse = null;
+
+            Action<UserKayak> onResponse = kayak =>
+            {
+                responseEnumerator.MoveNext();
+                currentResponse = responseEnumerator.Current;
+
+                Post(() => kayak.OnResponse(currentResponse.Head), deferOnResponse);
+            };
+
+            // this is invariant
+            requestCallbacker.OnRequestAction = kayak =>
+            {
+                Post(() => kayak.ConnectRequestBody(), deferConnectRequestBody);
+
+                if (!respondOnRequestBodyEnd)
+                    onResponse(kayak);
+            };
+
+            if (respondOnRequestBodyEnd)
+                requestCallbacker.OnRequestBodyEndAction = onResponse;
+
+            requestCallbacker.ConnectResponseBodyAction = kayak =>
+            {
+                var responseDataEnumerator = currentResponse.Data.GetEnumerator();
+                Action send = null;
+                send = () =>
+                {
+                    if (responseDataEnumerator.MoveNext())
+                    {
+                        kayak.OnResponseBodyData(responseDataEnumerator.Current);
+                        Post(send, deferResponseBody);
+                    }
+                    else
+                        kayak.OnResponseBodyEnd();
+                };
+
+                Post(send, deferResponseBody);
+            };
+
+            Drive(Interleave(GetInputActions(requests, transactionInput).GetEnumerator(), GetPostedActions().GetEnumerator()));
+
+            requestAccumulator.AssertRequests(requests);
+            responseAccumulator.AssertResponses(expectedResponses);
+
+            Assert.That(responseAccumulator.GotEnd, Is.True);
+            Assert.That(responseAccumulator.GotDispose, Is.True);
         }
     }
 
-    public class SimpleSubject : IDataConsumer, IDataProducer
-    {
-        IDataConsumer consumer;
-        Action disconnect;
-        Action connect;
-
-        public SimpleSubject(Action connect, Action disconnect)
-        {
-            this.connect = connect;
-            this.disconnect = disconnect;
-        }
-
-        public void OnError(Exception e)
-        {
-            consumer.OnError(e);
-        }
-
-        public bool OnData(ArraySegment<byte> data, Action continuation)
-        {
-            return consumer.OnData(data, continuation);
-        }
-
-        public void OnEnd()
-        {
-            consumer.OnEnd();
-        }
-
-        public IDisposable Connect(IDataConsumer channel)
-        {
-            this.consumer = channel;
-            connect();
-            return new Disposable(disconnect);
-        }
-    }
 }

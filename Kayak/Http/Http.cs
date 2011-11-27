@@ -28,6 +28,15 @@ namespace Kayak.Http
     {
         public string Status;
         public IDictionary<string, string> Headers;
+
+
+        public override string ToString()
+        {
+            return string.Format("{0}\r\n{1}\r\n", Status,
+                Headers != null
+                    ? Headers.Aggregate("", (acc, kv) => acc += string.Format("{0}: {1}\r\n", kv.Key, kv.Value))
+                    : "");
+        }
     }
 
     public interface IHttpServerFactory
