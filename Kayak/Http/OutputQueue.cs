@@ -23,8 +23,7 @@ namespace Kayak.Http
 
         public void WriteContinue()
         {
-            if (gotResponse) throw new InvalidOperationException("WriteResponse was previously called.");
-            gotResponse = true;
+            if (gotResponse) return;
 
             if (gotContinue) throw new InvalidOperationException("WriteContinue was previously called.");
             gotContinue = true;

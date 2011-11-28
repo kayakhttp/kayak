@@ -8,14 +8,14 @@ namespace Kayak.Tests.Http
 {
     class RequestCallbacker : User
     {
-        public Action<UserKayak> OnRequestAction;
+        public Action<UserKayak, HttpRequestHead> OnRequestAction;
         public Action<UserKayak> OnRequestBodyEndAction;
         public Action<UserKayak> ConnectResponseBodyAction;
 
         public void OnRequest(UserKayak kayak, HttpRequestHead head)
         {
             if (OnRequestAction != null)
-                OnRequestAction(kayak);
+                OnRequestAction(kayak, head);
         }
 
         public void OnRequestBodyData(UserKayak kayak, string data)

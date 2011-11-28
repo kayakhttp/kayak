@@ -57,7 +57,11 @@ namespace Kayak.Tests.Http
                 var received = receivedRequests[i];
                 Assert.That(received.Head.ToString(), Is.EqualTo(expected.Head.ToString()));
                 Assert.That(received.Exception, Is.EqualTo(expected.Exception));
-                Assert.That(received.Data.Aggregate("", (acc, x) => acc += x), Is.EqualTo(expected.Data.Aggregate("", (acc, x) => acc += x)));
+                
+                if (expected.Data == null)
+                    Assert.That(received.Data, Is.Null.Or.Empty);
+                else
+                    Assert.That(received.Data.Aggregate("", (acc, x) => acc += x), Is.EqualTo(expected.Data.Aggregate("", (acc, x) => acc += x)));
 
                 i++;
             }

@@ -29,14 +29,14 @@ namespace Kayak.Tests.Http
         void DisconnectRequestBody();
     }
 
-    class RequestInfo
+    public class RequestInfo
     {
         public HttpRequestHead Head;
         public IEnumerable<string> Data;
         public Exception Exception;
     }
 
-    class ResponseInfo
+    public class ResponseInfo
     {
         public HttpResponseHead Head;
         public IEnumerable<string> Data;
@@ -87,9 +87,9 @@ namespace Kayak.Tests.Http
                     {
                         Version = new Version(1, 0),
                         Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                    {
-                        { "Connection", "keep-alive" }
-                    }
+                        {
+                            { "Connection", "keep-alive" }
+                        }
                     },
                     Data = new[] { "hello ", "world." }
                 };
@@ -100,16 +100,49 @@ namespace Kayak.Tests.Http
                     {
                         Version = new Version(1, 0),
                         Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                        {
+                            { "X-Foo", "bar" }
+                        }
+                    },
+                    Data = new[] { "hello ", "world!" }
+                };
+
+                public static RequestInfo OneOneNoBody = new RequestInfo()
+                {
+                    Head = new HttpRequestHead()
                     {
-                        { "X-Foo", "bar" }
+                        Version = new Version(1, 1),
+                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                        {
+                            { "X-Foo", "bar" }
+                        }
                     }
+                };
+
+                public static RequestInfo OneOneExpectContinueWithBody = new RequestInfo()
+                {
+                    Head = new HttpRequestHead()
+                    {
+                        Version = new Version(1, 1),
+                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                        {
+                            { "Expect", "100-continue" }
+                        }
                     },
                     Data = new[] { "hello ", "world!" }
                 };
             }
 
-            class Response
+            public class Response
             {
+                public static ResponseInfo OneHundredContinue = new ResponseInfo()
+                {
+                    Head = new HttpResponseHead()
+                    {
+                        Status = "100 Continue"
+                    }
+                };
+
                 public static ResponseInfo TwoHundredOKWithBody = new ResponseInfo()
                 {
                     Head = new HttpResponseHead()
@@ -155,6 +188,30 @@ namespace Kayak.Tests.Http
                     UserResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKWithBody },
                     ExpectedResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKConnectionCloseWithBody }
                 };
+
+                yield return new InputOutput()
+                {
+                    Name = "1.1 single request response",
+                    Requests = new[] { Request.OneOneNoBody },
+                    UserResponses = new[] { Response.TwoHundredOKWithBody },
+                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody }
+                };
+
+                yield return new InputOutput()
+                {
+                    Name = "1.1 two request response",
+                    Requests = new[] { Request.OneOneNoBody, Request.OneOneNoBody },
+                    UserResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKWithBody },
+                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKWithBody }
+                };
+
+                yield return new InputOutput()
+                {
+                    Name = "1.1 request with body response with body",
+                    Requests = new[] { Request.OneOneExpectContinueWithBody },
+                    UserResponses = new[] { Response.TwoHundredOKWithBody },
+                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody }
+                };
             }
         }
 
@@ -164,8 +221,9 @@ namespace Kayak.Tests.Http
             {
                 yield return () => transactionInput.OnRequest(request);
 
-                foreach (var chunk in request.Data)
-                    yield return () => transactionInput.OnRequestData(chunk);
+                if (request.Data != null)
+                    foreach (var chunk in request.Data)
+                        yield return () => transactionInput.OnRequestData(chunk);
 
                 yield return () => transactionInput.OnRequestEnd();
 
@@ -175,11 +233,9 @@ namespace Kayak.Tests.Http
             yield return () => transactionInput.OnClose();
         }
 
-        void Post(Action action, bool defer)
+        void Post(Action action)
         {
-            if (defer)
-                postedActions.Enqueue(action);
-            else action();
+            postedActions.Enqueue(action);
         }
 
         IEnumerable<Action> GetPostedActions()
@@ -231,18 +287,72 @@ namespace Kayak.Tests.Http
                 a();
         }
 
+        public enum CallKayakWhen
+        {
+            OnRequest,
+            AfterOnRequest,
+            OnRequestBodyData,
+            AfterOnRequestBodyData,
+            OnRequestBodyError,
+            AfterOnRequestBodyError,
+            OnRequestBodyEnd,
+            AfterOnRequestBodyEnd,
+            ConnectResponseBody,
+            AfterConnectResponseBody,
+            DisconnectResponseBody,
+            AfterDisconnectResponseBody
+        }
+
         [Test]
         public void Transaction_tests(
-            [Values(true, false)] bool respondOnRequestBodyEnd,
-            [Values(true, false)] bool deferConnectRequestBody, 
-            [Values(true, false)] bool deferOnResponse, 
-            [Values(true, false)] bool deferResponseBody,
+            [Values(
+                CallKayakWhen.OnRequest, 
+                CallKayakWhen.AfterOnRequest,
+                //CallKayakWhen.OnRequestBodyData,
+                //CallKayakWhen.AfterOnRequestBodyData,
+                CallKayakWhen.OnRequestBodyEnd,
+                CallKayakWhen.AfterOnRequestBodyEnd//,
+                //CallKayakWhen.OnRequestBodyError,
+                //CallKayakWhen.AfterOnRequestBodyError
+                )]
+            CallKayakWhen respondWhen,
+
+            [Values(
+                CallKayakWhen.OnRequest,
+                CallKayakWhen.AfterOnRequest,
+                CallKayakWhen.ConnectResponseBody,
+                CallKayakWhen.AfterConnectResponseBody//,
+                //CallKayakWhen.DisconnectResponseBody,
+                //CallKayakWhen.AfterDisconnectResponseBody
+                )] 
+            CallKayakWhen connectRequestBodyWhen,
+            [Values(true, false)] bool reverseConnectAndRespondOnRequest,
             [ValueSource(typeof(InputOutput), "GetValues")] InputOutput inputOutput)
         {
+            // some permutations are impossible. for example, it's impossible to ConnectRequestBody
+            // OnConnectResponseBody if OnResponse is invoked during an OnRequestBody event...neither would ever happen.
+            //
+            // it's easier to blacklist impossible ones than to construct a whitelist of possible ones:
+            if (
+                (respondWhen == CallKayakWhen.OnRequestBodyData
+                || respondWhen == CallKayakWhen.AfterOnRequestBodyData
+                || respondWhen == CallKayakWhen.OnRequestBodyError
+                || respondWhen == CallKayakWhen.AfterOnRequestBodyError
+                || respondWhen == CallKayakWhen.OnRequestBodyEnd
+                || respondWhen == CallKayakWhen.AfterOnRequestBodyEnd)
+                &&
+                (connectRequestBodyWhen == CallKayakWhen.ConnectResponseBody
+                || connectRequestBodyWhen == CallKayakWhen.AfterConnectResponseBody
+                || connectRequestBodyWhen == CallKayakWhen.DisconnectResponseBody
+                || connectRequestBodyWhen == CallKayakWhen.AfterDisconnectResponseBody)
+                )
+                Assert.Pass("Permutation being tested is not possible."); 
+
             var requests = inputOutput.Requests;
             var responses = inputOutput.UserResponses;
             var expectedResponses = inputOutput.ExpectedResponses;
 
+            var numResponded = 0;
             var responseEnumerator = Enumerable.Empty<ResponseInfo>().Concat(responses).GetEnumerator();
             ResponseInfo currentResponse = null;
 
@@ -250,24 +360,80 @@ namespace Kayak.Tests.Http
             {
                 responseEnumerator.MoveNext();
                 currentResponse = responseEnumerator.Current;
-
-                Post(() => kayak.OnResponse(currentResponse.Head), deferOnResponse);
+                numResponded++;
+                kayak.OnResponse(currentResponse.Head);
             };
 
-            // this is invariant
-            requestCallbacker.OnRequestAction = kayak =>
+            var continueWillBeSuppressed = (respondWhen == CallKayakWhen.OnRequest && connectRequestBodyWhen == CallKayakWhen.AfterOnRequest)
+                    || connectRequestBodyWhen == CallKayakWhen.ConnectResponseBody
+                    || connectRequestBodyWhen == CallKayakWhen.AfterConnectResponseBody
+                    || (reverseConnectAndRespondOnRequest &&
+                    (
+                        // a couple special cases where reversing the order of the calls will modify the behavior
+                        (respondWhen == CallKayakWhen.OnRequest && connectRequestBodyWhen == CallKayakWhen.OnRequest)
+                        || (respondWhen == CallKayakWhen.AfterOnRequest && connectRequestBodyWhen == CallKayakWhen.AfterOnRequest)
+                    ))
+                    ;
+
+            requestCallbacker.OnRequestAction = (kayak, head) =>
             {
-                Post(() => kayak.ConnectRequestBody(), deferConnectRequestBody);
+                var expectContinue = head.IsContinueExpected();
 
-                if (!respondOnRequestBodyEnd)
-                    onResponse(kayak);
+                if (expectContinue && !continueWillBeSuppressed) { 
+                    expectedResponses = expectedResponses
+                        .Take(numResponded)
+                        .Concat(new[] { InputOutput.Response.OneHundredContinue })
+                        .Concat(expectedResponses.Skip(numResponded));
+                }
+
+                if (reverseConnectAndRespondOnRequest)
+                {
+                    if (respondWhen == CallKayakWhen.OnRequest)
+                        onResponse(kayak);
+
+                    if (respondWhen == CallKayakWhen.AfterOnRequest)
+                        Post(() => onResponse(kayak));
+
+                    if (connectRequestBodyWhen == CallKayakWhen.OnRequest)
+                        kayak.ConnectRequestBody();
+
+                    if (connectRequestBodyWhen == CallKayakWhen.AfterOnRequest)
+                        Post(() => kayak.ConnectRequestBody());
+                }
+                else
+                {
+                    if (connectRequestBodyWhen == CallKayakWhen.OnRequest)
+                        kayak.ConnectRequestBody();
+
+                    if (connectRequestBodyWhen == CallKayakWhen.AfterOnRequest)
+                        Post(() => kayak.ConnectRequestBody());
+
+                    if (respondWhen == CallKayakWhen.OnRequest)
+                        onResponse(kayak);
+
+                    if (respondWhen == CallKayakWhen.AfterOnRequest)
+                        Post(() => onResponse(kayak));
+                }
             };
 
-            if (respondOnRequestBodyEnd)
-                requestCallbacker.OnRequestBodyEndAction = onResponse;
+            requestCallbacker.OnRequestBodyEndAction = kayak =>
+            {
+                if (respondWhen == CallKayakWhen.OnRequestBodyEnd)
+                    onResponse(kayak);
+
+                if (respondWhen == CallKayakWhen.AfterOnRequestBodyEnd)
+                    Post(() => onResponse(kayak));
+            };
 
             requestCallbacker.ConnectResponseBodyAction = kayak =>
             {
+                if (connectRequestBodyWhen == CallKayakWhen.ConnectResponseBody)
+                    kayak.ConnectRequestBody();
+
+                if (connectRequestBodyWhen == CallKayakWhen.AfterConnectResponseBody)
+                    Post(() => kayak.ConnectRequestBody());
+
+                // XXX test sync also
                 var responseDataEnumerator = currentResponse.Data.GetEnumerator();
                 Action send = null;
                 send = () =>
@@ -275,13 +441,13 @@ namespace Kayak.Tests.Http
                     if (responseDataEnumerator.MoveNext())
                     {
                         kayak.OnResponseBodyData(responseDataEnumerator.Current);
-                        Post(send, deferResponseBody);
+                        Post(send);
                     }
                     else
                         kayak.OnResponseBodyEnd();
                 };
 
-                Post(send, deferResponseBody);
+                Post(send);
             };
 
             Drive(Interleave(GetInputActions(requests, transactionInput).GetEnumerator(), GetPostedActions().GetEnumerator()));
@@ -293,5 +459,4 @@ namespace Kayak.Tests.Http
             Assert.That(responseAccumulator.GotDispose, Is.True);
         }
     }
-
 }
