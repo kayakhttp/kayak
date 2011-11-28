@@ -17,7 +17,8 @@ namespace Kayak.Tests.Http
 
         public System.Net.IPEndPoint RemoteEndPoint
         {
-            get { return null; }
+            get;
+            set;
         }
 
         public void OnResponse(HttpResponseHead response)
@@ -39,6 +40,8 @@ namespace Kayak.Tests.Http
 
         public void OnResponseEnd()
         {
+            if (current == null)
+                throw new Exception("Transaction got OnResponseEnd when there was no current response");
             receivedResponses.Add(current);
             current = null;
         }

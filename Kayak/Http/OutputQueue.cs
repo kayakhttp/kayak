@@ -13,7 +13,7 @@ namespace Kayak.Http
 
     class ResponseSegment : ITransactionSegment, /*private*/ IDataConsumer
     {
-        bool gotContinue, gotResponse, finished;
+        bool gotContinue, gotResponse, bodyFinished;
 
         IHttpServerTransaction transaction;
         HttpResponseHead head;
@@ -48,8 +48,7 @@ namespace Kayak.Http
         {
             this.next = next;
 
-            if (finished)
-                HandOffTransactionIfPossible();
+            HandOffTransactionIfPossible();
         }
 
         public void AttachTransaction(IHttpServerTransaction transaction)
@@ -73,7 +72,10 @@ namespace Kayak.Http
                 body.Connect(this);
             }
             else
+            {
                 transaction.OnResponseEnd();
+                HandOffTransactionIfPossible();
+            }
         }
 
         public void OnError(Exception e)
@@ -92,18 +94,19 @@ namespace Kayak.Http
         {
             transaction.OnResponseEnd();
 
-            finished = true;
+            bodyFinished = true;
 
             HandOffTransactionIfPossible();
         }
 
         void HandOffTransactionIfPossible()
         {
-            if (next != null)
+            if (gotResponse && (body == null || (body != null && bodyFinished)) && transaction != null && next != null)
             {
                 next.AttachTransaction(transaction);
                 transaction = null;
                 next = null;
+                body = null;
             }
         }
     }

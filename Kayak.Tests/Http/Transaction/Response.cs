@@ -21,6 +21,26 @@ namespace Kayak.Tests.Http
             }
         };
 
+        public static ResponseInfo TwoHundredOKNoBody = new ResponseInfo()
+        {
+            Head = new HttpResponseHead()
+            {
+                Status = "200 OK"
+            }
+        };
+
+        public static ResponseInfo TwoHundredOKConnectionCloseNoBody = new ResponseInfo()
+        {
+            Head = new HttpResponseHead()
+            {
+                Status = "200 OK",
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
+                {
+                    { "Connection", "close" }
+                }
+            }
+        };
+
         public static ResponseInfo TwoHundredOKWithBody = new ResponseInfo()
         {
             Head = new HttpResponseHead()
@@ -36,9 +56,9 @@ namespace Kayak.Tests.Http
             {
                 Status = "200 OK",
                 Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
-                        {
-                            { "Connection", "close" }
-                        }
+                {
+                    { "Connection", "close" }
+                }
             },
             Data = new[] { "yo ", "dawg." }
         };

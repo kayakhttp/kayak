@@ -38,11 +38,12 @@ namespace Kayak.Tests.Http
             disconnect.Dispose();
         }
 
-        public void OnResponse(HttpResponseHead head)
+        public void OnResponse(HttpResponseHead head, bool hasBody)
         {
-            subject = new SimpleSubject(
-                () => userCode.ConnectResponseBody(this),
-                () => userCode.DisconnectResponseBody(this));
+            if (hasBody)
+                subject = new SimpleSubject(
+                    () => userCode.ConnectResponseBody(this),
+                    () => userCode.DisconnectResponseBody(this));
 
             responseDelegate.OnResponse(head, subject);
         }

@@ -21,6 +21,7 @@ namespace Kayak.Tests.Http
         public void OnRequest(UserKayak kayak, HttpRequestHead head)
         {
             current = new RequestInfo() { Head = head, Data = Enumerable.Empty<string>() };
+            receivedRequests.Add(current);
             next.OnRequest(kayak, head);
         }
 
@@ -32,7 +33,7 @@ namespace Kayak.Tests.Http
 
         public void OnRequestBodyError(UserKayak kayak, Exception error)
         {
-            current.Exception = error;
+            // XXX perhaps should concat current.Data with an enumerable that throws
             next.OnRequestBodyError(kayak, error);
         }
 
@@ -40,7 +41,6 @@ namespace Kayak.Tests.Http
         {
             if (current.Exception != null) throw new Exception("got end after exception");
 
-            receivedRequests.Add(current);
             current = null;
             next.OnRequestBodyEnd(kayak);
         }

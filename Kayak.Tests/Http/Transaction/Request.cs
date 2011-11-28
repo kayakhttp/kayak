@@ -13,15 +13,27 @@ namespace Kayak.Tests.Http
 
     class Request
     {
+        public static RequestInfo OneOhKeepAliveNoBody = new RequestInfo()
+        {
+            Head = new HttpRequestHead()
+            {
+                Version = new Version(1, 0),
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                {
+                    { "Connection", "keep-alive" }
+                }
+            }
+        };
+
         public static RequestInfo OneOhKeepAliveWithBody = new RequestInfo()
         {
             Head = new HttpRequestHead()
             {
                 Version = new Version(1, 0),
                 Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                        {
-                            { "Connection", "keep-alive" }
-                        }
+                {
+                    { "Connection", "keep-alive" }
+                }
             },
             Data = new[] { "hello ", "world." }
         };
@@ -32,11 +44,23 @@ namespace Kayak.Tests.Http
             {
                 Version = new Version(1, 0),
                 Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                        {
-                            { "X-Foo", "bar" }
-                        }
+                {
+                    { "X-Foo", "bar" }
+                }
             },
             Data = new[] { "hello ", "world!" }
+        };
+
+        public static RequestInfo OneOhNoBody = new RequestInfo()
+        {
+            Head = new HttpRequestHead()
+            {
+                Version = new Version(1, 0),
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                {
+                    { "X-Foo", "bar" }
+                }
+            }
         };
 
         public static RequestInfo OneOneNoBody = new RequestInfo()
@@ -45,9 +69,9 @@ namespace Kayak.Tests.Http
             {
                 Version = new Version(1, 1),
                 Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                        {
-                            { "X-Foo", "bar" }
-                        }
+                {
+                    { "X-Foo", "bar" }
+                }
             }
         };
 
@@ -57,9 +81,9 @@ namespace Kayak.Tests.Http
             {
                 Version = new Version(1, 1),
                 Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                        {
-                            { "Expect", "100-continue" }
-                        }
+                {
+                    { "Expect", "100-continue" }
+                }
             },
             Data = new[] { "hello ", "world!" }
         };

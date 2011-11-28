@@ -21,20 +21,39 @@ namespace Kayak.Tests.Http
         {
             yield return new TransactionTestCases()
             {
-                Name = "1.0 single request response",
-                Requests = new[] { Request.OneOhWithBody },
-                UserResponses = new[] { Response.TwoHundredOKWithBody },
-                ExpectedResponses = new[] { Response.TwoHundredOKWithBody }.Select(r =>
-                {
-                    r.Head.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
-                    r.Head.Headers["Connection"] = "close";
-                    return r;
-                })
+                Name = "1.0 request no body response no body",
+                Requests = new[] { Request.OneOhNoBody },
+                UserResponses = new[] { Response.TwoHundredOKNoBody },
+                ExpectedResponses = new[] { Response.TwoHundredOKConnectionCloseNoBody }
             };
 
             yield return new TransactionTestCases()
             {
-                Name = "1.0 two request response",
+                Name = "1.0 request no body response with body",
+                Requests = new[] { Request.OneOhNoBody },
+                UserResponses = new[] { Response.TwoHundredOKWithBody },
+                ExpectedResponses = new[] { Response.TwoHundredOKConnectionCloseWithBody }
+            };
+
+            yield return new TransactionTestCases()
+            {
+                Name = "1.0 request with body response with body",
+                Requests = new[] { Request.OneOhWithBody },
+                UserResponses = new[] { Response.TwoHundredOKWithBody },
+                ExpectedResponses = new[] { Response.TwoHundredOKConnectionCloseWithBody }
+            };
+
+            yield return new TransactionTestCases()
+            {
+                Name = "1.0 request no body response no body 2x",
+                Requests = new[] { Request.OneOhKeepAliveNoBody, Request.OneOhNoBody },
+                UserResponses = new[] { Response.TwoHundredOKNoBody, Response.TwoHundredOKNoBody },
+                ExpectedResponses = new[] { Response.TwoHundredOKNoBody, Response.TwoHundredOKConnectionCloseNoBody }
+            };
+
+            yield return new TransactionTestCases()
+            {
+                Name = "1.0 request with body response with body 2x",
                 Requests = new[] { Request.OneOhKeepAliveWithBody, Request.OneOhWithBody },
                 UserResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKWithBody },
                 ExpectedResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKConnectionCloseWithBody }

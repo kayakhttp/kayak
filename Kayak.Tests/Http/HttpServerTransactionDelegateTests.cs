@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Kayak.Http;
 using NUnit.Framework;
+using System.Net;
 
 namespace Kayak.Tests.Http
 {
@@ -20,7 +21,7 @@ namespace Kayak.Tests.Http
     // represents all the ways user code can call kayak
     interface UserKayak
     {
-        void OnResponse(HttpResponseHead head);
+        void OnResponse(HttpResponseHead head, bool hasBody);
         void OnResponseBodyData(string data);
         void OnResponseBodyError(Exception error);
         void OnResponseBodyEnd();
@@ -39,10 +40,10 @@ namespace Kayak.Tests.Http
         AfterOnRequestBodyError,
         OnRequestBodyEnd,
         AfterOnRequestBodyEnd,
-        ConnectResponseBody,
-        AfterConnectResponseBody,
-        DisconnectResponseBody,
-        AfterDisconnectResponseBody
+        OnConnectResponseBody,
+        AfterOnConnectResponseBody,
+        OnDisconnectResponseBody,
+        AfterOnDisconnectResponseBody
     }
 
     // given a set of HTTP transaction situations (1.0, 1.1, body, no body, 
@@ -96,8 +97,8 @@ namespace Kayak.Tests.Http
             [Values(
                 CallKayakWhen.OnRequest,
                 CallKayakWhen.AfterOnRequest,
-                CallKayakWhen.ConnectResponseBody,
-                CallKayakWhen.AfterConnectResponseBody//,
+                CallKayakWhen.OnConnectResponseBody,
+                CallKayakWhen.AfterOnConnectResponseBody//,
                 //CallKayakWhen.DisconnectResponseBody,
                 //CallKayakWhen.AfterDisconnectResponseBody
                 )] 
@@ -117,10 +118,10 @@ namespace Kayak.Tests.Http
                 || respondWhen == CallKayakWhen.OnRequestBodyEnd
                 || respondWhen == CallKayakWhen.AfterOnRequestBodyEnd)
                 &&
-                (connectRequestBodyWhen == CallKayakWhen.ConnectResponseBody
-                || connectRequestBodyWhen == CallKayakWhen.AfterConnectResponseBody
-                || connectRequestBodyWhen == CallKayakWhen.DisconnectResponseBody
-                || connectRequestBodyWhen == CallKayakWhen.AfterDisconnectResponseBody)
+                (connectRequestBodyWhen == CallKayakWhen.OnConnectResponseBody
+                || connectRequestBodyWhen == CallKayakWhen.AfterOnConnectResponseBody
+                || connectRequestBodyWhen == CallKayakWhen.OnDisconnectResponseBody
+                || connectRequestBodyWhen == CallKayakWhen.AfterOnDisconnectResponseBody)
                 )
                 Assert.Pass("Permutation being tested is not possible."); 
 
@@ -137,12 +138,12 @@ namespace Kayak.Tests.Http
                 responseEnumerator.MoveNext();
                 currentResponse = responseEnumerator.Current;
                 numResponded++;
-                kayak.OnResponse(currentResponse.Head);
+                kayak.OnResponse(currentResponse.Head, currentResponse.Data != null);
             };
 
             var continueWillBeSuppressed = (respondWhen == CallKayakWhen.OnRequest && connectRequestBodyWhen == CallKayakWhen.AfterOnRequest)
-                    || connectRequestBodyWhen == CallKayakWhen.ConnectResponseBody
-                    || connectRequestBodyWhen == CallKayakWhen.AfterConnectResponseBody
+                    || connectRequestBodyWhen == CallKayakWhen.OnConnectResponseBody
+                    || connectRequestBodyWhen == CallKayakWhen.AfterOnConnectResponseBody
                     || (reverseConnectAndRespondOnRequest &&
                     (
                         // a couple special cases where reversing the order of the calls will modify the behavior
@@ -203,10 +204,10 @@ namespace Kayak.Tests.Http
 
             requestCallbacker.ConnectResponseBodyAction = kayak =>
             {
-                if (connectRequestBodyWhen == CallKayakWhen.ConnectResponseBody)
+                if (connectRequestBodyWhen == CallKayakWhen.OnConnectResponseBody)
                     kayak.ConnectRequestBody();
 
-                if (connectRequestBodyWhen == CallKayakWhen.AfterConnectResponseBody)
+                if (connectRequestBodyWhen == CallKayakWhen.AfterOnConnectResponseBody)
                     Post(() => kayak.ConnectRequestBody());
 
                 // XXX test sync also
