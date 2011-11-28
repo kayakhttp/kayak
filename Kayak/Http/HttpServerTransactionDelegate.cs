@@ -129,11 +129,11 @@ namespace Kayak.Http
             {
                 if (request.Headers.ContainsKey("X-Forwarded-For"))
                 {
-                    request.Headers["X-Forwarded-For"] += "," + remoteEndPoint.ToString();
+                    request.Headers["X-Forwarded-For"] += "," + remoteEndPoint.Address.ToString();
                 }
                 else
                 {
-                    request.Headers["X-Forwarded-For"] = remoteEndPoint.ToString();
+                    request.Headers["X-Forwarded-For"] = remoteEndPoint.Address.ToString();
                 }
             }
         }

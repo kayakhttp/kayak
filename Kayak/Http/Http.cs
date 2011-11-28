@@ -17,7 +17,7 @@ namespace Kayak.Http
 
         public override string ToString()
         {
-            return string.Format("{0} {1} {2}\r\n{3}\r\n", Method, Uri, Version, 
+            return string.Format("{0} {1}\r\n{2}\r\n", Method, Uri, 
                 Headers != null 
                     ? Headers.Aggregate("", (acc, kv) => acc += string.Format("{0}: {1}\r\n", kv.Key, kv.Value))
                     : "");
@@ -28,7 +28,6 @@ namespace Kayak.Http
     {
         public string Status;
         public IDictionary<string, string> Headers;
-
 
         public override string ToString()
         {
