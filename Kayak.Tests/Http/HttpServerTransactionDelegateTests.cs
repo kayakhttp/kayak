@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using Kayak.Http;
 using NUnit.Framework;
 
@@ -29,20 +28,33 @@ namespace Kayak.Tests.Http
         void DisconnectRequestBody();
     }
 
-    public class RequestInfo
+    // represents all the ways "when" user code can call kayak
+    enum CallKayakWhen
     {
-        public HttpRequestHead Head;
-        public IEnumerable<string> Data;
-        public Exception Exception;
+        OnRequest,
+        AfterOnRequest,
+        OnRequestBodyData,
+        AfterOnRequestBodyData,
+        OnRequestBodyError,
+        AfterOnRequestBodyError,
+        OnRequestBodyEnd,
+        AfterOnRequestBodyEnd,
+        ConnectResponseBody,
+        AfterConnectResponseBody,
+        DisconnectResponseBody,
+        AfterDisconnectResponseBody
     }
 
-    public class ResponseInfo
-    {
-        public HttpResponseHead Head;
-        public IEnumerable<string> Data;
-        public Exception Exception;
-    }
-
+    // given a set of HTTP transaction situations (1.0, 1.1, body, no body, 
+    // expect-continue, connection-close, keep-alive, etc), verify that user
+    // receives requests, and responses are ordered correctly and transformed 
+    // to account for connection behavior
+    //
+    // TODO
+    // - define error conditions/behavior
+    // - define disconnect conditions/behavior
+    // - test OnResponse invoked OnRequestBodyData
+    // 
     [TestFixture]
     class HttpServerTransactionDelegateTests
     {
@@ -65,242 +77,6 @@ namespace Kayak.Tests.Http
             transactionInput = new TransactionInput(responseAccumulator, transactionDelegate);
 
             postedActions = new Queue<Action>();
-        }
-
-        public class InputOutput
-        {
-            public string Name;
-            public IEnumerable<RequestInfo> Requests;
-            public IEnumerable<ResponseInfo> UserResponses;
-            public IEnumerable<ResponseInfo> ExpectedResponses;
-
-            public override string ToString()
-            {
-                return Name;
-            }
-
-            class Request
-            {
-                public static RequestInfo OneOhKeepAliveWithBody = new RequestInfo()
-                {
-                    Head = new HttpRequestHead()
-                    {
-                        Version = new Version(1, 0),
-                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                        {
-                            { "Connection", "keep-alive" }
-                        }
-                    },
-                    Data = new[] { "hello ", "world." }
-                };
-
-                public static RequestInfo OneOhWithBody = new RequestInfo()
-                {
-                    Head = new HttpRequestHead()
-                    {
-                        Version = new Version(1, 0),
-                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                        {
-                            { "X-Foo", "bar" }
-                        }
-                    },
-                    Data = new[] { "hello ", "world!" }
-                };
-
-                public static RequestInfo OneOneNoBody = new RequestInfo()
-                {
-                    Head = new HttpRequestHead()
-                    {
-                        Version = new Version(1, 1),
-                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                        {
-                            { "X-Foo", "bar" }
-                        }
-                    }
-                };
-
-                public static RequestInfo OneOneExpectContinueWithBody = new RequestInfo()
-                {
-                    Head = new HttpRequestHead()
-                    {
-                        Version = new Version(1, 1),
-                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
-                        {
-                            { "Expect", "100-continue" }
-                        }
-                    },
-                    Data = new[] { "hello ", "world!" }
-                };
-            }
-
-            public class Response
-            {
-                public static ResponseInfo OneHundredContinue = new ResponseInfo()
-                {
-                    Head = new HttpResponseHead()
-                    {
-                        Status = "100 Continue"
-                    }
-                };
-
-                public static ResponseInfo TwoHundredOKWithBody = new ResponseInfo()
-                {
-                    Head = new HttpResponseHead()
-                    {
-                        Status = "200 OK"
-                    },
-                    Data = new[] { "yo ", "dawg." }
-                };
-
-                public static ResponseInfo TwoHundredOKConnectionCloseWithBody = new ResponseInfo()
-                {
-                    Head = new HttpResponseHead()
-                    {
-                        Status = "200 OK",
-                        Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase)
-                        {
-                            { "Connection", "close" }
-                        }
-                    },
-                    Data = new[] { "yo ", "dawg." }
-                };
-            }
-
-            public static IEnumerable<InputOutput> GetValues()
-            {
-                yield return new InputOutput()
-                {
-                    Name = "1.0 single request response",
-                    Requests = new[] { Request.OneOhWithBody },
-                    UserResponses = new[] { Response.TwoHundredOKWithBody },
-                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody }.Select(r =>
-                    {
-                        r.Head.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
-                        r.Head.Headers["Connection"] = "close";
-                        return r;
-                    })
-                };
-
-                yield return new InputOutput()
-                {
-                    Name = "1.0 two request response",
-                    Requests = new[] { Request.OneOhKeepAliveWithBody, Request.OneOhWithBody },
-                    UserResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKWithBody },
-                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKConnectionCloseWithBody }
-                };
-
-                yield return new InputOutput()
-                {
-                    Name = "1.1 single request response",
-                    Requests = new[] { Request.OneOneNoBody },
-                    UserResponses = new[] { Response.TwoHundredOKWithBody },
-                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody }
-                };
-
-                yield return new InputOutput()
-                {
-                    Name = "1.1 two request response",
-                    Requests = new[] { Request.OneOneNoBody, Request.OneOneNoBody },
-                    UserResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKWithBody },
-                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody, Response.TwoHundredOKWithBody }
-                };
-
-                yield return new InputOutput()
-                {
-                    Name = "1.1 request with body response with body",
-                    Requests = new[] { Request.OneOneExpectContinueWithBody },
-                    UserResponses = new[] { Response.TwoHundredOKWithBody },
-                    ExpectedResponses = new[] { Response.TwoHundredOKWithBody }
-                };
-            }
-        }
-
-        IEnumerable<Action> GetInputActions(IEnumerable<RequestInfo> requests, TransactionInput txInput)
-        {
-            foreach (var request in requests)
-            {
-                yield return () => transactionInput.OnRequest(request);
-
-                if (request.Data != null)
-                    foreach (var chunk in request.Data)
-                        yield return () => transactionInput.OnRequestData(chunk);
-
-                yield return () => transactionInput.OnRequestEnd();
-
-            }
-
-            yield return () => transactionInput.OnEnd();
-            yield return () => transactionInput.OnClose();
-        }
-
-        void Post(Action action)
-        {
-            postedActions.Enqueue(action);
-        }
-
-        IEnumerable<Action> GetPostedActions()
-        {
-            while (true)
-            {
-                if (postedActions.Count == 0)
-                    yield return null;
-                else
-                    yield return postedActions.Dequeue();
-            }
-        }
-
-        IEnumerable<Action> Interleave(params IEnumerator<Action>[] sources)
-        {
-            var done = new List<IEnumerator<Action>>();
-
-            while (true)
-            {
-                bool didSomething = false;
-
-                foreach (var source in sources)
-                {
-                    if (source.MoveNext())
-                    {
-                        var a = source.Current;
-
-                        if (a != null)
-                        {
-                            didSomething = true;
-                            yield return a;
-                        }
-                        else
-                            done.Add(source);
-                    }
-                    else
-                        done.Add(source);
-                }
-
-                if (!didSomething)
-                    yield break;
-            }
-
-        }
-
-        void Drive(IEnumerable<Action> actions)
-        {
-            foreach (var a in actions)
-                a();
-        }
-
-        public enum CallKayakWhen
-        {
-            OnRequest,
-            AfterOnRequest,
-            OnRequestBodyData,
-            AfterOnRequestBodyData,
-            OnRequestBodyError,
-            AfterOnRequestBodyError,
-            OnRequestBodyEnd,
-            AfterOnRequestBodyEnd,
-            ConnectResponseBody,
-            AfterConnectResponseBody,
-            DisconnectResponseBody,
-            AfterDisconnectResponseBody
         }
 
         [Test]
@@ -327,7 +103,7 @@ namespace Kayak.Tests.Http
                 )] 
             CallKayakWhen connectRequestBodyWhen,
             [Values(true, false)] bool reverseConnectAndRespondOnRequest,
-            [ValueSource(typeof(InputOutput), "GetValues")] InputOutput inputOutput)
+            [ValueSource(typeof(TransactionTestCases), "GetValues")] TransactionTestCases inputOutput)
         {
             // some permutations are impossible. for example, it's impossible to ConnectRequestBody
             // OnConnectResponseBody if OnResponse is invoked during an OnRequestBody event...neither would ever happen.
@@ -382,7 +158,7 @@ namespace Kayak.Tests.Http
                 if (expectContinue && !continueWillBeSuppressed) { 
                     expectedResponses = expectedResponses
                         .Take(numResponded)
-                        .Concat(new[] { InputOutput.Response.OneHundredContinue })
+                        .Concat(new[] { Response.OneHundredContinue })
                         .Concat(expectedResponses.Skip(numResponded));
                 }
 
@@ -450,13 +226,81 @@ namespace Kayak.Tests.Http
                 Post(send);
             };
 
-            Drive(Interleave(GetInputActions(requests, transactionInput).GetEnumerator(), GetPostedActions().GetEnumerator()));
+            Drive(Interleave(GetInputActions(requests, transactionInput), GetPostedActions()));
 
             requestAccumulator.AssertRequests(requests);
             responseAccumulator.AssertResponses(expectedResponses);
 
             Assert.That(responseAccumulator.GotEnd, Is.True);
             Assert.That(responseAccumulator.GotDispose, Is.True);
+        }
+
+        IEnumerable<Action> GetInputActions(IEnumerable<RequestInfo> requests, TransactionInput txInput)
+        {
+            foreach (var request in requests)
+            {
+                yield return () => transactionInput.OnRequest(request);
+
+                if (request.Data != null)
+                    foreach (var chunk in request.Data)
+                        yield return () => transactionInput.OnRequestData(chunk);
+
+                yield return () => transactionInput.OnRequestEnd();
+
+            }
+
+            yield return () => transactionInput.OnEnd();
+            yield return () => transactionInput.OnClose();
+        }
+
+        void Post(Action action)
+        {
+            postedActions.Enqueue(action);
+        }
+
+        IEnumerable<Action> GetPostedActions()
+        {
+            while (true)
+            {
+                if (postedActions.Count == 0)
+                    yield return null;
+                else
+                    yield return postedActions.Dequeue();
+            }
+        }
+
+
+        IEnumerable<Action> Interleave(params IEnumerable<Action>[] sources)
+        {
+            var enumerators = sources.Select(s => s.GetEnumerator()).ToArray();
+
+            while (true)
+            {
+                bool didSomething = false;
+
+                foreach (var source in enumerators)
+                {
+                    if (source.MoveNext())
+                    {
+                        var a = source.Current;
+
+                        if (a != null)
+                        {
+                            didSomething = true;
+                            yield return a;
+                        }
+                    }
+                }
+
+                if (!didSomething)
+                    yield break;
+            }
+        }
+
+        void Drive(IEnumerable<Action> actions)
+        {
+            foreach (var a in actions)
+                a();
         }
     }
 }
