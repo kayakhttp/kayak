@@ -74,7 +74,7 @@ end
 
 def ensure_nuget_packages_nix(name, version) 
   # NuGet doesn't work on Mono. So we're going to manually download our dependencies from NuGet.org.
-  uri = URI.parse("http://packages.nuget.org/v1/Package/Download/#{name}/#{version}")
+  uri = URI.parse("http://packages.nuget.org/api/v1/package/#{name}/#{version}")
 
   zip_file = "#{PACKAGES_DIR}/#{name}.#{version}.nupkg"
 
