@@ -72,9 +72,31 @@ def ensure_submodules()
   system("git submodule update")
 end
 
+# lifted from the docs
+def fetch(uri, limit = 10)
+  # You should choose a better exception.
+  raise ArgumentError, 'too many HTTP redirects' if limit == 0
+
+  response = Net::HTTP.get_response(uri)
+
+  case response
+  when Net::HTTPSuccess then
+    puts "whut"
+    response
+  when Net::HTTPRedirection then
+    location = response['location']
+    puts "redirected to #{location}"
+    fetch(URI(location), limit - 1)
+  else
+    puts "reading from #{location}"
+    response.read_body do |segment|
+      yield segment
+    end
+  end
+end
+
 def ensure_nuget_packages_nix(name, version) 
   # NuGet doesn't work on Mono. So we're going to manually download our dependencies from NuGet.org.
-  uri = URI.parse("http://packages.nuget.org/api/v1/package/#{name}/#{version}")
 
   zip_file = "#{PACKAGES_DIR}/#{name}.#{version}.nupkg"
 
@@ -86,13 +108,14 @@ def ensure_nuget_packages_nix(name, version)
   puts "fetching #{zip_file}"
   f = open(zip_file, "w");
   begin
-      Net::HTTP.start(uri.host, uri.port) do |http|
-        http.request_get(uri.path) do |resp|
-          resp.read_body do |segment|
-            f.write(segment)
-          end
-        end
-      end
+
+    uri = URI.parse("http://packages.nuget.org/api/v1/package/#{name}/#{version}")
+
+    fetch(uri) do |seg|
+      puts "got chunk"
+      f.write(segment)
+    end
+
   ensure
       f.close()
   end

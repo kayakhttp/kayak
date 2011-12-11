@@ -75,6 +75,45 @@ namespace Kayak.Tests.Http
             }
         };
 
+        public static RequestInfo OneOneWithBody = new RequestInfo()
+        {
+            Head = new HttpRequestHead()
+            {
+                Version = new Version(1, 1),
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                {
+                    { "X-Foo", "bar" }
+                }
+            },
+            Data = new[] { "hello ", "world!" }
+        };
+
+        public static RequestInfo OneOneConnectionCloseNoBody = new RequestInfo()
+        {
+            Head = new HttpRequestHead()
+            {
+                Version = new Version(1, 1),
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                {
+                    { "X-Foo", "bar" },
+                    { "Connection", "close" }
+                }
+            }
+        };
+
+        public static RequestInfo OneOneConnectionCloseWithBody = new RequestInfo()
+        {
+            Head = new HttpRequestHead()
+            {
+                Version = new Version(1, 1),
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                {
+                    { "X-Foo", "bar" },
+                    { "Connection", "close" }
+                }
+            }
+        };
+
         public static RequestInfo OneOneExpectContinueWithBody = new RequestInfo()
         {
             Head = new HttpRequestHead()
@@ -86,6 +125,20 @@ namespace Kayak.Tests.Http
                 }
             },
             Data = new[] { "hello ", "world!" }
+        };
+
+        public static RequestInfo OneOneConnectionCloseExpectContinueWithBody = new RequestInfo()
+        {
+            Head = new HttpRequestHead()
+            {
+                Version = new Version(1, 1),
+                Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase) 
+                {
+                    { "X-Foo", "bar" },
+                    { "Connection", "close" },
+                    { "Expect", "100-continue" }
+                }
+            }
         };
     }
 }
