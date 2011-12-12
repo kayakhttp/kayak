@@ -73,28 +73,7 @@ namespace KayakExamples
             public void OnRequest(HttpRequestHead request, IDataProducer requestBody,
                 IHttpResponseDelegate response)
             {
-
-                if (request.Uri.StartsWith("/"))
-                {
-                    var body = string.Format(
-                        "Hello world.\r\nHello.\r\n\r\nUri: {0}\r\nPath: {1}\r\nQuery:{2}\r\nFragment: {3}\r\n",
-                        request.Uri,
-                        request.Path,
-                        request.QueryString,
-                        request.Fragment);
-
-                    var headers = new HttpResponseHead()
-                    {
-                        Status = "200 OK",
-                        Headers = new Dictionary<string, string>() 
-                    {
-                        { "Content-Type", "text/plain" },
-                        { "Content-Length", body.Length.ToString() },
-                    }
-                    };
-                    response.OnResponse(headers, new BufferedProducer(body));
-                }
-                else if (request.Uri.StartsWith("/bufferedecho"))
+                if (request.Method.ToUpperInvariant() == "POST" && request.Uri.StartsWith("/bufferedecho"))
                 {
                     // when you subecribe to the request body before calling OnResponse,
                     // the server will automatically send 100-continue if the client is 
@@ -118,7 +97,7 @@ namespace KayakExamples
                         // uh oh, what happens?
                     }));
                 }
-                else if (request.Uri.StartsWith("/echo"))
+                else if (request.Method.ToUpperInvariant() == "POST" && request.Uri.StartsWith("/echo"))
                 {
                     var headers = new HttpResponseHead()
                     {
@@ -126,16 +105,37 @@ namespace KayakExamples
                         Headers = new Dictionary<string, string>() 
                         {
                             { "Content-Type", "text/plain" },
-                            { "Content-Length", request.Headers["Content-Length"] },
                             { "Connection", "close" }
                         }
                     };
+                    if (request.Headers.ContainsKey("Content-Length"))
+                        headers.Headers["Content-Length"] = request.Headers["Content-Length"];
 
                     // if you call OnResponse before subscribing to the request body,
                     // 100-continue will not be sent before the response is sent.
                     // per rfc2616 this response must have a 'final' status code,
                     // but the server does not enforce it.
                     response.OnResponse(headers, requestBody);
+                }
+                else if (request.Uri.StartsWith("/"))
+                {
+                    var body = string.Format(
+                        "Hello world.\r\nHello.\r\n\r\nUri: {0}\r\nPath: {1}\r\nQuery:{2}\r\nFragment: {3}\r\n",
+                        request.Uri,
+                        request.Path,
+                        request.QueryString,
+                        request.Fragment);
+
+                    var headers = new HttpResponseHead()
+                    {
+                        Status = "200 OK",
+                        Headers = new Dictionary<string, string>() 
+                    {
+                        { "Content-Type", "text/plain" },
+                        { "Content-Length", body.Length.ToString() },
+                    }
+                    };
+                    response.OnResponse(headers, new BufferedProducer(body));
                 }
                 else
                 {
