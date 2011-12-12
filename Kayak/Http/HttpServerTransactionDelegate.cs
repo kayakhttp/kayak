@@ -125,7 +125,7 @@ namespace Kayak.Http
 
         void AddXFF(HttpRequestHead request, IPEndPoint remoteEndPoint)
         {
-            if (remoteEndPoint != null)
+            if (remoteEndPoint != null && request.Headers != null)
             {
                 if (request.Headers.ContainsKey("X-Forwarded-For"))
                 {
