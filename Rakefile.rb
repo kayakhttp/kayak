@@ -42,7 +42,6 @@ CONFIGURATION = "Release"
 BUILD_DIR = File.expand_path("build")
 OUTPUT_DIR = "#{BUILD_DIR}/out"
 BIN_DIR = "#{BUILD_DIR}/bin"
-NUGET_DIR = "#{BUILD_DIR}/nug"
 PACKAGES_DIR = "packages"
 
 assemblyinfo :assemblyinfo => :clean do |a|
@@ -159,7 +158,7 @@ task :binaries => :build do
   binaries = FileList["#{OUTPUT_DIR}/*.dll", "#{OUTPUT_DIR}/*.pdb"]
     .exclude(/nunit/)
     .exclude(/.Tests/)
-    .exclude(/.exe/)
+    .exclude(/KayakExamples./)
 
   FileUtils.cp_r binaries, BIN_DIR
 end
@@ -168,10 +167,8 @@ task :dist_nuget => [:binaries, :build] do
   if is_nix()
     puts "Not running on Windows, skipping NuGet package creation."
   else 
-    Dir.mkdir(NUGET_DIR)
-
     input_nuspec = "Kayak.nuspec"
-    output_nuspec = "#{NUGET_DIR}/Kayak.nuspec"
+    output_nuspec = "#{BUILD_DIR}/Kayak.nuspec"
     
     transform_xml input_nuspec, output_nuspec do |x|
       x.root.elements["metadata/id"].text = PRODUCT
@@ -184,16 +181,12 @@ task :dist_nuget => [:binaries, :build] do
       x.root.elements["metadata/tags"].text = "http io socket network async"
     end
     
-    nuget_lib_dir = "#{NUGET_DIR}/lib"
-    FileUtils.mkdir nuget_lib_dir
-    FileUtils.cp_r FileList["#{BIN_DIR}/*"].exclude(/HttpMachine/), nuget_lib_dir
-    
     nuget = NuGetPack.new
     nuget.command = "tools/NuGet.exe"
     nuget.nuspec = output_nuspec
     nuget.output = BUILD_DIR
     #using base_folder throws as there are two options that begin with b in nuget 1.4
-    nuget.parameters = "-Symbols", "-BasePath \"#{NUGET_DIR}\""
+    nuget.parameters = "-Symbols"
     nuget.execute
   end
 end
