@@ -12,6 +12,7 @@ MIT License. See LICENSE.txt.
 # How to build
 
 Kayak uses Rake, the Ruby build tool, to perform builds. Ruby must be installed on your system to build Kayak. The build script is known to work with Ruby 1.9.2, and depends on [Albacore](https://github.com/derickbailey/Albacore), a suite of Rake tasks for .NET.
+Please make sure your github username and token are set before building or the submodules will fail to update. See http://help.github.com/set-your-user-name-email-and-github-token/ for more information
 
 To build:
 
