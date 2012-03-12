@@ -155,11 +155,11 @@ end
 
 task :binaries => :build do
   Dir.mkdir(BIN_DIR)
-  binaries = FileList["#{OUTPUT_DIR}/*.dll", "#{OUTPUT_DIR}/*.pdb"]
-    .exclude(/nunit/)
-    .exclude(/.Tests/)
-    .exclude(/KayakExamples./)
-
+  binaries = FileList("#{OUTPUT_DIR}/*.dll", "#{OUTPUT_DIR}/*.pdb") do |x|
+    x.exclude(/nunit/)
+    x.exclude(/.Tests/)
+    x.exclude(/KayakExamples./)
+  end
   FileUtils.cp_r binaries, BIN_DIR
 end
 
