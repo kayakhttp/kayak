@@ -84,7 +84,7 @@ def ensure_submodules()
 end
 
 # lifted from the docs
-def fetch(uri, limit = 10)
+def fetch(uri, limit = 10, &block)
   # You should choose a better exception.
   raise ArgumentError, 'too many HTTP redirects' if limit == 0
 
@@ -93,21 +93,26 @@ def fetch(uri, limit = 10)
     http.verify_mode = OpenSSL::SSL::VERIFY_NONE
     http.use_ssl = true
   end
-
-  case response
-  when Net::HTTPSuccess then
-    puts "whut"
-    response
-  when Net::HTTPRedirection then
-    location = response['location']
-    puts "redirected to #{location}"
-    fetch(URI(location), limit - 1)
-  else
-    puts "reading from #{location}"
-    response.read_body do |segment|
-      yield segment
+  
+  resp = http.request(Net::HTTP::Get.new(uri.request_uri)) { |response|
+    case response
+    when Net::HTTPRedirection then
+      location = response['location']
+      puts "redirected to #{location}"
+      if block_given?
+        fetch(URI(location), limit - 1, &block)
+      else
+        fetch(URI(location), limit - 1)
+      end
+      return
+    else
+      puts "reading from #{uri}"
+      response.read_body do |segment|
+        yield segment
+      end
+      return
     end
-  end
+  }
 end
 
 def ensure_nuget_packages_nix(name, version) 
