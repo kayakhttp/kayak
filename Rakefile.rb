@@ -118,6 +118,10 @@ end
 def ensure_nuget_packages_nix(name, version) 
   # NuGet doesn't work on Mono. So we're going to manually download our dependencies from NuGet.org.
 
+  if !Dir.exist? PACKAGES_DIR then
+    FileUtils.mkdir_p PACKAGES_DIR
+  end
+  
   zip_file = "#{PACKAGES_DIR}/#{name}.#{version}.nupkg"
 
   if File.exists? zip_file then
