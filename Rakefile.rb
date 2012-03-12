@@ -10,6 +10,17 @@ require 'albacore'
 require 'uri'
 require 'net/http'
 require 'net/https'
+# Monkey patch Dir.exists? for Ruby 1.8.x
+if RUBY_VERSION =~ /^1\.8/
+  class Dir
+    class << self
+      def exists? (path)
+        File.directory?(path)
+      end
+      alias_method :exist?, :exists?
+    end
+  end
+end
 
 def is_nix
   !RUBY_PLATFORM.match("linux|darwin").nil?
