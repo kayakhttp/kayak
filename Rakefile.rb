@@ -132,7 +132,7 @@ def ensure_nuget_packages_nix(name, version)
     uri = URI.parse("http://packages.nuget.org/api/v1/package/#{name}/#{version}")
 
     fetch(uri) do |seg|
-      f.write(segment)
+      f.write(seg)
     end
 
   ensure
