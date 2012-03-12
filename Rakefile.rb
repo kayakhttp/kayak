@@ -9,6 +9,7 @@ PROJECT_URL = "https://github.com/kayak/kayak"
 require 'albacore'
 require 'uri'
 require 'net/http'
+require 'net/https'
 
 def is_nix
   !RUBY_PLATFORM.match("linux|darwin").nil?
@@ -76,7 +77,11 @@ def fetch(uri, limit = 10)
   # You should choose a better exception.
   raise ArgumentError, 'too many HTTP redirects' if limit == 0
 
-  response = Net::HTTP.get_response(uri)
+  http = Net::HTTP.new(uri.host, uri.port)
+  if uri.scheme == "https"
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    http.use_ssl = true
+  end
 
   case response
   when Net::HTTPSuccess then
