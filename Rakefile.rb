@@ -99,7 +99,7 @@ def fetch(uri, limit = 10, &block)
     when Net::HTTPRedirection then
       location = response['location']
       puts "redirected to #{location}"
-      if block_given?
+      if block_given? then
         fetch(URI(location), limit - 1, &block)
       else
         fetch(URI(location), limit - 1)
@@ -124,7 +124,7 @@ def ensure_nuget_packages_nix(name, version)
   
   zip_file = "#{PACKAGES_DIR}/#{name}.#{version}.nupkg"
 
-  if File.exists? zip_file then
+  if File.exist? zip_file then
     puts "#{zip_file} already exists, skipping"
     return
   end
