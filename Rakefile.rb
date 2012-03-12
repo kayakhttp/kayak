@@ -9,6 +9,18 @@ PROJECT_URL = "https://github.com/kayak/kayak"
 require 'albacore'
 require 'uri'
 require 'net/http'
+require 'net/https'
+# Monkey patch Dir.exists? for Ruby 1.8.x
+if RUBY_VERSION =~ /^1\.8/
+  class Dir
+    class << self
+      def exists? (path)
+        File.directory?(path)
+      end
+      alias_method :exist?, :exists?
+    end
+  end
+end
 
 def is_nix
   !RUBY_PLATFORM.match("linux|darwin").nil?
@@ -72,34 +84,47 @@ def ensure_submodules()
 end
 
 # lifted from the docs
-def fetch(uri, limit = 10)
+def fetch(uri, limit = 10, &block)
   # You should choose a better exception.
   raise ArgumentError, 'too many HTTP redirects' if limit == 0
 
-  response = Net::HTTP.get_response(uri)
-
-  case response
-  when Net::HTTPSuccess then
-    puts "whut"
-    response
-  when Net::HTTPRedirection then
-    location = response['location']
-    puts "redirected to #{location}"
-    fetch(URI(location), limit - 1)
-  else
-    puts "reading from #{location}"
-    response.read_body do |segment|
-      yield segment
-    end
+  http = Net::HTTP.new(uri.host, uri.port)
+  if uri.scheme == "https"
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    http.use_ssl = true
   end
+  
+  resp = http.request(Net::HTTP::Get.new(uri.request_uri)) { |response|
+    case response
+    when Net::HTTPRedirection then
+      location = response['location']
+      puts "redirected to #{location}"
+      if block_given? then
+        fetch(URI(location), limit - 1, &block)
+      else
+        fetch(URI(location), limit - 1)
+      end
+      return
+    else
+      puts "reading from #{uri}"
+      response.read_body do |segment|
+        yield segment
+      end
+      return
+    end
+  }
 end
 
 def ensure_nuget_packages_nix(name, version) 
   # NuGet doesn't work on Mono. So we're going to manually download our dependencies from NuGet.org.
 
+  if !Dir.exist? PACKAGES_DIR then
+    FileUtils.mkdir_p PACKAGES_DIR
+  end
+  
   zip_file = "#{PACKAGES_DIR}/#{name}.#{version}.nupkg"
 
-  if File.exists? zip_file then
+  if File.exist? zip_file then
     puts "#{zip_file} already exists, skipping"
     return
   end
@@ -111,8 +136,7 @@ def ensure_nuget_packages_nix(name, version)
     uri = URI.parse("http://packages.nuget.org/api/v1/package/#{name}/#{version}")
 
     fetch(uri) do |seg|
-      puts "got chunk"
-      f.write(segment)
+      f.write(seg)
     end
 
   ensure
@@ -155,11 +179,11 @@ end
 
 task :binaries => :build do
   Dir.mkdir(BIN_DIR)
-  binaries = FileList["#{OUTPUT_DIR}/*.dll", "#{OUTPUT_DIR}/*.pdb"]
-    .exclude(/nunit/)
-    .exclude(/.Tests/)
-    .exclude(/KayakExamples./)
-
+  binaries = FileList("#{OUTPUT_DIR}/*.dll", "#{OUTPUT_DIR}/*.pdb") do |x|
+    x.exclude(/nunit/)
+    x.exclude(/.Tests/)
+    x.exclude(/KayakExamples./)
+  end
   FileUtils.cp_r binaries, BIN_DIR
 end
 
