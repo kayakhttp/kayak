@@ -51,6 +51,24 @@ namespace Kayak.Tests.Http
             Data = new[] { "hello ", "world!" }
         };
 
+        public static RequestInfo OneOhNoBodyNoHeaders = new RequestInfo()
+        {
+            Head = new HttpRequestHead()
+            {
+                Version = new Version(1, 0),
+                Headers = null
+            }
+        };
+
+        public static RequestInfo OneOneNoBodyNoHeaders = new RequestInfo()
+        {
+            Head = new HttpRequestHead()
+            {
+                Version = new Version(1, 1),
+                Headers = null
+            }
+        };
+		
         public static RequestInfo OneOhNoBody = new RequestInfo()
         {
             Head = new HttpRequestHead()

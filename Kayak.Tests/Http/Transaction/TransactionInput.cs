@@ -28,11 +28,15 @@ namespace Kayak.Tests.Http
         bool ShouldKeepAlive(HttpRequestHead head)
         {
             if (head.Version.Major > 0 && head.Version.Minor > 0)
+            {
                 // HTTP/1.1
+                if (head.Headers == null) return true;
                 return !(head.Headers.ContainsKey("connection") && head.Headers["connection"] == "close");
-            else
+            } else {
                 // < HTTP/1.1
+                if (head.Headers == null) return false;
                 return (head.Headers.ContainsKey("connection") && head.Headers["connection"] == "keep-alive");
+            }
         }
 
         public void OnRequestData(string data)
