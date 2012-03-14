@@ -135,13 +135,14 @@ def ensure_nuget_package_nix(name)
 end
 
 def all_nuget_packages_present?()
+  result = true
   PACKAGES.values.each { |pkg| 
     if !Dir.exists? pkg[:folder] then
       puts "Package missing: #{pkg[:name]}"
-      return false
+      result = false
     end
   }
-  return true
+  return result
 end
 
 def print_nuget_package_manifest()
