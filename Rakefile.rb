@@ -47,37 +47,7 @@ def transform_xml(input, output)
   formatter.write(xml, output_file)
   output_file.close
 end
-
-task :default => [:build, :test]
-  
-CONFIGURATION = "Release"
-BUILD_DIR = File.expand_path("build")
-OUTPUT_DIR = "#{BUILD_DIR}/out"
-BIN_DIR = "#{BUILD_DIR}/bin"
-PACKAGES_DIR = "packages"
-
-assemblyinfo :assemblyinfo => :clean do |a|
-  a.product_name = a.title = PRODUCT
-  a.description = DESCRIPTION
-  a.version = a.file_version = VERSION
-  a.copyright = COPYRIGHT
-  a.output_file = "Kayak/Properties/AssemblyInfo.cs"
-  a.namespaces "System.Runtime.CompilerServices"
-  a.custom_attributes :InternalsVisibleTo => "Kayak.Tests"
-end
-
-msbuild :build_msbuild do |b|
-  b.properties :configuration => CONFIGURATION, "OutputPath" => OUTPUT_DIR
-  b.targets :Build
-  b.solution = "Kayak.sln"
-end
-
-xbuild :build_xbuild do |b|
-  b.properties :configuration => CONFIGURATION, "OutputPath" => OUTPUT_DIR
-  b.targets :Build
-  b.solution = "Kayak.sln"
-end
-
+        
 def ensure_submodules()
   system("git submodule init")
   system("git submodule update")
@@ -163,6 +133,36 @@ def ensure_nuget_packages()
       sh invoke_runtime("tools\\nuget.exe install Kayak.Tests\\packages.config -o #{PACKAGES_DIR}")
       puts "done"
   end
+end
+
+task :default => [:build, :test]
+  
+CONFIGURATION = "Release"
+BUILD_DIR = File.expand_path("build")
+OUTPUT_DIR = "#{BUILD_DIR}/out"
+BIN_DIR = "#{BUILD_DIR}/bin"
+PACKAGES_DIR = "packages"
+
+assemblyinfo :assemblyinfo => :clean do |a|
+  a.product_name = a.title = PRODUCT
+  a.description = DESCRIPTION
+  a.version = a.file_version = VERSION
+  a.copyright = COPYRIGHT
+  a.output_file = "Kayak/Properties/AssemblyInfo.cs"
+  a.namespaces "System.Runtime.CompilerServices"
+  a.custom_attributes :InternalsVisibleTo => "Kayak.Tests"
+end
+
+msbuild :build_msbuild do |b|
+  b.properties :configuration => CONFIGURATION, "OutputPath" => OUTPUT_DIR
+  b.targets :Build
+  b.solution = "Kayak.sln"
+end
+
+xbuild :build_xbuild do |b|
+  b.properties :configuration => CONFIGURATION, "OutputPath" => OUTPUT_DIR
+  b.targets :Build
+  b.solution = "Kayak.sln"
 end
 
 task :build => :assemblyinfo do
