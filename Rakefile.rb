@@ -226,9 +226,12 @@ end
 
 task :clean do
   FileUtils.rm_rf BUILD_DIR
-  FileUtils.rm_rf PACKAGES_DIR
   FileUtils.rm_rf "Kayak/bin"
   FileUtils.rm_rf "Kayak/obj"
   FileUtils.rm_rf "Kayak.Tests/bin"
   FileUtils.rm_rf "Kayak.Tests/obj"
+end
+
+task :dist_clean => [:clean] do
+  FileUtils.rm_rf PACKAGES_DIR
 end
