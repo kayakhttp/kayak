@@ -53,9 +53,8 @@ def ensure_submodules()
   system("git submodule update")
 end
 
-# lifted from the docs
 def fetch(uri, limit = 10, &block)
-  # You should choose a better exception.
+  # We should choose a better exception.
   raise ArgumentError, 'too many HTTP redirects' if limit == 0
 
   http = Net::HTTP.new(uri.host, uri.port)
@@ -68,7 +67,6 @@ def fetch(uri, limit = 10, &block)
     case response
     when Net::HTTPRedirection then
       location = response['location']
-      puts "redirected to #{location}"
       if block_given? then
         fetch(URI(location), limit - 1, &block)
       else
@@ -76,7 +74,6 @@ def fetch(uri, limit = 10, &block)
       end
       return
     else
-      puts "reading from #{uri}"
       response.read_body do |segment|
         yield segment
       end
