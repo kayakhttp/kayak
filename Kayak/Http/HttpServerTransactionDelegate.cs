@@ -28,7 +28,7 @@ namespace Kayak.Http
 
         public void OnRequest(IHttpServerTransaction transaction, HttpRequestHead request, bool shouldKeepAlive)
         {
-            AddXFF(request, transaction.RemoteEndPoint);
+            AddXFF(ref request, transaction.RemoteEndPoint);
 
             var expectContinue = request.IsContinueExpected();
             var ignoreResponseBody = request.Method != null && request.Method.ToUpperInvariant() == "HEAD";
@@ -123,10 +123,13 @@ namespace Kayak.Http
             }
         }
 
-        void AddXFF(HttpRequestHead request, IPEndPoint remoteEndPoint)
+        void AddXFF(ref HttpRequestHead request, IPEndPoint remoteEndPoint)
         {
-            if (remoteEndPoint != null && request.Headers != null)
+            if (remoteEndPoint != null)
             {
+                if (request.Headers == null)
+                    request.Headers = new Dictionary<string, string>(StringComparer.InvariantCultureIgnoreCase);
+				
                 if (request.Headers.ContainsKey("X-Forwarded-For"))
                 {
                     request.Headers["X-Forwarded-For"] += "," + remoteEndPoint.Address.ToString();
