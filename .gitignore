@@ -8,3 +8,4 @@ obj
 .DS_Store
 build
 *.pidb
+TestResult.xml
