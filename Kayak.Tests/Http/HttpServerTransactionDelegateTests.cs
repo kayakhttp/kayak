@@ -81,6 +81,20 @@ namespace Kayak.Tests.Http
         }
 
         [Test]
+        public void Adds_xff_if_no_headers()
+        {
+            responseAccumulator.RemoteEndPoint = new IPEndPoint(IPAddress.Parse("1.1.1.1"), 0);
+
+            transactionInput.OnRequest(Request.OneOneNoBodyNoHeaders);
+            transactionInput.OnRequestEnd();
+
+            var expected = Request.OneOhNoBodyNoHeaders;
+			expected.Head.Headers = new Dictionary<string,string>(StringComparer.InvariantCultureIgnoreCase);
+            expected.Head.Headers["X-Forwarded-For"] = "1.1.1.1";
+            requestAccumulator.AssertRequests(new[] { expected });
+        }
+
+        [Test]
         public void Adds_xff_if_none()
         {
             responseAccumulator.RemoteEndPoint = new IPEndPoint(IPAddress.Parse("1.1.1.1"), 0);
