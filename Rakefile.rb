@@ -211,6 +211,7 @@ BUILD_DIR = File.expand_path("build")
 OUTPUT_DIR = "#{BUILD_DIR}/out"
 BIN_DIR = "#{BUILD_DIR}/bin"
 PACKAGES_DIR = "packages"
+PACKAGES = {}
 
 assemblyinfo :assemblyinfo => :clean do |a|
   a.product_name = a.title = PRODUCT
