@@ -60,7 +60,7 @@ def fetch(uri, limit = 10, &block)
 
   http = Net::HTTP.new(uri.host, uri.port)
   if uri.scheme == "https"
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
+    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
     http.use_ssl = true
   end
   
