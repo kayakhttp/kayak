@@ -9,7 +9,8 @@ PROJECT_URL = "https://github.com/kayak/kayak"
 require 'albacore'
 require 'uri'
 require 'net/http'
-require 'net/https'
+require 'net/https'  
+
 # Monkey patch Dir.exists? for Ruby 1.8.x
 if RUBY_VERSION =~ /^1\.8/
   class Dir
@@ -47,6 +48,162 @@ def transform_xml(input, output)
   formatter.write(xml, output_file)
   output_file.close
 end
+        
+def ensure_submodules()
+  system("git submodule init")
+  system("git submodule update")
+end
+
+def fetch(uri, limit = 10, &block)
+  # We should choose a better exception.
+  raise ArgumentError, 'too many HTTP redirects' if limit == 0
+
+  http = Net::HTTP.new(uri.host, uri.port)
+  if uri.scheme == "https"
+    http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+    http.use_ssl = true
+  end
+  
+  resp = http.request(Net::HTTP::Get.new(uri.request_uri)) { |response|
+    case response
+    when Net::HTTPRedirection then
+      location = response['location']
+      if block_given? then
+        fetch(URI(location), limit - 1, &block)
+      else
+        fetch(URI(location), limit - 1)
+      end
+      return
+    else
+      response.read_body do |segment|
+        yield segment
+      end
+      return
+    end
+  }
+end
+
+def rename_file(oldname, newname)
+  # Ruby 1.8.7 on Mac sometimes reports File.exist? incorrectly
+  # so work around this [not sure why that happens]
+  begin
+    File.delete(newname) 
+  rescue => msg
+    # File probably doesn't exist, if it does File.size? will work properly
+    if File.size?(newname) != nil then
+      fail "Failed to delete old file #{newname} with: #{msg}"
+      raise
+    end
+  end     
+  File.rename(oldname, newname)
+end
+
+def unpack_nuget_pkg(file, destination)
+  unzip = Unzip.new
+  unzip.destination = destination
+  unzip.file = file
+  unzip.execute
+end
+      
+def ensure_nuget_package_nix(name) 
+  # NuGet doesn't work on Mono. So we're going to download our dependencies from NuGet.org.
+  
+  zip_file = PACKAGES[name][:filename]
+  tmp_file = "#{zip_file}.tmp"
+  
+  if File.exist?(zip_file) and File.size?(zip_file) != nil then
+    puts "#{zip_file} already exists, skipping download"
+    unpack_nuget_pkg(zip_file, PACKAGES[name][:folder])  
+    return
+  end
+  
+  puts "fetching #{zip_file}"
+  File.open(tmp_file, "w") { |f| 
+    uri = URI.parse(PACKAGES[name][:url])
+
+    fetch(uri) do |seg| 
+      f.write(seg)
+    end
+  }
+                  
+  if File.size?(tmp_file) == nil then
+    fail "Download failed for #{zip_file}"
+  end
+  
+  rename_file(tmp_file, zip_file)
+  unpack_nuget_pkg(zip_file, PACKAGES[name][:folder])
+end
+
+def all_nuget_packages_present?()
+  result = true
+  PACKAGES.values.each { |pkg| 
+    if !Dir.exists? pkg[:folder] then
+      puts "Package missing: #{pkg[:name]}"
+      result = false
+    end
+  }
+  return result
+end
+
+def print_nuget_package_manifest()
+  puts "Building with NuGet packages:"
+  PACKAGES.values.each { |pkg| 
+    puts "#{pkg[:name]} => #{pkg[:version]}"
+  }
+end
+
+def ensure_all_nuget_packages_nix()
+  PACKAGES.values.each { |pkg| 
+    ensure_nuget_package_nix(pkg[:name])
+  }
+end
+
+def read_package_config(filename)
+  input_file = File.new(filename)
+  xml = REXML::Document.new input_file
+  
+  xml.elements.each("packages/package") { |element| 
+    yield element
+  }
+  
+  input_file.close
+end
+
+def read_nuget_packages()          
+  FileList["**/packages.config"].each { |config_file|
+    read_package_config(config_file) { |pkg|
+      name = pkg.attributes["id"]
+      version = pkg.attributes["version"]   
+      # puts "Read package #{name} with version #{version}"
+      PACKAGES[name]={}
+      PACKAGES[name][:name]=name
+      PACKAGES[name][:version]=version
+      PACKAGES[name][:folder]="#{PACKAGES_DIR}/#{name}.#{version}"
+      PACKAGES[name][:filename]="#{PACKAGES_DIR}/#{name}.#{version}.nupkg" 
+      PACKAGES[name][:url]="http://packages.nuget.org/api/v1/package/#{name}/#{version}"
+    }
+  }
+end
+
+def ensure_nuget_packages()
+  Dir.mkdir PACKAGES_DIR unless Dir.exists? PACKAGES_DIR
+  read_nuget_packages
+  if all_nuget_packages_present?() then
+    puts "All packages up to date"
+    print_nuget_package_manifest
+    return
+  end
+    
+  if (is_nix()) then
+    puts "updating packages with internal nuget replacement"
+    ensure_all_nuget_packages_nix
+    print_nuget_package_manifest
+  else
+    puts "updating packages with nuget"
+    sh invoke_runtime("tools\\nuget.exe install Kayak.Tests\\packages.config -o #{PACKAGES_DIR}")
+    print_nuget_package_manifest
+  end
+end
 
 task :default => [:build, :test]
   
@@ -55,6 +212,7 @@ BUILD_DIR = File.expand_path("build")
 OUTPUT_DIR = "#{BUILD_DIR}/out"
 BIN_DIR = "#{BUILD_DIR}/bin"
 PACKAGES_DIR = "packages"
+PACKAGES = {}
 
 assemblyinfo :assemblyinfo => :clean do |a|
   a.product_name = a.title = PRODUCT
@@ -76,93 +234,6 @@ xbuild :build_xbuild do |b|
   b.properties :configuration => CONFIGURATION, "OutputPath" => OUTPUT_DIR
   b.targets :Build
   b.solution = "Kayak.sln"
-end
-
-def ensure_submodules()
-  system("git submodule init")
-  system("git submodule update")
-end
-
-# lifted from the docs
-def fetch(uri, limit = 10, &block)
-  # You should choose a better exception.
-  raise ArgumentError, 'too many HTTP redirects' if limit == 0
-
-  http = Net::HTTP.new(uri.host, uri.port)
-  if uri.scheme == "https"
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-    http.use_ssl = true
-  end
-  
-  resp = http.request(Net::HTTP::Get.new(uri.request_uri)) { |response|
-    case response
-    when Net::HTTPRedirection then
-      location = response['location']
-      puts "redirected to #{location}"
-      if block_given? then
-        fetch(URI(location), limit - 1, &block)
-      else
-        fetch(URI(location), limit - 1)
-      end
-      return
-    else
-      puts "reading from #{uri}"
-      response.read_body do |segment|
-        yield segment
-      end
-      return
-    end
-  }
-end
-
-def ensure_nuget_packages_nix(name, version) 
-  # NuGet doesn't work on Mono. So we're going to manually download our dependencies from NuGet.org.
-
-  if !Dir.exist? PACKAGES_DIR then
-    FileUtils.mkdir_p PACKAGES_DIR
-  end
-  
-  zip_file = "#{PACKAGES_DIR}/#{name}.#{version}.nupkg"
-
-  if File.exist? zip_file then
-    puts "#{zip_file} already exists, skipping"
-    return
-  end
-  
-  puts "fetching #{zip_file}"
-  f = open(zip_file, "w");
-  begin
-
-    uri = URI.parse("http://packages.nuget.org/api/v1/package/#{name}/#{version}")
-
-    fetch(uri) do |seg|
-      f.write(seg)
-    end
-
-  ensure
-      f.close()
-  end
-
-  unzip = Unzip.new
-  unzip.destination = "#{PACKAGES_DIR}/#{name}.#{version}"
-  unzip.file = zip_file
-  unzip.execute
-end
-
-def ensure_nuget_packages()
-  Dir.mkdir PACKAGES_DIR unless Dir.exists? PACKAGES_DIR
-  
-  if (Dir.exists? "#{PACKAGES_DIR}/NUnit.2.5.10.11092") then
-    return
-  end
-  
-  if (is_nix()) then
-    ensure_nuget_packages_nix("NUnit", "2.5.10.11092")
-  else
-      puts "updating packages with nuget"
-      sh invoke_runtime("tools\\nuget.exe install Kayak.Tests\\packages.config -o #{PACKAGES_DIR}")
-      puts "done"
-  end
 end
 
 task :build => :assemblyinfo do
@@ -226,9 +297,12 @@ end
 
 task :clean do
   FileUtils.rm_rf BUILD_DIR
-  FileUtils.rm_rf PACKAGES_DIR
   FileUtils.rm_rf "Kayak/bin"
   FileUtils.rm_rf "Kayak/obj"
   FileUtils.rm_rf "Kayak.Tests/bin"
   FileUtils.rm_rf "Kayak.Tests/obj"
+end
+
+task :dist_clean => [:clean] do
+  FileUtils.rm_rf PACKAGES_DIR
 end
