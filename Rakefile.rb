@@ -9,7 +9,8 @@ PROJECT_URL = "https://github.com/kayak/kayak"
 require 'albacore'
 require 'uri'
 require 'net/http'
-require 'net/https'
+require 'net/https'  
+
 # Monkey patch Dir.exists? for Ruby 1.8.x
 if RUBY_VERSION =~ /^1\.8/
   class Dir
@@ -82,53 +83,124 @@ def fetch(uri, limit = 10, &block)
   }
 end
 
-def ensure_nuget_packages_nix(name, version) 
-  # NuGet doesn't work on Mono. So we're going to manually download our dependencies from NuGet.org.
+def rename_file(oldname, newname)
+  # Ruby 1.8.7 on Mac sometimes reports File.exist? incorrectly
+  # so work around this [not sure why that happens]
+  begin
+    File.delete(newname) 
+  rescue => msg
+    # File probably doesn't exist, if it does File.size? will work properly
+    if File.size?(newname) != nil then
+      fail "Failed to delete old file #{newname} with: #{msg}"
+      raise
+    end
+  end     
+  File.rename(oldname, newname)
+end
 
-  if !Dir.exist? PACKAGES_DIR then
-    FileUtils.mkdir_p PACKAGES_DIR
-  end
+def unpack_nuget_pkg(file, destination)
+  unzip = Unzip.new
+  unzip.destination = destination
+  unzip.file = file
+  unzip.execute
+end
+      
+def ensure_nuget_package_nix(name) 
+  # NuGet doesn't work on Mono. So we're going to download our dependencies from NuGet.org.
   
-  zip_file = "#{PACKAGES_DIR}/#{name}.#{version}.nupkg"
-
-  if File.exist? zip_file then
-    puts "#{zip_file} already exists, skipping"
+  zip_file = PACKAGES[name][:filename]
+  tmp_file = "#{zip_file}.tmp"
+  
+  if File.exist?(zip_file) and File.size?(zip_file) != nil then
+    puts "#{zip_file} already exists, skipping download"
+    unpack_nuget_pkg(zip_file, PACKAGES[name][:folder])  
     return
   end
   
   puts "fetching #{zip_file}"
-  f = open(zip_file, "w");
-  begin
+  File.open(tmp_file, "w") { |f| 
+    uri = URI.parse(PACKAGES[name][:url])
 
-    uri = URI.parse("http://packages.nuget.org/api/v1/package/#{name}/#{version}")
-
-    fetch(uri) do |seg|
+    fetch(uri) do |seg| 
       f.write(seg)
     end
-
-  ensure
-      f.close()
+  }
+                  
+  if File.size?(tmp_file) == nil then
+    fail "Download failed for #{zip_file}"
   end
+  
+  rename_file(tmp_file, zip_file)
+  unpack_nuget_pkg(zip_file, PACKAGES[name][:folder])
+end
 
-  unzip = Unzip.new
-  unzip.destination = "#{PACKAGES_DIR}/#{name}.#{version}"
-  unzip.file = zip_file
-  unzip.execute
+def all_nuget_packages_present?()
+  PACKAGES.values.each { |pkg| 
+    if !Dir.exists? pkg[:folder] then
+      puts "Package missing: #{pkg[:name]}"
+      return false
+    end
+  }
+  return true
+end
+
+def print_nuget_package_manifest()
+  puts "Building with NuGet packages:"
+  PACKAGES.values.each { |pkg| 
+    puts "#{pkg[:name]} => #{pkg[:version]}"
+  }
+end
+
+def ensure_all_nuget_packages_nix()
+  PACKAGES.values.each { |pkg| 
+    ensure_nuget_package_nix(pkg[:name])
+  }
+end
+
+def read_package_config(filename)
+  input_file = File.new(filename)
+  xml = REXML::Document.new input_file
+  
+  xml.elements.each("packages/package") { |element| 
+    yield element
+  }
+  
+  input_file.close
+end
+
+def read_nuget_packages()          
+  FileList["**/packages.config"].each { |config_file|
+    read_package_config(config_file) { |pkg|
+      name = pkg.attributes["id"]
+      version = pkg.attributes["version"]   
+      # puts "Read package #{name} with version #{version}"
+      PACKAGES[name]={}
+      PACKAGES[name][:name]=name
+      PACKAGES[name][:version]=version
+      PACKAGES[name][:folder]="#{PACKAGES_DIR}/#{name}.#{version}"
+      PACKAGES[name][:filename]="#{PACKAGES_DIR}/#{name}.#{version}.nupkg" 
+      PACKAGES[name][:url]="http://packages.nuget.org/api/v1/package/#{name}/#{version}"
+    }
+  }
 end
 
 def ensure_nuget_packages()
   Dir.mkdir PACKAGES_DIR unless Dir.exists? PACKAGES_DIR
-  
-  if (Dir.exists? "#{PACKAGES_DIR}/NUnit.2.5.10.11092") then
+  read_nuget_packages
+  if all_nuget_packages_present?() then
+    puts "All packages up to date"
+    print_nuget_package_manifest
     return
   end
-  
+    
   if (is_nix()) then
-    ensure_nuget_packages_nix("NUnit", "2.5.10.11092")
+    puts "updating packages with internal nuget replacement"
+    ensure_all_nuget_packages_nix
+    print_nuget_package_manifest
   else
-      puts "updating packages with nuget"
-      sh invoke_runtime("tools\\nuget.exe install Kayak.Tests\\packages.config -o #{PACKAGES_DIR}")
-      puts "done"
+    puts "updating packages with nuget"
+    sh invoke_runtime("tools\\nuget.exe install Kayak.Tests\\packages.config -o #{PACKAGES_DIR}")
+    print_nuget_package_manifest
   end
 end
 
