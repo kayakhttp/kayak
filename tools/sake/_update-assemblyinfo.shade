@@ -1,0 +1,20 @@
+
+default include='**/AssemblyInfo.cs'
+default assemblyVersion=''
+default assemblyFileVersion='${assemblyVersion}'
+
+update-file each='var updateFile in Files.Include(include)'
+    @{
+        if (!string.IsNullOrWhiteSpace(assemblyVersion))
+            updateText = Replace(updateText, "AssemblyVersion\\([^\\)]*\\)", "AssemblyVersion(\"" + assemblyVersion + "\")");
+        if (!string.IsNullOrWhiteSpace(assemblyFileVersion))
+            updateText = Replace(updateText, "AssemblyFileVersion\\([^\\)]*\\)", "AssemblyFileVersion(\"" + assemblyFileVersion + "\")");
+    }
+
+functions
+  @{
+    string Replace(string text, string pattern, string replace)
+    {
+        return System.Text.RegularExpressions.Regex.Replace(text, pattern, replace);
+    }
+  }
