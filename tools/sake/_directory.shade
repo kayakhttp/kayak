@@ -1,0 +1,6 @@
+
+default delete=''
+
+test if="!string.IsNullOrEmpty(delete) && Directory.Exists(delete)"
+  -Directory.Delete(delete, true);
+  

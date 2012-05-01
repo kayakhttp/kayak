@@ -1,0 +1,12 @@
+
+var originalText='${System.IO.File.ReadAllText(updateFile)}'
+var updateText='${originalText}'
+render
+@{
+  if (updateText != originalText)
+  {
+    Log.Info("Updating " + updateFile);
+    System.IO.File.WriteAllText(updateFile, updateText);
+  }
+}
+

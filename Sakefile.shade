@@ -1,0 +1,106 @@
+var PRODUCT = "Kayak"
+var DESCRIPTION = "Kayak is an event-base IO libary for .NET. Kayak allows you to easily create TCP clients and servers, and contains an HTTP/1.1 server implementation."
+var VERSION = "0.7.2"
+var AUTHORS = "Benjamin van der Veen"
+var COPYRIGHT = "Copyright (c) 2007-2011 Benjamin van der Veen"
+var LICENSE_URL = "https://github.com/kayak/kayak/raw/HEAD/LICENSE"
+var PROJECT_URL = "https://github.com/kayak/kayak"
+
+
+
+#default .build .test
+  
+var CONFIGURATION = "Release"
+var BUILD_DIR = "${Directory.GetCurrentDirectory()}/build"
+var OUTPUT_DIR = "${BUILD_DIR}/out"
+var BIN_DIR = "${BUILD_DIR}/bin"
+var PACKAGES_DIR = "packages"
+
+use import="Files"
+
+#assemblyinfo .clean
+  @{/*
+  a.product_name = a.title = PRODUCT
+  a.description = DESCRIPTION
+  a.version = a.file_version = VERSION
+  a.copyright = COPYRIGHT
+  a.output_file = "Kayak/Properties/AssemblyInfo.cs"
+  a.namespaces "System.Runtime.CompilerServices"
+  a.custom_attributes :InternalsVisibleTo => "Kayak.Tests"
+  */}
+  update-assemblyinfo include="Kayak/Properties/AssemblyInfo.cs" assemblyVersion="${VERSION}"
+
+#ensure_submodules
+  exec program="git" commandline="submodule init"
+  exec program="git" commandline="submodule update"
+
+#ensure_nuget_packages
+  for each='var file in Files.Include("**/packages.config")'
+    exec-clr program='.nuget/NuGet.exe' commandline='install ${file} -o packages'
+
+#build .assemblyinfo .ensure_submodules .ensure_nuget_packages
+  build projectFile="Kayak.sln" outputDir="${OUTPUT_DIR}" configuration="${CONFIGURATION}"
+
+#test .build
+  nunit testAssembly="${OUTPUT_DIR}/Kayak.Tests.dll" extra="-labels" nunitVersion="2.5.10.11092"
+
+#binaries .build
+  @{
+    var binaries = Files.BasePath(OUTPUT_DIR).Include("*.dll", "*.pdb")
+      .Where(path => !Regex.Match(path, "nunit").Success)
+      .Where(path => !Regex.Match(path, ".Tests").Success)
+      .Where(path => !Regex.Match(path, "KayakExamples.").Success);
+  }
+  -Directory.CreateDirectory(BIN_DIR);
+  for each="var file in binaries"
+    log info="Copying ${file}"
+    -File.Copy(OUTPUT_DIR + "/" + file, BIN_DIR + "/" + file, true);
+
+#dist_nuget .binaries .build
+  @{/*
+  if is_nix()
+    puts "Not running on Windows, skipping NuGet package creation."
+  else 
+    input_nuspec = "Kayak.nuspec"
+    output_nuspec = "#{BUILD_DIR}/Kayak.nuspec"
+    
+    transform_xml input_nuspec, output_nuspec do |x|
+      x.root.elements["metadata/id"].text = PRODUCT
+      x.root.elements["metadata/version"].text = VERSION
+      x.root.elements["metadata/authors"].text = AUTHORS
+      x.root.elements["metadata/owners"].text = AUTHORS
+      x.root.elements["metadata/description"].text = DESCRIPTION
+      x.root.elements["metadata/licenseUrl"].text = LICENSE_URL
+      x.root.elements["metadata/projectUrl"].text = PROJECT_URL
+      x.root.elements["metadata/tags"].text = "http io socket network async"
+    end
+    
+    nuget = NuGetPack.new
+    nuget.command = "tools/NuGet.exe"
+    nuget.nuspec = output_nuspec
+    nuget.output = BUILD_DIR
+    #using base_folder throws as there are two options that begin with b in nuget 1.4
+    nuget.parameters = "-Symbols"
+    nuget.execute
+  end
+  */}
+
+#dist_zip .build .binaries
+  @{/*
+  z.directories_to_zip BIN_DIR
+  z.output_file = "kayak-#{VERSION}.zip"
+  z.output_path = BUILD_DIR
+  */}
+
+#dist .test .dist_nuget .dist_zip
+
+#clean
+  directory delete="${BUILD_DIR}"
+  directory delete="Kayak/bin"
+  directory delete="Kayak/obj"
+  directory delete="Kayak.Tests/bin"
+  directory delete="Kayak.Tests/obj"
+  
+#dist_clean
+  directory delete="${PACKAGES_DIR}"
+
