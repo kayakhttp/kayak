@@ -62,7 +62,6 @@
     <Compile Include="Http\Transaction\UserKayakAdapter.cs" />
     <Compile Include="Net\Delegates\SchedulerDelegate.cs" />
     <Compile Include="Net\Delegates\ServerDelegate.cs" />
-    <Compile Include="Net\ManualResetEventSlip.cs" />
     <Compile Include="Net\NetTests.cs" />
     <Compile Include="Net\SchedulerTests.cs" />
     <Compile Include="Net\ServerTests.cs" />
