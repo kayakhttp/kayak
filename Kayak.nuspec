@@ -12,7 +12,7 @@
     <tags></tags>
   </metadata>
   <files>
-    <file src="bin\*.*" target="lib" />
+    <file src="bin\*.*" target="lib\net40" />
     <file src="..\Kayak\**\*.cs" target="src\Kayak" />
 	<file src="..\lib\HttpMachine\**\*.cs" target="src\HttpMachine" />
 	<file src="..\lib\HttpMachine\**\*.rl" target="src\HttpMachine" />
