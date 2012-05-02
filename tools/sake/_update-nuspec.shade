@@ -1,0 +1,28 @@
+
+default nuspec_path=''
+default id=''
+default version=''
+default authors=''
+default owners='${authors}'
+default description=''
+default licenseUrl=''
+default projectUrl=''
+default tags=''
+
+
+update-xml filename="${nuspec_path}"
+    @{
+        var metadata = doc["package"]["metadata"];
+        Action<string, string> setMetadata = (k, v) => {
+            metadata[k].InnerText = v;
+        };
+
+        setMetadata("id", id);
+        setMetadata("version", version);
+        setMetadata("authors", authors);
+        setMetadata("owners", owners);
+        setMetadata("description", description);
+        setMetadata("licenseUrl", licenseUrl);
+        setMetadata("projectUrl", projectUrl);
+        setMetadata("tags", tags);
+    }

@@ -1,0 +1,19 @@
+use namespace='System.Xml'
+use namespace='System.IO'
+
+default inputFile=''
+default outputFile=''
+
+@{
+    if (string.IsNullOrWhiteSpace(inputFile) || string.IsNullOrWhiteSpace(outputFile))
+        return;
+    XmlDocument doc = new XmlDocument();
+    doc.LoadXml(File.ReadAllText(inputFile));
+}
+render
+log info="writing ${outputFile}"
+@{
+    XmlTextWriter writer = new XmlTextWriter(outputFile, null);
+    writer.Formatting = Formatting.Indented;
+    doc.Save(writer);    
+}

@@ -48,33 +48,9 @@ use import="Files"
     -File.Copy(OUTPUT_DIR + "/" + file, BIN_DIR + "/" + file, true);
 
 #dist_nuget .binaries .build
-  @{/*
-  if is_nix()
-    puts "Not running on Windows, skipping NuGet package creation."
-  else 
-    input_nuspec = "Kayak.nuspec"
-    output_nuspec = "#{BUILD_DIR}/Kayak.nuspec"
-    
-    transform_xml input_nuspec, output_nuspec do |x|
-      x.root.elements["metadata/id"].text = PRODUCT
-      x.root.elements["metadata/version"].text = VERSION
-      x.root.elements["metadata/authors"].text = AUTHORS
-      x.root.elements["metadata/owners"].text = AUTHORS
-      x.root.elements["metadata/description"].text = DESCRIPTION
-      x.root.elements["metadata/licenseUrl"].text = LICENSE_URL
-      x.root.elements["metadata/projectUrl"].text = PROJECT_URL
-      x.root.elements["metadata/tags"].text = "http io socket network async"
-    end
-    
-    nuget = NuGetPack.new
-    nuget.command = "tools/NuGet.exe"
-    nuget.nuspec = output_nuspec
-    nuget.output = BUILD_DIR
-    #using base_folder throws as there are two options that begin with b in nuget 1.4
-    nuget.parameters = "-Symbols"
-    nuget.execute
-  end
-  */}
+  update-nuspec inputFile="Kayak.nuspec" outputFile="${BUILD_DIR}/Kayak.nuspec" id="${PRODUCT}" version="${VERSION}" authors="${AUTHORS}" description="${DESCRIPTION}" licenseUrl="${LICENSE_URL}" projectUrl="${PROJECT_URL}" tags="http io socket network async"
+
+  nuget-pack nuspecFile="${BUILD_DIR}/Kayak.nuspec" workingDir="${BUILD_DIR}" extra="-Symbols"
 
 #dist_zip .build .binaries
   @{/*
