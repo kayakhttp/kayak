@@ -89,7 +89,7 @@ namespace Kayak.Tests.Http
             transactionInput.OnRequestEnd();
 
             var expected = Request.OneOhNoBodyNoHeaders;
-			expected.Head.Headers = new Dictionary<string,string>(StringComparer.InvariantCultureIgnoreCase);
+            expected.Head.Headers = new Dictionary<string,string>(StringComparer.InvariantCultureIgnoreCase);
             expected.Head.Headers["X-Forwarded-For"] = "1.1.1.1";
             requestAccumulator.AssertRequests(new[] { expected });
         }
@@ -123,7 +123,7 @@ namespace Kayak.Tests.Http
             requestAccumulator.AssertRequests(new[] { expected });
         }
 
-        [Test]
+        //[Test]
         public void Transaction_tests(
             [Values(
                 CallKayakWhen.OnRequest, 
@@ -184,7 +184,8 @@ namespace Kayak.Tests.Http
                 kayak.OnResponse(currentResponse.Head, currentResponse.Data != null);
             };
 
-            var continueWillBeSuppressed = (respondWhen == CallKayakWhen.OnRequest && connectRequestBodyWhen == CallKayakWhen.AfterOnRequest)
+            var continueWillBeSuppressed = 
+                (respondWhen == CallKayakWhen.OnRequest && connectRequestBodyWhen == CallKayakWhen.AfterOnRequest)
                     || connectRequestBodyWhen == CallKayakWhen.OnConnectResponseBody
                     || connectRequestBodyWhen == CallKayakWhen.AfterOnConnectResponseBody
                     || (reverseConnectAndRespondOnRequest &&
