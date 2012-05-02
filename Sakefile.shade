@@ -1,8 +1,8 @@
 var PRODUCT = "Kayak"
-var DESCRIPTION = "Kayak is an event-base IO libary for .NET. Kayak allows you to easily create TCP clients and servers, and contains an HTTP/1.1 server implementation."
+var DESCRIPTION = "Kayak is an event-based IO libary for .NET. Kayak allows you to easily create TCP clients and servers, and contains an HTTP/1.1 server implementation."
 var VERSION = "0.7.2"
 var AUTHORS = "Benjamin van der Veen"
-var COPYRIGHT = "Copyright (c) 2007-2011 Benjamin van der Veen"
+var COPYRIGHT = "Copyright 2007-2012 Benjamin van der Veen"
 var LICENSE_URL = "https://github.com/kayak/kayak/raw/HEAD/LICENSE"
 var PROJECT_URL = "https://github.com/kayak/kayak"
 
@@ -19,16 +19,7 @@ var PACKAGES_DIR = "packages"
 use import="Files"
 
 #assemblyinfo .clean
-  @{/*
-  a.product_name = a.title = PRODUCT
-  a.description = DESCRIPTION
-  a.version = a.file_version = VERSION
-  a.copyright = COPYRIGHT
-  a.output_file = "Kayak/Properties/AssemblyInfo.cs"
-  a.namespaces "System.Runtime.CompilerServices"
-  a.custom_attributes :InternalsVisibleTo => "Kayak.Tests"
-  */}
-  update-assemblyinfo include="Kayak/Properties/AssemblyInfo.cs" assemblyVersion="${VERSION}"
+  update-assemblyinfo include="Kayak/Properties/AssemblyInfo.cs" assemblyVersion="${VERSION}" assemblyTitle="${PRODUCT}" assemblyDescription="${DESCRIPTION}" assemblyCopyright="${COPYRIGHT}"
 
 #ensure_submodules
   exec program="git" commandline="submodule init"
