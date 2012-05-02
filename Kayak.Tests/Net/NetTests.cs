@@ -76,8 +76,11 @@ namespace Kayak.Tests.Net
 
         void RunScheduler()
         {
-            new Thread(() => scheduler.Start()).Start();
-            wh.Wait(1000);
+            var thread = new Thread(() => scheduler.Start());
+            thread.Start();
+            wh.Wait(5000);
+            thread.Abort();
+            
             Assert.That(schedulerError, Is.Null);
         }
 
