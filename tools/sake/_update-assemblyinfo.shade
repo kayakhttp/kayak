@@ -11,7 +11,7 @@ update-file each='var updateFile in Files.Include(include)'
     @{
         Action<string, string> replace = (name, value) => {
             if (!string.IsNullOrWhiteSpace(value))
-                updateText = Replace(updateText, name + "\\([^\\)]*\\)", name + "(\"" + value + "\")");
+                updateText = Replace(updateText, name + "\\([^\\)].*\\)", name + "(\"" + value + "\")");
         };
         replace("AssemblyVersion", assemblyVersion);
         replace("AssemblyFileVersion", assemblyFileVersion);
