@@ -42,7 +42,7 @@ namespace Kayak.Http
         {
             // XXX freelist
             var tx = new HttpServerTransaction(socket);
-            var txDel = new HttpServerTransactionDelegate(requestDelegate);
+            var txDel = new HttpServerTransactionDelegate(requestDelegate, new OutputQueue(tx));
             var socketDelegate = new HttpServerSocketDelegate(tx, txDel);
             return socketDelegate;
         }

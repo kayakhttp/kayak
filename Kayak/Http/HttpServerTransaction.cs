@@ -8,7 +8,7 @@ namespace Kayak.Http
 {
     static class TransactionExtensions
     {
-        public static void OnContinue(this IHttpServerTransaction transaction)
+        public static void OnContinue(this IOutputSegment transaction)
         {
             // write HTTP/1.1 100 Continue
             transaction.OnResponse(new HttpResponseHead() { Status = "100 Continue" });

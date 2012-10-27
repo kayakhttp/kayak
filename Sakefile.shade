@@ -1,6 +1,6 @@
 var PRODUCT = "Kayak"
 var DESCRIPTION = "Kayak is an event-based IO libary for .NET. Kayak allows you to easily create TCP clients and servers, and contains an HTTP/1.1 server implementation."
-var VERSION = "0.7.2"
+var VERSION = "0.7.3"
 var AUTHORS = "Benjamin van der Veen"
 var COPYRIGHT = "Copyright 2007-2012 Benjamin van der Veen"
 var LICENSE_URL = "https://github.com/kayak/kayak/raw/HEAD/LICENSE"

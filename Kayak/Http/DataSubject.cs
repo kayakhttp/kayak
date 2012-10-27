@@ -8,41 +8,54 @@ namespace Kayak.Http
     class DataSubject : IDataProducer, IDataConsumer
     {
         IDataConsumer channel;
-        readonly Func<IDisposable> disposable;
+        readonly Func<Action<bool>> disposable;
 
         bool gotEnd;
         Exception error;
         DataBuffer buffer;
 
-        public DataSubject(Func<IDisposable> disposable)
+        public DataSubject(Func<Action<bool>> disposable)
         {
             this.disposable = disposable;
+        }
+        
+        void EnsureBufferDrained()
+        {
         }
 
         public IDisposable Connect(IDataConsumer channel)
         {
+            var disconnect = disposable();
+            
             this.channel = channel;
-
+            
             if (buffer != null)
             {
                 buffer.Each(d => channel.OnData(new ArraySegment<byte>(d), null));
-
-                // XXX this maybe is kinda wrong.
-                if (continuation != null)
-                    continuation();
             }
-
-            if (error != null)
-                channel.OnError(error);
-
-            if (gotEnd)
-                channel.OnEnd();
-
-            return disposable();
+            
+            if (continuation != null)
+            {
+                var c = continuation;
+                this.continuation = null;
+                c();
+            }
+            else
+            {
+                if (error != null)
+                    channel.OnError(error);
+                else if (gotEnd)
+                    channel.OnEnd();
+            }
+   
+            return new Disposable(() => disconnect(gotEnd));
         }
 
         public void OnError(Exception e)
         {
+            if (continuation != null)
+                throw new InvalidOperationException("Continuation was pending.");
+            
             if (channel == null)
                 error = e;
             else
@@ -53,6 +66,9 @@ namespace Kayak.Http
 
         public bool OnData(ArraySegment<byte> data, Action ack)
         {
+            if (continuation != null)
+                throw new InvalidOperationException("Continuation was pending.");
+            
             if (channel == null)
             {
                 if (buffer == null)
@@ -74,6 +90,9 @@ namespace Kayak.Http
 
         public void OnEnd()
         {
+            if (continuation != null)
+                throw new InvalidOperationException("Continuation was pending.");
+            
             if (channel == null)
                 gotEnd = true;
             else

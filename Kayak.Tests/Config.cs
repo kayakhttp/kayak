@@ -7,6 +7,6 @@ namespace Kayak.Tests
 {
     class Config
     {
-        public static int Port = 3457;
+        public static int Port = 3458;
     }
 }

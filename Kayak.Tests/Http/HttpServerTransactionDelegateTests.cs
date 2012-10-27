@@ -73,9 +73,9 @@ namespace Kayak.Tests.Http
             requestCallbacker = new RequestCallbacker();
             requestAccumulator = new RequestAccumulator(requestCallbacker);
             var requestDelegate = new RequestDelegate(requestAccumulator);
-            var transactionDelegate = new HttpServerTransactionDelegate(requestDelegate);
+            //var transactionDelegate = new HttpServerTransactionDelegate(requestDelegate);
             responseAccumulator = new ResponseAccumulator();
-            transactionInput = new TransactionInput(responseAccumulator, transactionDelegate);
+            //transactionInput = new TransactionInput(responseAccumulator, transactionDelegate);
 
             postedActions = new Queue<Action>();
         }
